@@ -4,10 +4,12 @@
 
 const AppRouter = {
     _navTimeout: null,
+    currentRoute: 'home',
     routes: {
         'home': renderHomeView,
         'galeria': renderGaleriaView,
         'agendar': renderAgendarView,
+        'perfil': renderPerfilView,
         'admin': renderAdminView
     },
 
@@ -18,8 +20,6 @@ const AppRouter = {
                 e.preventDefault();
                 const route = e.currentTarget.getAttribute('data-route');
                 this.navigate(route);
-
-                // El estado activo ahora se maneja dentro de navigate()
 
                 // Cerrar menú móvil si está abierto
                 const navLinks = document.getElementById('nav-links');
@@ -33,9 +33,14 @@ const AppRouter = {
         this.navigate('home');
     },
 
+    refresh: function () {
+        this.navigate(this.currentRoute);
+    },
+
     navigate: function (route) {
         const contentArea = document.getElementById('app-content');
         if (this.routes[route]) {
+            this.currentRoute = route;
             if (this._navTimeout) clearTimeout(this._navTimeout);
 
             // Actualizar clase activa en el menú de navegación
@@ -859,3 +864,107 @@ function renderAdminView() {
         </div>
     `;
 }
+
+function renderPerfilView() {
+    const persStr = localStorage.getItem('nicolett_personalization');
+    if (!persStr) {
+        return `
+            <div class="container section text-center" style="padding: 80px 20px;">
+                <div class="card" style="max-width: 550px; margin: 0 auto; padding: 40px 30px; background: #ffffff; box-shadow: var(--shadow-medium); border-radius: var(--radius-lg);">
+                    <div style="width: 70px; height: 70px; border-radius: 50%; background: var(--clr-nude-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--clr-rose-gold);">
+                        <i data-lucide="user" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h3 class="section-title" style="margin-bottom: 15px; font-size: 1.8rem;">Mi Perfil</h3>
+                    <p style="color: var(--clr-neutral-gray); margin-bottom: 25px; line-height: 1.6;">
+                        Personaliza tu experiencia ingresando tus datos para acceder a tu historial de visitas y facilitar tus próximas reservas.
+                    </p>
+                    <button class="btn btn-primary" onclick="const m=document.getElementById('personalize-modal'); if(m){m.style.display='flex'; m.style.opacity='1';}">
+                        Personalizar mi Perfil
+                    </button>
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-secondary" style="font-size: 0.9rem;" onclick="AppRouter.navigate('agendar')">
+                            Agendar Cita Directamente
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    let pers;
+    try {
+        pers = JSON.parse(persStr);
+    } catch(e) {
+        return `<div class="container section text-center"><p>Error al cargar el perfil.</p></div>`;
+    }
+
+    // Filtrar citas de la clienta por su correo registrado
+    const allAppointments = StorageHelper.getAppointments();
+    const userAppointments = allAppointments.filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase());
+    
+    // Ordenar citas por fecha descendente
+    userAppointments.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    let historyHtml = '';
+    if (userAppointments.length > 0) {
+        historyHtml = '<div style="display:grid; gap:16px; max-width:680px; margin: 0 auto; text-align:left;">';
+        userAppointments.forEach(appt => {
+            historyHtml += `
+                <div class="card" style="padding:22px 24px; border-left: 5px solid var(--clr-rose-gold); background: #ffffff; box-shadow: var(--shadow-soft); border-radius: var(--radius-md);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                        <h4 style="margin:0; color:var(--clr-neutral-dark); font-size:1.2rem;">${appt.servicio || 'Servicio de Belleza'}</h4>
+                        <span style="font-size:0.85rem; color:var(--clr-rose-gold-dark); font-weight:600; background:var(--clr-nude-light); padding:5px 12px; border-radius:20px;">
+                            ${appt.date} • ${appt.time}
+                        </span>
+                    </div>
+                    <p style="margin:4px 0 0 0; font-size:0.95rem; color:var(--clr-neutral-gray);">
+                        Especialista: <strong style="color:var(--clr-neutral-dark);">${appt.profesional}</strong>
+                    </p>
+                    ${appt.abono ? `<p style="margin:6px 0 0 0; font-size:0.85rem; color:#28a745; font-weight:500;">✓ Abono verificado: $5.000</p>` : ''}
+                </div>
+            `;
+        });
+        historyHtml += '</div>';
+    } else {
+        historyHtml = `
+            <div class="card" style="padding:40px 30px; max-width:680px; margin: 0 auto; background: #ffffff; box-shadow: var(--shadow-soft); text-align:center; border-radius: var(--radius-md);">
+                <div style="width:65px; height:65px; border-radius:50%; background:var(--clr-nude-light); display:flex; align-items:center; justify-content:center; margin:0 auto 15px; color:var(--clr-rose-gold);">
+                    <i data-lucide="sparkles" style="width:30px; height:30px;"></i>
+                </div>
+                <h4 style="color:var(--clr-rose-gold-dark); margin-bottom:12px; font-size:1.35rem;">¡Bienvenida a Nicolett Studio Fantasy!</h4>
+                <p style="color:var(--clr-neutral-gray); max-width:480px; margin:0 auto 24px; line-height: 1.6;">
+                    Aún no tienes citas registradas asociadas a tu correo (<strong>${pers.email}</strong>). ¡Te invitamos a agendar tu próxima experiencia de autocuidado!
+                </p>
+                <button class="btn btn-primary" onclick="AppRouter.navigate('agendar')">
+                    Agendar mi primera cita
+                </button>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="container section text-center" style="padding: 60px 20px;">
+            <div style="max-width: 680px; margin: 0 auto 35px; text-align: center;">
+                <h2 class="section-title" style="margin-bottom: 8px;">Hola, ${pers.name}</h2>
+                <p class="section-subtitle" style="color: var(--clr-neutral-gray); font-size: 1.05rem;">
+                    Este es tu espacio personal y el historial de tus atenciones agendadas.
+                </p>
+                <div style="display:inline-flex; align-items:center; gap:8px; background:var(--clr-nude-light); padding:6px 16px; border-radius:30px; font-size:0.85rem; color:var(--clr-neutral-gray); margin-top:10px;">
+                    <i data-lucide="mail" style="width:14px; height:14px;"></i>
+                    <span>${pers.email}</span>
+                </div>
+            </div>
+            
+            ${historyHtml}
+
+            ${userAppointments.length > 0 ? `
+            <div style="margin-top: 40px;">
+                <button class="btn btn-primary" style="font-size:1.05rem; padding: 14px 34px;" onclick="AppRouter.navigate('agendar')">
+                    Agendar Nueva Cita
+                </button>
+            </div>
+            ` : ''}
+        </div>
+    `;
+}
+

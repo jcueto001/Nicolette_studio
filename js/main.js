@@ -19,56 +19,92 @@ document.addEventListener('DOMContentLoaded', () => {
     // Iniciar Router
     AppRouter.init();
 
-    // Iniciar Auth
-    setupAuth();
+    // Iniciar Personalizacion
+    setupPersonalization();
 });
 
-function setupAuth() {
-    const btnLogout = document.getElementById('btn-logout');
-    const authModal = document.getElementById('auth-modal');
-    const profilesContainer = document.getElementById('auth-profiles-container');
+function setupPersonalization() {
+    const modal = document.getElementById('personalize-modal');
+    const form = document.getElementById('personalize-form');
+    const navPerfil = document.getElementById('nav-perfil');
     
-    const updateNav = () => {
-        const auth = StorageHelper.getAuth();
-        if(auth.loggedIn && btnLogout) {
-            btnLogout.style.display = 'block';
-        } else if(btnLogout) {
-            btnLogout.style.display = 'none';
+    const isPersonalized = localStorage.getItem('nicolett_personalization');
+    
+    if (isPersonalized) {
+        if (navPerfil) navPerfil.style.display = 'inline-block';
+    } else {
+        if (modal) {
+            setTimeout(() => {
+                modal.style.display = 'flex';
+                modal.offsetHeight;
+                modal.style.opacity = '1';
+            }, 10000);
         }
-    };
-    
-    updateNav();
-    
-    if(btnLogout) {
-        btnLogout.addEventListener('click', async () => {
-            if (confirm('¿Seguro quieres salir?')) {
-                // Forzar actualización inmediata del localStorage
-                StorageHelper.setAuth({ loggedIn: false, user: null });
-                updateNav();
+    }
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('personalize-name').value.trim();
+            const email = document.getElementById('personalize-email').value.trim();
+            const btn = form.querySelector('button[type="submit"]');
+
+            // --- Lógica Especial para Administradora ---
+            if (email.toLowerCase() === 'nicolette@gmail.com') {
+                if (modal) modal.style.display = 'none';
+                const authModal = document.getElementById('auth-modal');
+                const authEmail = document.getElementById('auth-email');
+                if (authModal && authEmail) {
+                    authEmail.value = email;
+                    authModal.style.display = 'flex';
+                }
+                return; // Detenemos el flujo normal de clienta
+            }
+            // -------------------------------------------
+
+            btn.disabled = true;
+            btn.innerText = 'Guardando...';
+
+            try {
+                if (typeof firebase !== 'undefined' && firebase.firestore) {
+                    const db = firebase.firestore();
+                    const snapshot = await db.collection('client_profiles').where('email', '==', email).get();
+                    if (snapshot.empty) {
+                        await db.collection('client_profiles').add({
+                            name: name,
+                            email: email,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                }
                 
-                if (typeof firebase !== 'undefined' && firebase.auth) {
-                    await firebase.auth().signOut();
-                }
-                if (typeof AppRouter !== 'undefined') {
-                    AppRouter.navigate('home');
-                }
+                localStorage.setItem('nicolett_personalization', JSON.stringify({ name, email }));
+                
+                if (navPerfil) navPerfil.style.display = 'inline-block';
+
+                if (modal) modal.style.opacity = '0';
+                setTimeout(() => { 
+                    if (modal) modal.style.display = 'none'; 
+                    AppRouter.navigate('perfil'); 
+                }, 500);
+            } catch (error) {
+                console.error('Error al guardar perfil:', error);
+                alert('Hubo un problema al guardar tus datos, intenta de nuevo.');
+                btn.disabled = false;
+                btn.innerText = '¡Sí, personalizar!';
             }
         });
     }
-    
-    // Interceptar click en "Portal Interno"
-    const adminLink = document.querySelector('a[data-route="admin"]');
-    if(adminLink) {
-        adminLink.addEventListener('click', (e) => {
-            const auth = StorageHelper.getAuth();
-            if(!auth.loggedIn) {
-                // Solo mostramos el modal, pero dejamos que AppRouter navegue a la vista 'admin'
-                authModal.style.display = 'flex';
-            }
-        }, true); // Fase de captura para ejecutar antes que AppRouter
+
+    // --- Lógica de Autenticación Modal Administradora ---
+    const authModal = document.getElementById('auth-modal');
+    const closeAuth = document.getElementById('close-auth');
+    if (closeAuth && authModal) {
+        closeAuth.addEventListener('click', () => {
+            authModal.style.display = 'none';
+        });
     }
 
-    // Inicializar Formulario de Autenticación Firebase
     const authForm = document.getElementById('auth-form');
     if (authForm) {
         authForm.addEventListener('submit', async (e) => {
@@ -88,32 +124,63 @@ function setupAuth() {
                 }
                 const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
                 
-                // Actualizar estado inmediatamente para que el renderizado de admin no falle
+                // Verificar en la colección Usuarios si tiene rol Admin
+                const db = firebase.firestore();
+                const userDoc = await db.collection('Usuarios').doc(userCredential.user.uid).get();
+                
+                let role = 'profesional';
+                if (userDoc.exists && userDoc.data().rol === 'Admin') {
+                    role = 'admin';
+                }
+
                 const userEmail = userCredential.user.email;
-                const profs = StorageHelper.getProfessionals();
-                const prof = profs.find(p => p.email === userEmail) || { id: 'p_unknown', name: 'Admin', role: 'admin' };
+                const prof = { id: userCredential.user.uid, name: 'Administradora', email: userEmail, role: role };
                 StorageHelper.setAuth({ loggedIn: true, user: prof });
                 
-                // Actualizar UI
+                // Mostrar botón de salir
                 const btnLogout = document.getElementById('btn-logout');
                 if (btnLogout) btnLogout.style.display = 'inline-block';
 
                 document.getElementById('auth-modal').style.display = 'none';
                 
-                // Navegar directo al portal interno
+                // Navegar al portal interno
                 if (typeof AppRouter !== 'undefined') {
                     AppRouter.navigate('admin');
                 }
                 
             } catch (error) {
                 console.error("Error Auth:", error);
-                errorEl.innerText = 'Credenciales inválidas. Intenta de nuevo.';
+                errorEl.innerText = 'Credenciales inválidas o error de conexión.';
                 errorEl.style.display = 'block';
             } finally {
                 btnLogin.disabled = false;
                 btnLogin.innerHTML = 'Ingresar';
             }
         });
+    }
+
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            if (confirm('¿Seguro quieres salir del portal administrador?')) {
+                StorageHelper.setAuth({ loggedIn: false, user: null });
+                btnLogout.style.display = 'none';
+                if (typeof firebase !== 'undefined' && firebase.auth) {
+                    await firebase.auth().signOut();
+                }
+                if (typeof AppRouter !== 'undefined') {
+                    AppRouter.navigate('home');
+                }
+            }
+        });
+    }
+    
+    // Restaurar estado visual del botón salir
+    if (typeof StorageHelper !== 'undefined') {
+        const authData = StorageHelper.getAuth();
+        if (authData && authData.loggedIn && btnLogout) {
+            btnLogout.style.display = 'inline-block';
+        }
     }
 }
 
@@ -338,6 +405,17 @@ function initAgendarEvents() {
     inputPhone?.addEventListener('input', validateStep4);
     inputEmail?.addEventListener('input', validateStep4);
 
+    // Auto-fill from personalization if exists
+    const persStr = localStorage.getItem('nicolett_personalization');
+    if (persStr) {
+        try {
+            const pers = JSON.parse(persStr);
+            if (inputName && !inputName.value) inputName.value = pers.name || '';
+            if (inputEmail && !inputEmail.value) inputEmail.value = pers.email || '';
+            validateStep4();
+        } catch(e) {}
+    }
+
     btnPrev4?.addEventListener('click', () => showStep(3));
     btnNext4?.addEventListener('click', () => {
         bookingState.clientName = inputName.value.trim();
@@ -402,6 +480,7 @@ function initAgendarEvents() {
         }
     });
 }
+
 
 
 // --- Eventos de Admin ---
@@ -620,7 +699,7 @@ function initAdminEvents() {
         btnSubmit.innerText = "Guardar Ficha";
         
         if(typeof AppRouter !== 'undefined') {
-            AppRouter.navigate('home'); // Refrescar vista
+            AppRouter.refresh(); // Refrescar vista actual
         }
     });
 
@@ -690,7 +769,7 @@ function initAdminEvents() {
         btn.addEventListener('click', () => {
             if(confirm('¿Estás segura de eliminar esta ficha clínica? Esta acción no se puede deshacer.')) {
                 StorageHelper.deleteFicha(btn.getAttribute('data-fichaid'));
-                AppRouter.navigate('home');
+                AppRouter.refresh();
             }
         });
     });
@@ -700,7 +779,7 @@ function initAdminEvents() {
         btn.addEventListener('click', () => {
             if(confirm('¿Estás segura de eliminar a esta trabajadora del sistema?')) {
                 StorageHelper.deleteProfessional(btn.getAttribute('data-profid'));
-                AppRouter.navigate('home');
+                AppRouter.refresh();
             }
         });
     });
@@ -749,7 +828,7 @@ function initAdminEvents() {
                                 title: titleInput.value.trim(),
                                 src: dataUrl
                             });
-                            AppRouter.navigate('home'); // Recargar para ver los cambios
+                            AppRouter.refresh(); // Recargar para ver los cambios
                         } catch(err) {
                             alert("Error: No hay más espacio en la memoria. Por favor, elimina algunas fotos de la galería primero.");
                             statusGallery.style.display = 'none';
@@ -769,7 +848,7 @@ function initAdminEvents() {
         btn.addEventListener('click', async () => {
             if(confirm('¿Estás segura de eliminar permanentemente esta ficha?')) {
                 await StorageHelper.deleteFicha(btn.getAttribute('data-fichaid'));
-                if (typeof AppRouter !== 'undefined') AppRouter.navigate('home');
+                if (typeof AppRouter !== 'undefined') AppRouter.refresh();
             }
         });
     });
@@ -779,7 +858,7 @@ function initAdminEvents() {
         btn.addEventListener('click', () => {
             if(confirm('¿Estás segura de eliminar esta imagen de la galería pública?')) {
                 StorageHelper.deleteGalleryImage(btn.getAttribute('data-id'));
-                AppRouter.navigate('home');
+                AppRouter.refresh();
             }
         });
     });
@@ -852,7 +931,7 @@ function initAdminEvents() {
                     btnSave.disabled = false;
                     status.style.display = 'none';
                     formWorker.reset();
-                    if (typeof AppRouter !== 'undefined') AppRouter.navigate('home');
+                    if (typeof AppRouter !== 'undefined') AppRouter.refresh();
                 };
                 img.src = event.target.result;
             };
@@ -897,7 +976,7 @@ function initAdminEvents() {
             
             clientModal.style.display = 'none';
             formClient.reset();
-            if (typeof AppRouter !== 'undefined') AppRouter.navigate('home');
+            if (typeof AppRouter !== 'undefined') AppRouter.refresh();
         });
     }
 
@@ -906,7 +985,7 @@ function initAdminEvents() {
         btn.addEventListener('click', () => {
             if(confirm('¿Estás segura de eliminar este registro del directorio de clientas?')) {
                 StorageHelper.deleteClient(btn.getAttribute('data-id'));
-                if (typeof AppRouter !== 'undefined') AppRouter.navigate('home');
+                if (typeof AppRouter !== 'undefined') AppRouter.refresh();
             }
         });
     });
@@ -950,7 +1029,7 @@ function initAdminEvents() {
             btnSave.disabled = false;
             btnSave.innerText = "Guardar Producto";
             formProduct.reset();
-            if (typeof AppRouter !== 'undefined') AppRouter.navigate('home');
+            if (typeof AppRouter !== 'undefined') AppRouter.refresh();
         });
     }
 }

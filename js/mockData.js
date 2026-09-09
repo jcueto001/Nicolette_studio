@@ -96,15 +96,7 @@ const StorageHelper = {
     _professionalsCache: [],
     _inventoryCache: [],
 
-    _refreshAdminIfSafe: function() {
-        if(window.location.hash.includes('admin') && typeof AppRouter !== 'undefined') {
-            const hasOpenModal = document.querySelector('[id$="-modal"][style*="display: flex"]') || 
-                                 document.querySelector('[id$="-modal"][style*="display: block"]');
-            if(!hasOpenModal) {
-                AppRouter.navigate('admin');
-            }
-        }
-    },
+    
 
     init: async function () {
         if (!localStorage.getItem('nicolett_appointments')) {
@@ -267,6 +259,10 @@ const StorageHelper = {
         localStorage.setItem('nicolett_user', JSON.stringify(user));
     },
 
+    
+
+    // Inventory
+    
     // Auth
     getAuth: function() {
         return JSON.parse(localStorage.getItem('nicolett_auth') || '{"loggedIn": false, "user": null}');
