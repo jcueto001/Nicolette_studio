@@ -195,6 +195,16 @@ const StorageHelper = {
                 inv.push({ id: doc.id, ...doc.data() });
             });
             this._inventoryCache = inv.length > 0 ? inv : mockData.inventory;
+
+            if (inv.length === 0 && typeof db !== 'undefined') {
+                for (const item of mockData.inventory) {
+                    const docData = { ...item };
+                    delete docData.id;
+                    try {
+                        await db.collection("inventory").doc(item.id).set(docData);
+                    } catch(err) { console.error("Error inicializando inventario en FB:", err); }
+                }
+            }
         } catch(e) { 
             console.error("Error cargando inventario:", e); 
             if(this._inventoryCache.length === 0) this._inventoryCache = mockData.inventory;
@@ -280,8 +290,24 @@ const StorageHelper = {
         if(p && typeof db !== 'undefined') {
             p.stock = Math.max(0, p.stock - amountUsed);
             try {
-                await db.collection("inventory").doc(productId).update({ stock: p.stock });
+                const docData = { ...p };
+                delete docData.id;
+                await db.collection("inventory").doc(productId).set(docData, { merge: true });
             } catch(e) { console.error("Error updating stock", e); }
+        }
+    },
+    updateProductStockDirect: async function(productId, newStock) {
+        const inv = this.getInventory();
+        const p = inv.find(x => x.id === productId);
+        if(p) {
+            p.stock = parseInt(newStock) || 0;
+            if(typeof db !== 'undefined') {
+                try {
+                    const docData = { ...p };
+                    delete docData.id;
+                    await db.collection("inventory").doc(productId).set(docData, { merge: true });
+                } catch(e) { console.error("Error updating stock", e); }
+            }
         }
     },
     addProduct: async function(product) {

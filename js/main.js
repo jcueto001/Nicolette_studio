@@ -869,6 +869,26 @@ function initAdminEvents() {
         });
     });
 
+    // Actualizar Stock de Inventario
+    document.querySelectorAll('.btn-update-stock').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const prodId = btn.getAttribute('data-id');
+            const input = document.querySelector(`.inv-stock-input[data-id="${prodId}"]`);
+            if (input) {
+                const newStock = input.value;
+                btn.innerHTML = '<i data-lucide="loader" style="width: 14px; height: 14px; animation: spin 1s linear infinite;"></i>';
+                if(window.lucide) window.lucide.createIcons();
+                await StorageHelper.updateProductStockDirect(prodId, newStock);
+                btn.innerHTML = '<i data-lucide="check" style="width: 14px; height: 14px;"></i>';
+                if(window.lucide) window.lucide.createIcons();
+                setTimeout(() => {
+                    btn.innerHTML = '<i data-lucide="save" style="width: 14px; height: 14px;"></i>';
+                    if(window.lucide) window.lucide.createIcons();
+                }, 2000);
+            }
+        });
+    });
+
     // --- Lógica de Nueva Trabajadora ---
     const btnAddWorker = document.getElementById('btn-add-worker');
     const workerModal = document.getElementById('worker-modal');

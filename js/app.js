@@ -529,7 +529,12 @@ function renderAdminView() {
             <tr style="border-bottom: 1px solid var(--clr-nude);">
                 <td style="padding: 15px;">${p.name}</td>
                 <td style="padding: 15px;">${mockData.categories.find(c => c.id === p.category)?.label || p.category}</td>
-                <td style="padding: 15px;"><strong>${p.stock}</strong></td>
+                <td style="padding: 15px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="number" class="inv-stock-input" data-id="${p.id}" value="${p.stock}" min="0" style="width: 70px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                        <button class="btn btn-outline btn-sm btn-update-stock" data-id="${p.id}"><i data-lucide="save" style="width: 14px; height: 14px;"></i></button>
+                    </div>
+                </td>
             </tr>
         `;
     });
