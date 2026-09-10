@@ -5,19 +5,19 @@
 
 :root {
     /* Color Palette */
-    --clr-rose-gold: #b76e79;
-    --clr-rose-gold-light: #d69ca3;
-    --clr-rose-gold-dark: #8e505a;
+    --clr-rose-gold: #B68D5D;
+    --clr-rose-gold-light: #D4B692;
+    --clr-rose-gold-dark: #8C6843;
 
-    --clr-nude: #e3d3c8;
-    --clr-nude-light: #f5ece6;
+    --clr-nude: #EFE8DF;
+    --clr-nude-light: #F7F4F0;
 
-    --clr-ivory: #fffff0;
+    --clr-ivory: #FDFBF7;
     --clr-white: #ffffff;
 
-    --clr-neutral-dark: #2c2a29;
-    --clr-neutral-gray: #6b6664;
-    --clr-neutral-light: #f0f0f0;
+    --clr-neutral-dark: #3E332A;
+    --clr-neutral-gray: #7A6B5D;
+    --clr-neutral-light: #F0EDE6;
 
     /* Typography */
     --font-heading: 'Playfair Display', serif;
@@ -46,7 +46,8 @@
 body {
     font-family: var(--font-body);
     color: var(--clr-neutral-dark);
-    background-color: var(--clr-nude-light);
+    background-color: var(--clr-white);
+    background-image: url('https://www.transparenttextures.com/patterns/marble.png');
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
 }

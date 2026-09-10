@@ -85,7 +85,7 @@ const AppRouter = {
 function renderHomeView() {
     return `
         <!-- Hero Section -->
-        <section class="hero-section" style="padding: 100px 0; background: linear-gradient(to right, var(--clr-nude-light), white); position:relative; overflow:hidden;">
+        <section class="hero-section" style="padding: 100px 0; background-color: var(--clr-nude-light); position:relative; overflow:hidden;">
             <div class="container" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 40px;">
                 <div style="flex: 1; min-width: 300px; z-index: 1;">
                     <h1 style="font-size: 3.5rem; color: var(--clr-rose-gold-dark); margin-bottom: 20px; line-height: 1.2;">
@@ -108,7 +108,7 @@ function renderHomeView() {
         </section>
 
         <!-- About Us Section -->
-        <section class="section" id="sobre-nosotros" style="background-color: white;">
+        <section class="section" id="sobre-nosotros" style="background-color: transparent;">
             <div class="container">
                 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 50px;">
                     <div style="flex: 1; min-width: 300px; position: relative;">

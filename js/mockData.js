@@ -81,11 +81,10 @@ const mockData = {
         { id: 'inv4', name: 'Pegamento Pestañas', stock: 3, category: 'mirada' }
     ],
 
-    // Horarios disponibles (simulados) - extendidos de 9 a 21
+    // Horarios disponibles (simulados) - extendidos de 9 a 21 (cada 2 horas)
     timeSlots: [
-        '09:00', '10:00', '11:00', '12:00', '13:00',
-        '14:00', '15:00', '16:00', '17:00', '18:00',
-        '19:00', '20:00', '21:00'
+        '09:00', '11:00', '13:00', '15:00',
+        '17:00', '19:00', '21:00'
     ]
 };
 
@@ -95,8 +94,6 @@ const StorageHelper = {
     _fichasCache: [],
     _professionalsCache: [],
     _inventoryCache: [],
-
-    
 
     init: async function () {
         if (!localStorage.getItem('nicolett_appointments')) {
@@ -145,6 +142,12 @@ const StorageHelper = {
         }
         if (!localStorage.getItem('nicolett_clients')) {
             localStorage.setItem('nicolett_clients', JSON.stringify(mockData.clients));
+        }
+    },
+
+    _refreshAdminIfSafe: function() {
+        if (typeof AppRouter !== 'undefined' && AppRouter.currentRoute === 'admin') {
+            AppRouter.refresh();
         }
     },
 
@@ -259,10 +262,6 @@ const StorageHelper = {
         localStorage.setItem('nicolett_user', JSON.stringify(user));
     },
 
-    
-
-    // Inventory
-    
     // Auth
     getAuth: function() {
         return JSON.parse(localStorage.getItem('nicolett_auth') || '{"loggedIn": false, "user": null}');

@@ -137,9 +137,11 @@ function setupPersonalization() {
                 const prof = { id: userCredential.user.uid, name: 'Administradora', email: userEmail, role: role };
                 StorageHelper.setAuth({ loggedIn: true, user: prof });
                 
-                // Mostrar botón de salir
+                // Mostrar botón de salir y link al portal
                 const btnLogout = document.getElementById('btn-logout');
                 if (btnLogout) btnLogout.style.display = 'inline-block';
+                const navAdmin = document.getElementById('nav-admin');
+                if (navAdmin) navAdmin.style.display = 'inline-block';
 
                 document.getElementById('auth-modal').style.display = 'none';
                 
@@ -165,6 +167,8 @@ function setupPersonalization() {
             if (confirm('¿Seguro quieres salir del portal administrador?')) {
                 StorageHelper.setAuth({ loggedIn: false, user: null });
                 btnLogout.style.display = 'none';
+                const navAdmin = document.getElementById('nav-admin');
+                if (navAdmin) navAdmin.style.display = 'none';
                 if (typeof firebase !== 'undefined' && firebase.auth) {
                     await firebase.auth().signOut();
                 }
@@ -175,11 +179,13 @@ function setupPersonalization() {
         });
     }
     
-    // Restaurar estado visual del botón salir
+    // Restaurar estado visual del botón salir y portal admin
     if (typeof StorageHelper !== 'undefined') {
         const authData = StorageHelper.getAuth();
-        if (authData && authData.loggedIn && btnLogout) {
-            btnLogout.style.display = 'inline-block';
+        if (authData && authData.loggedIn) {
+            if (btnLogout) btnLogout.style.display = 'inline-block';
+            const navAdmin = document.getElementById('nav-admin');
+            if (navAdmin) navAdmin.style.display = 'inline-block';
         }
     }
 }
