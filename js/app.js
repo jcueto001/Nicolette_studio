@@ -398,9 +398,28 @@ function renderAgendarView() {
                         <p style="margin-bottom: 8px; font-size: 1.2rem; color: var(--clr-rose-gold-dark); margin-top: 15px;"><strong>Total:</strong> <span id="summary-price">-</span></p>
                     </div>
 
-                    <!-- Política de Reserva -->
-                    <div style="background: #fff3cd; color: #856404; padding: 15px; border-radius: var(--radius-sm); margin-bottom: 30px; font-size: 0.9rem;">
-                        <strong><i data-lucide="alert-circle" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle;"></i> Política de Reserva:</strong> Para confirmar la cita se debe realizar un abono de $5.000. Si necesita cancelar o reprogramar, debe avisar con al menos <strong>24 horas de anticipación</strong>, de lo contrario no se devolverá el abono.
+                    <!-- Política de Reserva y Pago -->
+                    <div style="background: #fff3cd; color: #856404; padding: 15px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 0.9rem;">
+                        <h4 style="margin-bottom: 10px; font-size: 1rem;"><i data-lucide="alert-circle" style="width: 18px; height: 18px; display: inline-block; vertical-align: middle;"></i> Abono Requerido</h4>
+                        <p style="margin-bottom: 10px;">Para asegurar tu reserva debes realizar un abono de <strong>$5.000</strong>. Si necesitas cancelar o reprogramar, debes avisar con al menos <strong>24 horas de anticipación</strong>, de lo contrario no se devolverá el abono.</p>
+                    </div>
+
+                    <div style="background: var(--clr-nude-light); padding: 20px; border-radius: var(--radius-sm); margin-bottom: 30px; text-align: center; border: 1px solid var(--clr-rose-gold);">
+                        <h4 style="margin-bottom: 15px; color: var(--clr-neutral-dark);">Paso 1: Realizar el Pago</h4>
+                        <p style="margin-bottom: 15px; font-size: 0.9rem; color: var(--clr-neutral-gray);">Haz clic en el siguiente botón para pagar el abono de forma segura.</p>
+                        <!-- Reemplaza el href de abajo con tu link real de Flow o MercadoPago -->
+                        <a href="https://www.flow.cl/btn.php?token=tu-token-aqui" target="_blank" rel="noopener noreferrer" class="btn" style="background-color: #00B19B; color: white; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; font-weight: bold; width: 100%; justify-content: center;">
+                            <i data-lucide="credit-card"></i> Pagar $5.000 (Flow / MercadoPago)
+                        </a>
+                        
+                        <hr style="border: 0; height: 1px; background: #ddd; margin: 20px 0;">
+                        
+                        <h4 style="margin-bottom: 15px; color: var(--clr-neutral-dark);">Paso 2: Confirmar Cita</h4>
+                        <p style="margin-bottom: 15px; font-size: 0.9rem; color: var(--clr-neutral-gray);">Una vez realizado el pago, confirma tu reserva. Validaremos tu comprobante internamente.</p>
+                        <div style="text-align: left; margin-bottom: 15px;">
+                            <label style="display:block; margin-bottom:5px; font-weight:bold; font-size: 0.9rem;">N° de Comprobante / Transacción (Opcional)</label>
+                            <input type="text" id="booking-transaction-id" placeholder="Ej: 123456789" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                        </div>
                     </div>
 
                     <div style="display: flex; justify-content: space-between;">
@@ -477,13 +496,17 @@ function renderAdminView() {
                         ${serviceName} ${isAdmin ? `<br><small>${profName}</small>` : ''}
                         ${needsHtml}
                         ${notesHtml}
+                        ${app.transactionId ? `<div style="margin-top: 5px; font-size: 0.8rem; color: #00B19B;"><strong>Comprobante:</strong> ${app.transactionId}</div>` : ''}
                     </td>
                     <td style="padding: 15px;">
                         <select class="status-selector" data-appid="${app.id}" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.85rem; outline: none; background: #e8f5e9; color: #2e7d32; font-weight: bold; cursor:pointer;">
                             <option value="confirmada" ${(app.status || 'confirmada') === 'confirmada' ? 'selected' : ''}>CONFIRMADA</option>
+                            <option value="pendiente de pago" ${app.status === 'Pendiente de Pago' ? 'selected' : ''}>PENDIENTE DE PAGO</option>
+                            <option value="pago reportado" ${app.status === 'Pago Reportado' ? 'selected' : ''}>PAGO REPORTADO</option>
                             <option value="completada" ${app.status === 'completada' ? 'selected' : ''}>COMPLETADA</option>
                             <option value="cancelada" ${app.status === 'cancelada' ? 'selected' : ''}>CANCELADA</option>
                             <option value="no asiste" ${app.status === 'no asiste' ? 'selected' : ''}>NO ASISTE</option>
+                            <option value="bloqueada" ${app.status === 'bloqueada' ? 'selected' : ''}>BLOQUEADA</option>
                         </select>
                     </td>
                     <td style="padding: 15px;">
@@ -522,16 +545,36 @@ function renderAdminView() {
         });
     }
 
+    // Dashboard Metrics
+    let totalEarnings = 0;
+    let completedAppointmentsCount = 0;
+    
+    if (isAdmin) {
+        appointments.forEach(a => {
+            if (a.status === 'completada' || a.status === 'confirmada' || a.status === 'Pago Reportado') {
+                const s = mockData.services.find(s => s.id === a.serviceId || s.name === a.servicio);
+                if (s && s.price) {
+                    totalEarnings += s.price;
+                    completedAppointmentsCount++;
+                }
+            }
+        });
+    }
+
     // Tabla de Inventario
     let invRows = '';
     inventory.forEach(p => {
+        const isLowStock = p.stock <= 5;
         invRows += `
-            <tr style="border-bottom: 1px solid var(--clr-nude);">
-                <td style="padding: 15px;">${p.name}</td>
+            <tr style="border-bottom: 1px solid var(--clr-nude); ${isLowStock ? 'background-color: #ffebee;' : ''}">
+                <td style="padding: 15px;">
+                    ${p.name}
+                    ${isLowStock ? '<span style="color:red; font-size:0.8rem; font-weight:bold; margin-left:10px;"><i data-lucide="alert-triangle" style="width:14px; display:inline;"></i> Bajo Stock</span>' : ''}
+                </td>
                 <td style="padding: 15px;">${mockData.categories.find(c => c.id === p.category)?.label || p.category}</td>
                 <td style="padding: 15px;">
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <input type="number" class="inv-stock-input" data-id="${p.id}" value="${p.stock}" min="0" style="width: 70px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                        <input type="number" class="inv-stock-input" data-id="${p.id}" value="${p.stock}" min="0" style="width: 70px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; ${isLowStock ? 'border-color:red;' : ''}">
                         <button class="btn btn-outline btn-sm btn-update-stock" data-id="${p.id}"><i data-lucide="save" style="width: 14px; height: 14px;"></i></button>
                     </div>
                 </td>
@@ -564,7 +607,10 @@ function renderAdminView() {
         clientsList.forEach(c => {
             clientRows += `
                 <tr style="border-bottom: 1px solid var(--clr-nude);">
-                    <td style="padding: 15px;"><strong>${c.name}</strong><br><small>${c.phone || ''}</small></td>
+                    <td style="padding: 15px;">
+                        <a href="#" class="open-crm" data-clientid="${c.id}" style="color: var(--clr-rose-gold-dark); text-decoration: underline; font-weight: bold; cursor: pointer;">${c.name}</a><br>
+                        <small>${c.phone || ''}</small>
+                    </td>
                     <td style="padding: 15px;">${c.lastVisit || 'Sin registro'}</td>
                     <td style="padding: 15px;">${c.products || 'N/A'}</td>
                     <td style="padding: 15px;">
@@ -586,15 +632,50 @@ function renderAdminView() {
                 <button class="admin-tab active" data-target="tab-agenda" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid var(--clr-rose-gold); font-weight:bold; color:var(--clr-neutral-dark); flex-shrink: 0;">Agenda</button>
                 <button class="admin-tab" data-target="tab-fichas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Fichas Clínicas</button>
                 ${isAdmin ? `
-                <button class="admin-tab" data-target="tab-clientas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Directorio Clientas</button>
+                <button class="admin-tab" data-target="tab-finanzas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Dashboard & Finanzas</button>
+                <button class="admin-tab" data-target="tab-clientas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Directorio</button>
                 <button class="admin-tab" data-target="tab-inventario" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Inventario</button>
                 <button class="admin-tab" data-target="tab-profs" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Trabajadoras</button>
                 <button class="admin-tab" data-target="tab-galeria" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Galería</button>
                 ` : ''}
             </div>
 
+            <!-- Tab Finanzas -->
+            ${isAdmin ? `
+            <div id="tab-finanzas" class="admin-tab-content" style="display:none;">
+                <div style="display:flex; justify-content:flex-end; margin-bottom: 15px;">
+                    <button class="btn btn-outline" id="btn-descargar-excel" style="display:flex; align-items:center; gap:5px; border-color: #2e7d32; color: #2e7d32;"><i data-lucide="download"></i> Descargar Excel</button>
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                    <div class="card" style="text-align:center; background: var(--clr-nude-light); border: 1px solid var(--clr-rose-gold);">
+                        <h4 style="color: var(--clr-neutral-gray); margin-bottom: 10px; font-size:0.9rem;">Ingresos Totales Brutos</h4>
+                        <h2 style="color: var(--clr-neutral-dark); font-size: 2rem; margin:0;">$${totalEarnings.toLocaleString('es-CL')}</h2>
+                    </div>
+                    <div class="card" style="text-align:center; background: #e8f5e9; border: 1px solid #81c784;">
+                        <h4 style="color: #2e7d32; margin-bottom: 10px; font-size:0.9rem;">Citas Completadas</h4>
+                        <h2 style="color: #1b5e20; font-size: 2rem; margin:0;">${completedAppointmentsCount}</h2>
+                    </div>
+                </div>
+                
+                <h3 style="margin-bottom: 20px;">Análisis de Negocio</h3>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                    <div class="card" style="background: white; border: 1px solid #eee; padding: 20px;">
+                        <h4 style="text-align:center; margin-bottom: 15px; color: var(--clr-neutral-dark);">Servicios Más Solicitados</h4>
+                        <canvas id="chart-services" style="max-height: 250px;"></canvas>
+                    </div>
+                    <div class="card" style="background: white; border: 1px solid #eee; padding: 20px;">
+                        <h4 style="text-align:center; margin-bottom: 15px; color: var(--clr-neutral-dark);">Ingresos por Profesional</h4>
+                        <canvas id="chart-earnings" style="max-height: 250px;"></canvas>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+
             <!-- Tab Agenda -->
             <div id="tab-agenda" class="admin-tab-content">
+                <div style="display:flex; justify-content:flex-end; margin-bottom: 15px;">
+                    <button class="btn btn-outline" id="btn-bloquear-hora" style="display:flex; align-items:center; gap:5px;"><i data-lucide="clock"></i> Bloquear Horario</button>
+                </div>
                 <div class="card" style="padding: 0; overflow: hidden;">
                     <div style="overflow-x: auto;">
                         <table style="width: 100%; min-width: 600px; white-space: nowrap; border-collapse: collapse; text-align: left;">
@@ -864,6 +945,29 @@ function renderAdminView() {
                         </div>
                         <button type="submit" class="btn btn-primary btn-block" id="btn-save-product">Guardar Producto</button>
                     </form>
+                </div>
+            </div>
+            
+            <!-- Modal Bloquear Horario -->
+            <div id="modal-bloquear-hora" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 2000; align-items:center; justify-content:center;">
+                <div class="card" style="max-width: 400px; width: 90%; background:white; padding:20px; border-radius:8px;">
+                    <h3 style="margin-bottom: 15px;">Bloquear Horario</h3>
+                    <p style="font-size:0.9rem; color:#666; margin-bottom:15px;">Bloquea una fecha y hora para que los clientes no puedan agendar.</p>
+                    
+                    <div style="margin-bottom: 10px;">
+                        <label style="display:block; margin-bottom:5px; font-weight:bold; font-size:0.9rem;">Fecha</label>
+                        <input type="date" id="block-date" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display:block; margin-bottom:5px; font-weight:bold; font-size:0.9rem;">Hora</label>
+                        <input type="time" id="block-time" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; margin-top:20px;">
+                        <button class="btn btn-outline" id="btn-close-block-modal">Cancelar</button>
+                        <button class="btn btn-primary" id="btn-save-block-modal" style="background:#d32f2f;">Bloquear</button>
+                    </div>
                 </div>
             </div>
         </div>

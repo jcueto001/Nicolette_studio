@@ -159,7 +159,7 @@ const StorageHelper = {
         if(typeof db === 'undefined') return;
         
         try {
-            const querySnapshot = await db.collection("appointments").get();
+            const querySnapshot = await db.collection("Citas").get();
             const appointments = [];
             querySnapshot.forEach((doc) => {
                 appointments.push({ id: doc.id, ...doc.data() });
@@ -168,7 +168,7 @@ const StorageHelper = {
         } catch(e) { console.error("Error cargando appointments:", e); }
         
         try {
-            const fichasSnapshot = await db.collection("fichas").get();
+            const fichasSnapshot = await db.collection("FichasClinicas").get();
             const fichas = [];
             fichasSnapshot.forEach((doc) => {
                 fichas.push({ id: doc.id, ...doc.data() });
@@ -177,7 +177,7 @@ const StorageHelper = {
         } catch(e) { console.error("Error cargando fichas:", e); }
         
         try {
-            const profsSnapshot = await db.collection("professionals").get();
+            const profsSnapshot = await db.collection("Profesionales").get();
             const profs = [];
             profsSnapshot.forEach((doc) => {
                 profs.push({ id: doc.id, ...doc.data() });
@@ -189,7 +189,7 @@ const StorageHelper = {
         }
         
         try {
-            const invSnapshot = await db.collection("inventory").get();
+            const invSnapshot = await db.collection("Inventario").get();
             const inv = [];
             invSnapshot.forEach((doc) => {
                 inv.push({ id: doc.id, ...doc.data() });
@@ -201,7 +201,7 @@ const StorageHelper = {
                     const docData = { ...item };
                     delete docData.id;
                     try {
-                        await db.collection("inventory").doc(item.id).set(docData);
+                        await db.collection("Inventario").doc(item.id).set(docData);
                     } catch(err) { console.error("Error inicializando inventario en FB:", err); }
                 }
             }
@@ -215,20 +215,22 @@ const StorageHelper = {
 
     getAvailableTimeSlots: async function(date, profId) {
         if(typeof db === 'undefined') return mockData.timeSlots;
-        
-        const prof = this.getProfessionals().find(p => p.id === profId);
-        const profName = prof ? prof.name : profId;
 
         try {
-            const querySnapshot = await db.collection("appointments")
+            const querySnapshot = await db.collection("Citas")
                 .where("date", "==", date)
-                .where("profesional", "==", profName)
-                .where("status", "==", "confirmada")
                 .get();
             
             const bookedTimes = [];
             querySnapshot.forEach(doc => {
-                bookedTimes.push(doc.data().time);
+                const data = doc.data();
+                // Bloquear si pertenece a la profesional (o a cualquier si es un bloqueo general, pero por simplicidad al profId o profName)
+                // Chequeo laxo por profId o profName
+                if (data.profId === profId || data.profesional === profId || data.profesional === this.getProfessionals().find(p=>p.id===profId)?.name) {
+                    if (data.status !== 'cancelada' && data.status !== 'no asiste') {
+                        bookedTimes.push(data.time);
+                    }
+                }
             });
             
             return mockData.timeSlots.filter(t => !bookedTimes.includes(t));
@@ -245,7 +247,7 @@ const StorageHelper = {
         if(typeof db !== 'undefined') {
             try {
                 appointment.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                const docRef = await db.collection("appointments").add(appointment);
+                const docRef = await db.collection("Citas").add(appointment);
                 appointment.id = docRef.id;
                 this._appointmentsCache.push(appointment); // Update local cache
                 return appointment;
@@ -292,7 +294,7 @@ const StorageHelper = {
             try {
                 const docData = { ...p };
                 delete docData.id;
-                await db.collection("inventory").doc(productId).set(docData, { merge: true });
+                await db.collection("Inventario").doc(productId).set(docData, { merge: true });
             } catch(e) { console.error("Error updating stock", e); }
         }
     },
@@ -305,7 +307,7 @@ const StorageHelper = {
                 try {
                     const docData = { ...p };
                     delete docData.id;
-                    await db.collection("inventory").doc(productId).set(docData, { merge: true });
+                    await db.collection("Inventario").doc(productId).set(docData, { merge: true });
                 } catch(e) { console.error("Error updating stock", e); }
             }
         }
@@ -313,7 +315,7 @@ const StorageHelper = {
     addProduct: async function(product) {
         if(typeof db !== 'undefined') {
             try {
-                const docRef = await db.collection("inventory").add(product);
+                const docRef = await db.collection("Inventario").add(product);
                 product.id = docRef.id;
                 this._inventoryCache.push(product);
                 return product;
@@ -324,7 +326,7 @@ const StorageHelper = {
     updateAppointmentStatus: async function(id, newStatus) {
         if(typeof db !== 'undefined') {
             try {
-                await db.collection("appointments").doc(id).update({ status: newStatus });
+                await db.collection("Citas").doc(id).update({ status: newStatus });
                 const appIdx = this._appointmentsCache.findIndex(a => a.id === id);
                 if (appIdx > -1) {
                     this._appointmentsCache[appIdx].status = newStatus;
@@ -342,7 +344,7 @@ const StorageHelper = {
     addProfessional: async function(prof) {
         if(typeof db !== 'undefined') {
             try {
-                const docRef = await db.collection("professionals").add(prof);
+                const docRef = await db.collection("Profesionales").add(prof);
                 prof.id = docRef.id;
                 this._professionalsCache.push(prof);
                 return prof;
@@ -352,7 +354,7 @@ const StorageHelper = {
     deleteProfessional: async function(id) {
         if(typeof db !== 'undefined') {
             try {
-                await db.collection("professionals").doc(id).delete();
+                await db.collection("Profesionales").doc(id).delete();
                 this._professionalsCache = this._professionalsCache.filter(p => p.id !== id);
             } catch (e) { console.error("Error deleting professional", e); }
         }
@@ -390,7 +392,7 @@ const StorageHelper = {
         if(typeof db !== 'undefined') {
             try {
                 ficha.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                const docRef = await db.collection("fichas").add(ficha);
+                const docRef = await db.collection("FichasClinicas").add(ficha);
                 ficha.id = docRef.id;
                 this._fichasCache.push(ficha);
             } catch (e) {
@@ -406,7 +408,7 @@ const StorageHelper = {
     deleteFicha: async function(id) {
         if(typeof db !== 'undefined') {
             try {
-                await db.collection("fichas").doc(id).delete();
+                await db.collection("FichasClinicas").doc(id).delete();
                 this._fichasCache = this._fichasCache.filter(f => f.id !== id);
             } catch (e) {
                 console.error("Error eliminando ficha:", e);

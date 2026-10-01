@@ -5,11 +5,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Inicializar Iconos
     lucide.createIcons();
-    
+
     // Mobile Menu Toggle
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const navLinks = document.getElementById('nav-links');
-    
+
     if (mobileMenuBtn && navLinks) {
         mobileMenuBtn.addEventListener('click', () => {
             navLinks.classList.toggle('show');
@@ -27,9 +27,9 @@ function setupPersonalization() {
     const modal = document.getElementById('personalize-modal');
     const form = document.getElementById('personalize-form');
     const navPerfil = document.getElementById('nav-perfil');
-    
+
     const isPersonalized = localStorage.getItem('nicolett_personalization');
-    
+
     if (isPersonalized) {
         if (navPerfil) navPerfil.style.display = 'inline-block';
     } else {
@@ -77,15 +77,15 @@ function setupPersonalization() {
                         });
                     }
                 }
-                
+
                 localStorage.setItem('nicolett_personalization', JSON.stringify({ name, email }));
-                
+
                 if (navPerfil) navPerfil.style.display = 'inline-block';
 
                 if (modal) modal.style.opacity = '0';
-                setTimeout(() => { 
-                    if (modal) modal.style.display = 'none'; 
-                    AppRouter.navigate('perfil'); 
+                setTimeout(() => {
+                    if (modal) modal.style.display = 'none';
+                    AppRouter.navigate('perfil');
                 }, 500);
             } catch (error) {
                 console.error('Error al guardar perfil:', error);
@@ -123,11 +123,11 @@ function setupPersonalization() {
                     throw new Error("Firebase Auth no está inicializado");
                 }
                 const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
-                
+
                 // Verificar en la colección Usuarios si tiene rol Admin
                 const db = firebase.firestore();
                 const userDoc = await db.collection('Usuarios').doc(userCredential.user.uid).get();
-                
+
                 let role = 'profesional';
                 if (userDoc.exists && userDoc.data().rol === 'Admin') {
                     role = 'admin';
@@ -136,7 +136,7 @@ function setupPersonalization() {
                 const userEmail = userCredential.user.email;
                 const prof = { id: userCredential.user.uid, name: 'Administradora', email: userEmail, role: role };
                 StorageHelper.setAuth({ loggedIn: true, user: prof });
-                
+
                 // Mostrar botón de salir y link al portal
                 const btnLogout = document.getElementById('btn-logout');
                 if (btnLogout) btnLogout.style.display = 'inline-block';
@@ -144,12 +144,12 @@ function setupPersonalization() {
                 if (navAdmin) navAdmin.style.display = 'inline-block';
 
                 document.getElementById('auth-modal').style.display = 'none';
-                
+
                 // Navegar al portal interno
                 if (typeof AppRouter !== 'undefined') {
                     AppRouter.navigate('admin');
                 }
-                
+
             } catch (error) {
                 console.error("Error Auth:", error);
                 errorEl.innerText = 'Credenciales inválidas o error de conexión.';
@@ -178,7 +178,7 @@ function setupPersonalization() {
             }
         });
     }
-    
+
     // Restaurar estado visual del botón salir y portal admin
     if (typeof StorageHelper !== 'undefined') {
         const authData = StorageHelper.getAuth();
@@ -211,10 +211,10 @@ function initAgendarEvents() {
     const showStep = (stepNumber) => {
         document.querySelectorAll('.booking-step').forEach(el => el.style.display = 'none');
         document.getElementById(`booking-step-${stepNumber}`).style.display = 'block';
-        
+
         // Update circles
         document.querySelectorAll('.step-circle').forEach((el, index) => {
-            if(index + 1 <= stepNumber) {
+            if (index + 1 <= stepNumber) {
                 el.style.background = 'var(--clr-rose-gold)';
                 el.style.color = 'white';
             } else {
@@ -227,7 +227,7 @@ function initAgendarEvents() {
     // Step 1: Services
     const serviceCards = document.querySelectorAll('.service-select-card');
     const btnNext1 = document.getElementById('btn-next-1');
-    
+
     serviceCards.forEach(card => {
         card.addEventListener('click', () => {
             serviceCards.forEach(c => c.style.borderColor = 'transparent');
@@ -236,7 +236,7 @@ function initAgendarEvents() {
             btnNext1.disabled = false;
         });
     });
-    
+
     btnNext1?.addEventListener('click', () => {
         // Re-render prof-grid just in case data loaded late
         const profGrid = document.querySelector('.prof-grid');
@@ -273,10 +273,10 @@ function initAgendarEvents() {
         // Set min date to today
         const dateInput = document.getElementById('booking-date');
         const today = new Date().toISOString().split('T')[0];
-        if(dateInput) {
+        if (dateInput) {
             dateInput.min = today;
-            if(!dateInput.value) dateInput.value = today;
-            
+            if (!dateInput.value) dateInput.value = today;
+
             // Disparar evento change para cargar horas disponibles automáticamente
             const event = new Event('change');
             dateInput.dispatchEvent(event);
@@ -289,7 +289,7 @@ function initAgendarEvents() {
     const timeSlotsGrid = document.getElementById('time-slots-container');
     const btnNext3 = document.getElementById('btn-next-3');
     const btnPrev3 = document.getElementById('btn-prev-3');
-    
+
     // Simulate updating time slots on date change
     dateInput?.addEventListener('change', async () => {
         bookingState.date = dateInput.value;
@@ -299,14 +299,14 @@ function initAgendarEvents() {
         if (timeSlotsGrid && bookingState.profId && bookingState.date) {
             timeSlotsGrid.innerHTML = '<p>Buscando horas disponibles...</p>';
             const availableSlots = await StorageHelper.getAvailableTimeSlots(bookingState.date, bookingState.profId);
-            
+
             if (availableSlots.length === 0) {
                 timeSlotsGrid.innerHTML = '<p style="color:red; grid-column: 1/-1;">No hay horas disponibles para esta fecha. Por favor, selecciona otra.</p>';
             } else {
                 timeSlotsGrid.innerHTML = availableSlots.map(time => `
                     <button class="time-slot-btn" data-time="${time}" style="padding: 10px; border: 1px solid var(--clr-nude); border-radius: var(--radius-sm); background: white; cursor: pointer; transition: all 0.2s;">${time}</button>
                 `).join('');
-                
+
                 // Re-bind click events for new buttons
                 const newTimeSlots = timeSlotsGrid.querySelectorAll('.time-slot-btn');
                 newTimeSlots.forEach(btn => {
@@ -318,8 +318,8 @@ function initAgendarEvents() {
                         btn.style.background = 'var(--clr-rose-gold)';
                         btn.style.color = 'white';
                         bookingState.time = btn.getAttribute('data-time');
-                        
-                        if(bookingState.date && bookingState.time) {
+
+                        if (bookingState.date && bookingState.time) {
                             btnNext3.disabled = false;
                         }
                     });
@@ -335,7 +335,7 @@ function initAgendarEvents() {
         bookingState.needs.time = document.getElementById('check-time')?.checked || false;
         bookingState.needs.event = document.getElementById('check-event')?.checked || false;
         bookingState.notes = document.getElementById('booking-notes')?.value || '';
-        
+
         showStep(4);
     });
 
@@ -345,7 +345,7 @@ function initAgendarEvents() {
     const inputName = document.getElementById('client-name');
     const inputPhone = document.getElementById('client-phone');
     const inputEmail = document.getElementById('client-email');
-    
+
     // Validate inputs for Step 4
     const validateStep4 = () => {
         const nameVal = inputName?.value.trim() || '';
@@ -366,47 +366,47 @@ function initAgendarEvents() {
         if (inputName) {
             if (!nameVal) {
                 inputName.style.borderColor = 'var(--clr-nude)';
-                if(errorName) errorName.innerText = '';
+                if (errorName) errorName.innerText = '';
             } else if (nameValid) {
                 inputName.style.borderColor = 'var(--clr-rose-gold)';
-                if(errorName) errorName.innerText = '';
+                if (errorName) errorName.innerText = '';
             } else {
                 inputName.style.borderColor = 'red';
-                if(errorName) errorName.innerText = 'Por favor, ingresa un nombre válido.';
+                if (errorName) errorName.innerText = 'Por favor, ingresa un nombre válido.';
             }
         }
-        
+
         if (inputPhone) {
             if (!phoneVal) {
                 inputPhone.style.borderColor = 'var(--clr-nude)';
-                if(errorPhone) errorPhone.innerText = '';
+                if (errorPhone) errorPhone.innerText = '';
             } else if (phoneValid) {
                 inputPhone.style.borderColor = 'var(--clr-rose-gold)';
-                if(errorPhone) errorPhone.innerText = '';
+                if (errorPhone) errorPhone.innerText = '';
             } else {
                 inputPhone.style.borderColor = 'red';
-                if(errorPhone) errorPhone.innerText = 'El número debe tener al menos 8 dígitos.';
+                if (errorPhone) errorPhone.innerText = 'El número debe tener al menos 8 dígitos.';
             }
         }
-        
+
         if (inputEmail) {
             if (!emailVal || emailValid) {
                 inputEmail.style.borderColor = emailVal ? 'var(--clr-rose-gold)' : 'var(--clr-nude)';
-                if(errorEmail) errorEmail.innerText = '';
+                if (errorEmail) errorEmail.innerText = '';
             } else {
                 inputEmail.style.borderColor = 'red';
-                if(errorEmail) errorEmail.innerText = 'El formato del correo es incorrecto (ej: nombre@correo.com).';
+                if (errorEmail) errorEmail.innerText = 'El formato del correo es incorrecto (ej: nombre@correo.com).';
             }
         }
 
         // Habilitar botón solo si todo lo necesario es válido
-        if(nameValid && phoneValid && emailValid) {
+        if (nameValid && phoneValid && emailValid) {
             btnNext4.disabled = false;
         } else {
             btnNext4.disabled = true;
         }
     };
-    
+
     inputName?.addEventListener('input', validateStep4);
     inputPhone?.addEventListener('input', validateStep4);
     inputEmail?.addEventListener('input', validateStep4);
@@ -419,7 +419,7 @@ function initAgendarEvents() {
             if (inputName && !inputName.value) inputName.value = pers.name || '';
             if (inputEmail && !inputEmail.value) inputEmail.value = pers.email || '';
             validateStep4();
-        } catch(e) {}
+        } catch (e) { }
     }
 
     btnPrev4?.addEventListener('click', () => showStep(3));
@@ -427,28 +427,28 @@ function initAgendarEvents() {
         bookingState.clientName = inputName.value.trim();
         bookingState.clientPhone = inputPhone.value.trim();
         bookingState.clientEmail = inputEmail?.value.trim() || '';
-        
+
         // Llenar resumen final
         const s = mockData.services.find(x => x.id === bookingState.serviceId);
         const professionals = StorageHelper.getProfessionals();
         const p = professionals.find(x => x.id === bookingState.profId);
-        
+
         document.getElementById('summary-client').innerText = bookingState.clientName;
         document.getElementById('summary-service').innerText = s ? s.name : '';
         document.getElementById('summary-prof').innerText = p ? p.name : '';
         document.getElementById('summary-date').innerText = bookingState.date;
         document.getElementById('summary-time').innerText = bookingState.time;
         document.getElementById('summary-price').innerText = s ? `$${s.price.toLocaleString('es-CL')}` : '';
-        
+
         showStep(5);
     });
 
     // Step 5: Confirm
     const btnPrev5 = document.getElementById('btn-prev-5');
     const btnConfirm = document.getElementById('btn-confirm-booking');
-    
+
     btnPrev5?.addEventListener('click', () => showStep(4));
-    
+
     btnConfirm?.addEventListener('click', async () => {
         btnConfirm.disabled = true;
         btnConfirm.innerHTML = 'Procesando...';
@@ -456,6 +456,9 @@ function initAgendarEvents() {
         const professionals = StorageHelper.getProfessionals();
         const prof = professionals.find(p => p.id === bookingState.profId);
         const service = mockData.services.find(s => s.id === bookingState.serviceId);
+
+        const transactionIdInput = document.getElementById('booking-transaction-id');
+        const transactionId = transactionIdInput ? transactionIdInput.value.trim() : '';
 
         // Guardar cita
         const appointmentData = {
@@ -469,11 +472,32 @@ function initAgendarEvents() {
             notes: bookingState.notes,
             clientName: bookingState.clientName,
             clientPhone: bookingState.clientPhone,
-            clientEmail: bookingState.clientEmail
+            clientEmail: bookingState.clientEmail,
+            transactionId: transactionId,
+            status: transactionId ? 'Pago Reportado' : 'Pendiente de Pago'
         };
-        
+
         try {
             await StorageHelper.saveAppointment(appointmentData);
+
+            // Enviar email con EmailJS (si está configurado)
+            if (typeof emailjs !== 'undefined' && appointmentData.clientEmail) {
+                try {
+                    // Aquí usamos tu Service ID ("service_rmc9mu9")
+                    // NOTA: Reemplaza "TEMPLATE_ID_NUEVA_CITA" con el ID de la plantilla que crees
+                    await emailjs.send("service_rmc9mu9", "template_2h2ya38", {
+                        to_name: appointmentData.clientName,
+                        to_email: appointmentData.clientEmail,
+                        service: appointmentData.servicio,
+                        date: appointmentData.date,
+                        time: appointmentData.time,
+                        profesional: appointmentData.profesional
+                    });
+                } catch (err) {
+                    console.log("EmailJS no configurado o falló: ", err);
+                }
+            }
+
             document.getElementById('success-modal').style.display = 'flex';
             setTimeout(() => {
                 document.getElementById('success-modal').style.display = 'none';
@@ -491,15 +515,15 @@ function initAgendarEvents() {
 
 // --- Eventos de Admin ---
 function initAdminEvents() {
-    if(window.lucide) window.lucide.createIcons();
+    if (window.lucide) window.lucide.createIcons();
 
     const auth = StorageHelper.getAuth();
-    if(!auth.loggedIn) return;
+    if (!auth.loggedIn) return;
 
     // Pestañas (Tabs)
     const tabs = document.querySelectorAll('.admin-tab');
     const contents = document.querySelectorAll('.admin-tab-content');
-    
+
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             tabs.forEach(t => {
@@ -508,12 +532,12 @@ function initAdminEvents() {
                 t.style.color = 'var(--clr-neutral-gray)';
             });
             contents.forEach(c => c.style.display = 'none');
-            
+
             tab.classList.add('active');
             tab.style.borderBottomColor = 'var(--clr-rose-gold)';
             tab.style.color = 'var(--clr-neutral-dark)';
             const targetId = tab.getAttribute('data-target');
-            if(document.getElementById(targetId)) {
+            if (document.getElementById(targetId)) {
                 document.getElementById(targetId).style.display = 'block';
             }
         });
@@ -524,9 +548,12 @@ function initAdminEvents() {
     statusSelectors.forEach(select => {
         // Inicializar color según el estado actual
         const val = select.value;
-        if(val === 'cancelada' || val === 'no asiste') {
+        if (val === 'cancelada' || val === 'no asiste') {
             select.style.background = '#ffebee';
             select.style.color = '#c62828';
+        } else if (val === 'bloqueada') {
+            select.style.background = '#eeeeee';
+            select.style.color = '#616161';
         } else if (val === 'completada') {
             select.style.background = '#e3f2fd';
             select.style.color = '#1565c0';
@@ -538,10 +565,13 @@ function initAdminEvents() {
         select.addEventListener('change', async (e) => {
             const appId = e.target.getAttribute('data-appid');
             const newStatus = e.target.value;
-            
-            if(newStatus === 'cancelada' || newStatus === 'no asiste') {
+
+            if (newStatus === 'cancelada' || newStatus === 'no asiste') {
                 e.target.style.background = '#ffebee';
                 e.target.style.color = '#c62828';
+            } else if (newStatus === 'bloqueada') {
+                e.target.style.background = '#eeeeee';
+                e.target.style.color = '#616161';
             } else if (newStatus === 'completada') {
                 e.target.style.background = '#e3f2fd';
                 e.target.style.color = '#1565c0';
@@ -549,8 +579,27 @@ function initAdminEvents() {
                 e.target.style.background = '#e8f5e9';
                 e.target.style.color = '#2e7d32';
             }
-            
+
             await StorageHelper.updateAppointmentStatus(appId, newStatus);
+
+            // Si el estado cambia a confirmada, enviar email
+            if (newStatus === 'confirmada' && typeof emailjs !== 'undefined') {
+                const app = StorageHelper.getAppointments().find(a => a.id === appId);
+                if (app && app.clientEmail) {
+                    try {
+                        // NOTA: Reemplaza "TEMPLATE_ID_CONFIRMACION" con el ID de la plantilla que crees
+                        await emailjs.send("service_rmc9mu9", "template_pcxbtx3", {
+                            to_name: app.clientName,
+                            to_email: app.clientEmail,
+                            service: app.servicio,
+                            date: app.date,
+                            time: app.time
+                        });
+                    } catch (err) {
+                        console.log("EmailJS no configurado o falló: ", err);
+                    }
+                }
+            }
         });
     });
 
@@ -592,7 +641,7 @@ function initAdminEvents() {
         btn.addEventListener('click', () => {
             const appId = btn.getAttribute('data-appid');
             const app = StorageHelper.getAppointments().find(a => a.id === appId);
-            if(!app) return;
+            if (!app) return;
 
             const service = mockData.services.find(s => s.id === app.serviceId);
 
@@ -605,7 +654,7 @@ function initAdminEvents() {
             document.querySelectorAll('.ficha-prod-qty').forEach(input => input.disabled = true);
 
             // Mostrar campos dinámicos si es de la categoría 'mirada' (pestañas)
-            if(service && service.categoryId === 'mirada') {
+            if (service && service.categoryId === 'mirada') {
                 dynFields.style.display = 'block';
                 dynFields.innerHTML = `
                     <h4 style="margin-bottom:10px; font-size:1rem;">Mapping de Pestañas</h4>
@@ -638,9 +687,9 @@ function initAdminEvents() {
     prodChecks.forEach(chk => {
         chk.addEventListener('change', (e) => {
             const qtyInput = document.getElementById('qty_' + e.target.value);
-            if(qtyInput) {
+            if (qtyInput) {
                 qtyInput.disabled = !e.target.checked;
-                if(!e.target.checked) qtyInput.value = 1;
+                if (!e.target.checked) qtyInput.value = 1;
             }
         });
     });
@@ -650,14 +699,14 @@ function initAdminEvents() {
         e.preventDefault();
         const appId = document.getElementById('ficha-appid').value;
         const app = appId ? StorageHelper.getAppointments().find(a => a.id === appId) : null;
-        
+
         const clientName = document.getElementById('ficha-client').value.trim();
         const serviceName = document.getElementById('ficha-service').value.trim();
 
         // Productos usados
         const usedProds = [];
         prodChecks.forEach(chk => {
-            if(chk.checked) {
+            if (chk.checked) {
                 const qty = parseInt(document.getElementById('qty_' + chk.value).value) || 1;
                 usedProds.push({ id: chk.value, name: chk.getAttribute('data-name'), quantity: qty });
                 // Descontar stock
@@ -668,7 +717,7 @@ function initAdminEvents() {
         // Extra data (Mapping de pestañas)
         const mapIzq = document.getElementById('ficha-map-izq')?.value || '';
         const mapDer = document.getElementById('ficha-map-der')?.value || '';
-        
+
         const btnSubmit = formFicha.querySelector('button[type="submit"]');
         btnSubmit.disabled = true;
         btnSubmit.innerText = "Guardando...";
@@ -681,13 +730,13 @@ function initAdminEvents() {
             products: usedProds,
             mapping: (mapIzq || mapDer) ? { left: mapIzq, right: mapDer } : null
         };
-        
+
         await StorageHelper.saveFicha(ficha);
-        
+
         // Actualizar o crear clienta
         const clientsList = StorageHelper.getClients();
         let existingClient = clientsList.find(c => c.name.toLowerCase() === clientName.toLowerCase());
-        if(existingClient) {
+        if (existingClient) {
             existingClient.lastVisit = ficha.date;
             StorageHelper.updateClient(existingClient);
         } else {
@@ -699,12 +748,12 @@ function initAdminEvents() {
                 products: prodNames ? `Productos usados: ${prodNames}` : ''
             });
         }
-        
+
         fichaModal.style.display = 'none';
         btnSubmit.disabled = false;
         btnSubmit.innerText = "Guardar Ficha";
-        
-        if(typeof AppRouter !== 'undefined') {
+
+        if (typeof AppRouter !== 'undefined') {
             AppRouter.refresh(); // Refrescar vista actual
         }
     });
@@ -712,19 +761,19 @@ function initAdminEvents() {
     // Modal Ver Ficha
     const viewFichaModal = document.getElementById('view-ficha-modal');
     const viewFichaContent = document.getElementById('view-ficha-content');
-    
+
     document.querySelectorAll('.btn-view-ficha').forEach(btn => {
         btn.addEventListener('click', () => {
             const fichaId = btn.getAttribute('data-fichaid');
             const ficha = StorageHelper.getFichas().find(f => f.id === fichaId);
-            if(!ficha) return;
+            if (!ficha) return;
 
             let prodsHtml = (ficha.products && ficha.products.length > 0)
                 ? ficha.products.map(p => `<li style="margin-bottom:5px;"><i data-lucide="package" style="width:14px; display:inline;"></i> ${p.quantity}x ${p.name}</li>`).join('')
                 : 'Ningún producto registrado';
 
             let extraHtml = '';
-            if(ficha.mapping) {
+            if (ficha.mapping) {
                 extraHtml = `
                     <div style="background:var(--clr-nude-light); padding:15px; border-radius:var(--radius-sm); margin-bottom:15px;">
                         <h4 style="margin-bottom:10px; font-size:1rem; color:var(--clr-rose-gold-dark);">Lash Mapping Utilizado</h4>
@@ -750,19 +799,19 @@ function initAdminEvents() {
                     <p style="background:#f9f9f9; padding:15px; border-radius:var(--radius-sm); border:1px solid #eee; margin:0;">${ficha.notes || 'Ninguna'}</p>
                 </div>
             `;
-            
-            if(window.lucide) window.lucide.createIcons();
+
+            if (window.lucide) window.lucide.createIcons();
 
             // Configurar botón de WhatsApp
             const btnWsp = document.getElementById('btn-whatsapp-reminder');
-            if(btnWsp && ficha.clientPhone) {
+            if (btnWsp && ficha.clientPhone) {
                 btnWsp.style.display = 'inline-block';
                 btnWsp.onclick = () => {
                     const phone = ficha.clientPhone.replace(/[^0-9+]/g, '');
                     const msg = encodeURIComponent(`Hola ${ficha.clientName}! Te escribimos de Nicolett Studio Fantasy. Esperamos que hayas disfrutado tu servicio de ${ficha.serviceName}. Recuerda que para mantener los resultados te sugerimos... ¡Te esperamos pronto!`);
                     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
                 };
-            } else if(btnWsp) {
+            } else if (btnWsp) {
                 btnWsp.style.display = 'none';
             }
 
@@ -773,7 +822,7 @@ function initAdminEvents() {
     // Eliminar Ficha (Solo Admin)
     document.querySelectorAll('.btn-del-ficha').forEach(btn => {
         btn.addEventListener('click', () => {
-            if(confirm('¿Estás segura de eliminar esta ficha clínica? Esta acción no se puede deshacer.')) {
+            if (confirm('¿Estás segura de eliminar esta ficha clínica? Esta acción no se puede deshacer.')) {
                 StorageHelper.deleteFicha(btn.getAttribute('data-fichaid'));
                 AppRouter.refresh();
             }
@@ -783,7 +832,7 @@ function initAdminEvents() {
     // Eliminar Profesional (Solo Admin)
     document.querySelectorAll('.btn-del-prof').forEach(btn => {
         btn.addEventListener('click', () => {
-            if(confirm('¿Estás segura de eliminar a esta trabajadora del sistema?')) {
+            if (confirm('¿Estás segura de eliminar a esta trabajadora del sistema?')) {
                 StorageHelper.deleteProfessional(btn.getAttribute('data-profid'));
                 AppRouter.refresh();
             }
@@ -793,24 +842,24 @@ function initAdminEvents() {
     // --- Lógica de Galería (Solo Admin) ---
     const formGallery = document.getElementById('form-upload-gallery');
     const statusGallery = document.getElementById('upload-status');
-    
+
     if (formGallery) {
         formGallery.addEventListener('submit', (e) => {
             e.preventDefault();
             const fileInput = document.getElementById('gallery-file');
             const titleInput = document.getElementById('gallery-title');
             const btnSubmit = document.getElementById('btn-upload-gallery');
-            
+
             if (fileInput.files && fileInput.files[0]) {
                 const file = fileInput.files[0];
                 statusGallery.style.display = 'block';
                 btnSubmit.disabled = true;
                 btnSubmit.innerText = "Procesando...";
-                
+
                 const reader = new FileReader();
-                reader.onload = function(event) {
+                reader.onload = function (event) {
                     const img = new Image();
-                    img.onload = function() {
+                    img.onload = function () {
                         const canvas = document.createElement('canvas');
                         let width = img.width;
                         let height = img.height;
@@ -825,17 +874,17 @@ function initAdminEvents() {
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        
+
                         // Compress to JPEG, quality 0.7 para reducir el peso para localStorage
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                        
+
                         try {
                             StorageHelper.addGalleryImage({
                                 title: titleInput.value.trim(),
                                 src: dataUrl
                             });
                             AppRouter.refresh(); // Recargar para ver los cambios
-                        } catch(err) {
+                        } catch (err) {
                             alert("Error: No hay más espacio en la memoria. Por favor, elimina algunas fotos de la galería primero.");
                             statusGallery.style.display = 'none';
                             btnSubmit.disabled = false;
@@ -852,7 +901,7 @@ function initAdminEvents() {
     // Eliminar Ficha
     document.querySelectorAll('.btn-del-ficha').forEach(btn => {
         btn.addEventListener('click', async () => {
-            if(confirm('¿Estás segura de eliminar permanentemente esta ficha?')) {
+            if (confirm('¿Estás segura de eliminar permanentemente esta ficha?')) {
                 await StorageHelper.deleteFicha(btn.getAttribute('data-fichaid'));
                 if (typeof AppRouter !== 'undefined') AppRouter.refresh();
             }
@@ -862,7 +911,7 @@ function initAdminEvents() {
     // Eliminar imagen de galería
     document.querySelectorAll('.btn-del-gallery').forEach(btn => {
         btn.addEventListener('click', () => {
-            if(confirm('¿Estás segura de eliminar esta imagen de la galería pública?')) {
+            if (confirm('¿Estás segura de eliminar esta imagen de la galería pública?')) {
                 StorageHelper.deleteGalleryImage(btn.getAttribute('data-id'));
                 AppRouter.refresh();
             }
@@ -877,13 +926,13 @@ function initAdminEvents() {
             if (input) {
                 const newStock = input.value;
                 btn.innerHTML = '<i data-lucide="loader" style="width: 14px; height: 14px; animation: spin 1s linear infinite;"></i>';
-                if(window.lucide) window.lucide.createIcons();
+                if (window.lucide) window.lucide.createIcons();
                 await StorageHelper.updateProductStockDirect(prodId, newStock);
                 btn.innerHTML = '<i data-lucide="check" style="width: 14px; height: 14px;"></i>';
-                if(window.lucide) window.lucide.createIcons();
+                if (window.lucide) window.lucide.createIcons();
                 setTimeout(() => {
                     btn.innerHTML = '<i data-lucide="save" style="width: 14px; height: 14px;"></i>';
-                    if(window.lucide) window.lucide.createIcons();
+                    if (window.lucide) window.lucide.createIcons();
                 }, 2000);
             }
         });
@@ -894,20 +943,20 @@ function initAdminEvents() {
     const workerModal = document.getElementById('worker-modal');
     const closeWorker = document.getElementById('close-worker');
     const formWorker = document.getElementById('form-worker');
-    
-    if(btnAddWorker) {
+
+    if (btnAddWorker) {
         btnAddWorker.addEventListener('click', () => {
-            if(workerModal) workerModal.style.display = 'flex';
+            if (workerModal) workerModal.style.display = 'flex';
         });
     }
-    
-    if(closeWorker) {
+
+    if (closeWorker) {
         closeWorker.addEventListener('click', () => {
             workerModal.style.display = 'none';
         });
     }
 
-    if(formWorker) {
+    if (formWorker) {
         formWorker.addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('worker-name').value.trim();
@@ -915,14 +964,14 @@ function initAdminEvents() {
             const photoInput = document.getElementById('worker-photo');
             const btnSave = document.getElementById('btn-save-worker');
             const status = document.getElementById('worker-upload-status');
-            
+
             btnSave.disabled = true;
             status.style.display = 'block';
 
             let reader = new FileReader();
-            reader.onload = function(event) {
+            reader.onload = function (event) {
                 const img = new Image();
-                img.onload = async function() {
+                img.onload = async function () {
                     const canvas = document.createElement('canvas');
                     let width = img.width;
                     let height = img.height;
@@ -931,9 +980,9 @@ function initAdminEvents() {
                     canvas.width = width; canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    
+
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                    
+
                     if (typeof firebase !== 'undefined' && firebase.auth) {
                         try {
                             const secondaryAppName = "SecondaryApp" + Date.now();
@@ -952,7 +1001,7 @@ function initAdminEvents() {
                         role: 'profesional',
                         avatar: dataUrl
                     });
-                    
+
                     workerModal.style.display = 'none';
                     btnSave.disabled = false;
                     status.style.display = 'none';
@@ -961,8 +1010,8 @@ function initAdminEvents() {
                 };
                 img.src = event.target.result;
             };
-            
-            if(photoInput.files && photoInput.files[0]) {
+
+            if (photoInput.files && photoInput.files[0]) {
                 reader.readAsDataURL(photoInput.files[0]);
             }
         });
@@ -973,33 +1022,33 @@ function initAdminEvents() {
     const clientModal = document.getElementById('client-modal');
     const closeClient = document.getElementById('close-client');
     const formClient = document.getElementById('form-client');
-    
-    if(btnAddClient) {
+
+    if (btnAddClient) {
         btnAddClient.addEventListener('click', () => {
-            if(clientModal) clientModal.style.display = 'flex';
+            if (clientModal) clientModal.style.display = 'flex';
         });
     }
-    
-    if(closeClient) {
+
+    if (closeClient) {
         closeClient.addEventListener('click', () => {
             clientModal.style.display = 'none';
         });
     }
 
-    if(formClient) {
+    if (formClient) {
         formClient.addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('client-name-input').value.trim();
             const phone = document.getElementById('client-phone-input').value.trim();
             const products = document.getElementById('client-products').value.trim();
-            
+
             StorageHelper.addClient({
                 name,
                 phone,
                 lastVisit: '',
                 products
             });
-            
+
             clientModal.style.display = 'none';
             formClient.reset();
             if (typeof AppRouter !== 'undefined') AppRouter.refresh();
@@ -1009,7 +1058,7 @@ function initAdminEvents() {
     // Eliminar Clienta
     document.querySelectorAll('.btn-del-client').forEach(btn => {
         btn.addEventListener('click', () => {
-            if(confirm('¿Estás segura de eliminar este registro del directorio de clientas?')) {
+            if (confirm('¿Estás segura de eliminar este registro del directorio de clientas?')) {
                 StorageHelper.deleteClient(btn.getAttribute('data-id'));
                 if (typeof AppRouter !== 'undefined') AppRouter.refresh();
             }
@@ -1021,36 +1070,36 @@ function initAdminEvents() {
     const productModal = document.getElementById('product-modal');
     const closeProduct = document.getElementById('close-product');
     const formProduct = document.getElementById('form-product');
-    
-    if(btnAddProduct) {
+
+    if (btnAddProduct) {
         btnAddProduct.addEventListener('click', () => {
-            if(productModal) productModal.style.display = 'flex';
+            if (productModal) productModal.style.display = 'flex';
         });
     }
-    
-    if(closeProduct) {
+
+    if (closeProduct) {
         closeProduct.addEventListener('click', () => {
             productModal.style.display = 'none';
         });
     }
 
-    if(formProduct) {
+    if (formProduct) {
         formProduct.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('prod-name').value.trim();
             const cat = document.getElementById('prod-cat').value;
             const stock = parseInt(document.getElementById('prod-stock').value);
             const btnSave = document.getElementById('btn-save-product');
-            
+
             btnSave.disabled = true;
             btnSave.innerText = "Guardando...";
-            
+
             await StorageHelper.addProduct({
                 name: name,
                 category: cat,
                 stock: stock
             });
-            
+
             productModal.style.display = 'none';
             btnSave.disabled = false;
             btnSave.innerText = "Guardar Producto";
@@ -1058,4 +1107,221 @@ function initAdminEvents() {
             if (typeof AppRouter !== 'undefined') AppRouter.refresh();
         });
     }
+
+    // --- Lógica de Bloquear Horario ---
+    const btnBloquearHora = document.getElementById('btn-bloquear-hora');
+    const modalBloquearHora = document.getElementById('modal-bloquear-hora');
+    const btnCloseBlockModal = document.getElementById('btn-close-block-modal');
+    const btnSaveBlockModal = document.getElementById('btn-save-block-modal');
+
+    if (btnBloquearHora && modalBloquearHora) {
+        btnBloquearHora.addEventListener('click', () => {
+            modalBloquearHora.style.display = 'flex';
+        });
+
+        btnCloseBlockModal.addEventListener('click', () => {
+            modalBloquearHora.style.display = 'none';
+        });
+
+        btnSaveBlockModal.addEventListener('click', async () => {
+            const dateInput = document.getElementById('block-date').value;
+            const timeInput = document.getElementById('block-time').value;
+
+            if (!dateInput || !timeInput) {
+                alert('Por favor, selecciona fecha y hora.');
+                return;
+            }
+
+            // Convertir la fecha al formato que se usa en la agenda (DD/MM/YYYY)
+            const parts = dateInput.split('-');
+            const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+
+            const appointmentData = {
+                servicio: 'BLOQUEO DE AGENDA',
+                profesional: auth.user.name,
+                profId: auth.user.id,
+                serviceId: 'bloqueo',
+                date: formattedDate,
+                time: timeInput,
+                needs: {},
+                notes: 'Horario bloqueado por el administrador.',
+                clientName: 'N/A',
+                clientPhone: '',
+                clientEmail: '',
+                transactionId: '',
+                status: 'bloqueada'
+            };
+
+            btnSaveBlockModal.disabled = true;
+            btnSaveBlockModal.innerText = 'Bloqueando...';
+
+            try {
+                await StorageHelper.saveAppointment(appointmentData);
+                modalBloquearHora.style.display = 'none';
+                if (typeof AppRouter !== 'undefined') AppRouter.refresh();
+            } catch (e) {
+                alert('Error al bloquear el horario.');
+                btnSaveBlockModal.disabled = false;
+                btnSaveBlockModal.innerText = 'Bloquear';
+            }
+        });
+    }
+
+    // --- Lógica de Descarga de Excel (CSV) ---
+    const btnDescargarExcel = document.getElementById('btn-descargar-excel');
+    if (btnDescargarExcel) {
+        btnDescargarExcel.addEventListener('click', () => {
+            const appointments = StorageHelper.getAppointments();
+
+            // Crear cabeceras del CSV
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Fecha,Hora,Cliente,Servicio,Profesional,Estado,Precio Estimado\n";
+
+            appointments.forEach(app => {
+                // Saltar si es un bloqueo de agenda para no ensuciar los números (opcional)
+                if (app.status === 'bloqueada') return;
+
+                // Buscar el precio
+                let price = 0;
+                const s = typeof mockData !== 'undefined' ? mockData.services.find(ser => ser.id === app.serviceId || ser.name === app.servicio) : null;
+                if (s && s.price) price = s.price;
+
+                const row = [
+                    app.date || '',
+                    app.time || '',
+                    `"${(app.clientName || '').replace(/"/g, '""')}"`, // Escapar comillas
+                    `"${(app.servicio || '').replace(/"/g, '""')}"`,
+                    `"${(app.profesional || '').replace(/"/g, '""')}"`,
+                    app.status || '',
+                    price
+                ].join(",");
+
+                csvContent += row + "\n";
+            });
+
+            // Trigger download
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Reporte_Citas_NicolettStudio_${new Date().toLocaleDateString('es-CL').replace(/\//g, '-')}.csv`);
+            document.body.appendChild(link); // Required for FF
+            link.click();
+        });
+    }
+
+    // --- Lógica de Gráficos (Chart.js) ---
+    if (typeof Chart !== 'undefined' && document.getElementById('chart-services') && document.getElementById('chart-earnings')) {
+        const apps = StorageHelper.getAppointments().filter(a => a.status !== 'bloqueada' && a.status !== 'cancelada');
+        
+        // Data para Servicios
+        const serviceCounts = {};
+        apps.forEach(a => {
+            const sName = a.servicio || 'Desconocido';
+            serviceCounts[sName] = (serviceCounts[sName] || 0) + 1;
+        });
+
+        new Chart(document.getElementById('chart-services').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(serviceCounts),
+                datasets: [{
+                    data: Object.values(serviceCounts),
+                    backgroundColor: ['#e4a8a0', '#dfc3b5', '#b58371', '#d4c4b7', '#fdfbf7'],
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Data para Ingresos por Profesional
+        const profEarnings = {};
+        apps.forEach(a => {
+            if (a.status === 'completada' || a.status === 'confirmada' || a.status === 'Pago Reportado') {
+                const s = typeof mockData !== 'undefined' ? mockData.services.find(ser => ser.id === a.serviceId || ser.name === a.servicio) : null;
+                const pName = a.profesional || 'Desconocida';
+                if (s && s.price) {
+                    profEarnings[pName] = (profEarnings[pName] || 0) + s.price;
+                }
+            }
+        });
+
+        new Chart(document.getElementById('chart-earnings').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(profEarnings),
+                datasets: [{
+                    label: 'Ingresos ($)',
+                    data: Object.values(profEarnings),
+                    backgroundColor: '#e4a8a0'
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    // --- Lógica de CRM (Perfil de Clienta) ---
+    document.querySelectorAll('.open-crm').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const clientId = btn.getAttribute('data-clientid');
+            const client = StorageHelper.getClients().find(c => c.id === clientId);
+            if (!client) return;
+
+            // Encontrar todas las citas y fichas de esta clienta
+            const allApps = StorageHelper.getAppointments().filter(a => a.clientName.toLowerCase() === client.name.toLowerCase() && a.status !== 'bloqueada');
+            const allFichas = StorageHelper.getFichas().filter(f => f.clientName.toLowerCase() === client.name.toLowerCase());
+
+            let totalSpent = 0;
+            let totalVisits = 0;
+
+            allApps.forEach(a => {
+                if (a.status === 'completada' || a.status === 'confirmada' || a.status === 'Pago Reportado') {
+                    totalVisits++;
+                    const s = typeof mockData !== 'undefined' ? mockData.services.find(ser => ser.id === a.serviceId || ser.name === a.servicio) : null;
+                    if (s && s.price) totalSpent += s.price;
+                }
+            });
+
+            // Llenar Modal
+            document.getElementById('crm-name').innerText = client.name;
+            document.getElementById('crm-phone').innerHTML = `<i data-lucide="phone" style="width:14px; display:inline;"></i> ${client.phone || 'Sin número'}`;
+            document.getElementById('crm-total-visits').innerText = totalVisits;
+            document.getElementById('crm-total-spent').innerText = '$' + totalSpent.toLocaleString('es-CL');
+            document.getElementById('crm-notes').value = client.notes || '';
+            document.getElementById('crm-client-id').value = client.id;
+
+            // Historial
+            const historyContainer = document.getElementById('crm-history-list');
+            if (allFichas.length === 0 && allApps.length === 0) {
+                historyContainer.innerHTML = '<p>No hay historial registrado.</p>';
+            } else {
+                let html = '';
+                // Mostrar Fichas primero, luego Citas sin ficha
+                allFichas.forEach(f => {
+                    html += `
+                        <div style="border:1px solid #ddd; padding:10px; border-radius:4px; font-size:0.9rem;">
+                            <strong>${f.date} - ${f.serviceName}</strong> (Ficha)<br>
+                            <span style="color:#666;">${f.notes || 'Sin notas'}</span>
+                        </div>
+                    `;
+                });
+                historyContainer.innerHTML = html;
+            }
+
+            if(window.lucide) window.lucide.createIcons();
+            document.getElementById('crm-modal').style.display = 'flex';
+        });
+    });
+
+    document.getElementById('btn-save-crm-notes')?.addEventListener('click', () => {
+        const id = document.getElementById('crm-client-id').value;
+        const notes = document.getElementById('crm-notes').value;
+        const client = StorageHelper.getClients().find(c => c.id === id);
+        if (client) {
+            client.notes = notes;
+            StorageHelper.updateClient(client);
+            alert('Notas guardadas correctamente.');
+        }
+    });
+
 }
