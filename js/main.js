@@ -457,10 +457,7 @@ function initAgendarEvents() {
         const prof = professionals.find(p => p.id === bookingState.profId);
         const service = mockData.services.find(s => s.id === bookingState.serviceId);
 
-        const transactionIdInput = document.getElementById('booking-transaction-id');
-        const transactionId = transactionIdInput ? transactionIdInput.value.trim() : '';
-
-        // Guardar cita
+        // Guardar cita directamente como confirmada (sin pago previo)
         const appointmentData = {
             servicio: service ? service.name : bookingState.serviceId,
             profesional: prof ? prof.name : bookingState.profId,
@@ -473,8 +470,7 @@ function initAgendarEvents() {
             clientName: bookingState.clientName,
             clientPhone: bookingState.clientPhone,
             clientEmail: bookingState.clientEmail,
-            transactionId: transactionId,
-            status: transactionId ? 'Pago Reportado' : 'Pendiente de Pago'
+            status: 'confirmada'
         };
 
         try {
@@ -504,7 +500,8 @@ function initAgendarEvents() {
                 if (typeof AppRouter !== 'undefined') AppRouter.navigate('home');
             }, 3000);
         } catch (e) {
-            alert('Error al guardar la cita. Intenta de nuevo.');
+            console.error(e);
+            alert('Error al guardar la cita: ' + e.message);
             btnConfirm.disabled = false;
             btnConfirm.innerHTML = 'Confirmar Reserva';
         }

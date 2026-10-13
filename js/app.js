@@ -398,28 +398,11 @@ function renderAgendarView() {
                         <p style="margin-bottom: 8px; font-size: 1.2rem; color: var(--clr-rose-gold-dark); margin-top: 15px;"><strong>Total:</strong> <span id="summary-price">-</span></p>
                     </div>
 
-                    <!-- Política de Reserva y Pago -->
-                    <div style="background: #fff3cd; color: #856404; padding: 15px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 0.9rem;">
-                        <h4 style="margin-bottom: 10px; font-size: 1rem;"><i data-lucide="alert-circle" style="width: 18px; height: 18px; display: inline-block; vertical-align: middle;"></i> Abono Requerido</h4>
-                        <p style="margin-bottom: 10px;">Para asegurar tu reserva debes realizar un abono de <strong>$5.000</strong>. Si necesitas cancelar o reprogramar, debes avisar con al menos <strong>24 horas de anticipación</strong>, de lo contrario no se devolverá el abono.</p>
-                    </div>
-
-                    <div style="background: var(--clr-nude-light); padding: 20px; border-radius: var(--radius-sm); margin-bottom: 30px; text-align: center; border: 1px solid var(--clr-rose-gold);">
-                        <h4 style="margin-bottom: 15px; color: var(--clr-neutral-dark);">Paso 1: Realizar el Pago</h4>
-                        <p style="margin-bottom: 15px; font-size: 0.9rem; color: var(--clr-neutral-gray);">Haz clic en el siguiente botón para pagar el abono de forma segura.</p>
-                        <!-- Reemplaza el href de abajo con tu link real de Flow o MercadoPago -->
-                        <a href="https://www.flow.cl/btn.php?token=tu-token-aqui" target="_blank" rel="noopener noreferrer" class="btn" style="background-color: #00B19B; color: white; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; font-weight: bold; width: 100%; justify-content: center;">
-                            <i data-lucide="credit-card"></i> Pagar $5.000 (Flow / MercadoPago)
-                        </a>
-                        
-                        <hr style="border: 0; height: 1px; background: #ddd; margin: 20px 0;">
-                        
-                        <h4 style="margin-bottom: 15px; color: var(--clr-neutral-dark);">Paso 2: Confirmar Cita</h4>
-                        <p style="margin-bottom: 15px; font-size: 0.9rem; color: var(--clr-neutral-gray);">Una vez realizado el pago, confirma tu reserva. Validaremos tu comprobante internamente.</p>
-                        <div style="text-align: left; margin-bottom: 15px;">
-                            <label style="display:block; margin-bottom:5px; font-weight:bold; font-size: 0.9rem;">N° de Comprobante / Transacción (Opcional)</label>
-                            <input type="text" id="booking-transaction-id" placeholder="Ej: 123456789" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
-                        </div>
+                    <div style="background: var(--clr-nude-light); padding: 18px 20px; border-radius: var(--radius-sm); margin-bottom: 25px; border-left: 4px solid var(--clr-rose-gold);">
+                        <p style="margin: 0; font-size: 0.95rem; color: var(--clr-neutral-dark);">
+                            <i data-lucide="info" style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 6px; color: var(--clr-rose-gold-dark);"></i>
+                            <strong>Sin pago previo:</strong> No necesitas realizar ningún abono por adelantado. Pagas directamente en el estudio el día de tu atención (efectivo, débito o transferencia).
+                        </p>
                     </div>
 
                     <div style="display: flex; justify-content: space-between;">
