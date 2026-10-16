@@ -37,10 +37,16 @@
 }
 
 /* Base Reset & Styles */
-* {
+*, *::before, *::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+}
+
+html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+    width: 100%;
 }
 
 body {
@@ -50,6 +56,10 @@ body {
     background-image: url('https://www.transparenttextures.com/patterns/marble.png');
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+}
+
+input, select, textarea {
+    font-size: 16px; /* Evita zoom automático en Safari iOS */
 }
 
 h1,
@@ -380,31 +390,369 @@ button {
     font-size: 0.9rem;
 }
 
-/* --- Responsive Design --- */
+/* --- Floating WhatsApp CTA --- */
+.whatsapp-float {
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    background: #25D366;
+    color: #ffffff;
+    border-radius: 50px;
+    padding: 12px 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 18px rgba(37, 211, 102, 0.4);
+    z-index: 1500;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.whatsapp-float:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 6px 24px rgba(37, 211, 102, 0.5);
+    color: #ffffff;
+}
+
+.whatsapp-icon {
+    width: 22px;
+    height: 22px;
+}
+
+/* --- Responsive Design for Tablets and Mobiles --- */
 @media (max-width: 768px) {
+    /* Base spacing */
+    .container {
+        padding: 0 16px;
+    }
+
+    .section {
+        padding: 50px 0;
+    }
+
+    .section-header {
+        margin-bottom: 30px;
+    }
+
+    .section-title {
+        font-size: 1.85rem;
+    }
+
+    .section-subtitle {
+        font-size: 0.95rem;
+        padding: 0 5px;
+    }
+
+    /* Navbar */
+    .navbar {
+        padding: 10px 0;
+    }
+
+    .logo-text {
+        font-size: 1.2rem;
+    }
+
+    .logo-icon-text {
+        width: 38px;
+        height: 38px;
+        font-size: 1.2rem;
+    }
+
+    .mobile-menu-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        border-radius: var(--radius-sm);
+        background-color: var(--clr-nude-light);
+        color: var(--clr-neutral-dark);
+        transition: background-color var(--transition-fast);
+        padding: 0;
+    }
+
+    .mobile-menu-btn:active {
+        background-color: var(--clr-nude);
+    }
+
     .nav-links {
         display: none;
-        /* Mobile menu hidden by default */
         position: absolute;
         top: 100%;
         left: 0;
         width: 100%;
-        background-color: var(--clr-white);
+        background-color: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         flex-direction: column;
-        padding: 20px;
-        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.05);
-        gap: 20px;
+        padding: 16px 20px 24px;
+        box-shadow: 0 15px 25px rgba(0, 0, 0, 0.08);
+        border-bottom: 1px solid var(--clr-nude);
+        gap: 8px;
+        z-index: 1000;
+        animation: slideDownMobile 0.25s ease-out forwards;
+    }
+
+    @keyframes slideDownMobile {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .nav-links.show {
         display: flex;
     }
 
-    .mobile-menu-btn {
+    .nav-link {
+        font-size: 1.05rem;
+        padding: 12px 14px;
+        border-radius: var(--radius-sm);
+        transition: background-color var(--transition-fast), color var(--transition-fast);
         display: block;
     }
 
-    .section-title {
-        font-size: 2rem;
+    .nav-link:hover,
+    .nav-link.active {
+        background-color: var(--clr-nude-light);
+        color: var(--clr-rose-gold-dark);
+    }
+
+    .nav-link::after {
+        display: none;
+    }
+
+    /* Hero Section */
+    .hero-section {
+        padding: 40px 0 50px !important;
+    }
+
+    .hero-container {
+        gap: 30px !important;
+        flex-direction: column-reverse;
+    }
+
+    .hero-text {
+        min-width: 0 !important;
+        width: 100%;
+        text-align: center;
+    }
+
+    .hero-title {
+        font-size: 2.2rem !important;
+        line-height: 1.25 !important;
+        margin-bottom: 16px !important;
+    }
+
+    .hero-subtitle {
+        font-size: 1rem !important;
+        margin-bottom: 24px !important;
+    }
+
+    .hero-image-wrap {
+        min-width: 0 !important;
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    .hero-image-wrap img {
+        transform: none !important;
+        border-radius: var(--radius-md) !important;
+    }
+
+    .hero-btn {
+        width: 100%;
+        max-width: 320px;
+        padding: 14px 24px !important;
+        font-size: 1.05rem !important;
+    }
+
+    /* Sobre Nosotros */
+    .about-flex {
+        gap: 35px !important;
+    }
+
+    .about-image-wrap {
+        min-width: 0 !important;
+        width: 100%;
+        max-width: 440px;
+        margin: 0 auto;
+    }
+
+    .about-decorative-border {
+        top: 10px !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: -10px !important;
+    }
+
+    .about-text {
+        min-width: 0 !important;
+        width: 100%;
+        text-align: left;
+    }
+
+    .about-stats {
+        gap: 20px !important;
+        background: var(--clr-nude-light);
+        padding: 18px 20px;
+        border-radius: var(--radius-md);
+        justify-content: space-around !important;
+    }
+
+    .about-stats h4 {
+        font-size: 1.7rem !important;
+    }
+
+    /* Services Carousel */
+    .carousel-container {
+        padding-bottom: 15px !important;
+        gap: 15px !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .carousel-container .card {
+        min-width: 260px !important;
+        max-width: 270px !important;
+    }
+
+    .carousel-container img {
+        height: 200px !important;
+    }
+
+    /* Gallery */
+    .gallery-container {
+        padding: 10px 0 25px !important;
+        gap: 15px !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .gallery-item {
+        width: 86vw !important;
+        max-width: 360px !important;
+    }
+
+    /* Location & Hours */
+    .location-grid {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+    }
+
+    .map-frame {
+        height: 260px !important;
+    }
+
+    /* Booking System (Agendar Cita) */
+    .booking-container {
+        padding: 24px 16px !important;
+        border-radius: var(--radius-md) !important;
+    }
+
+    .booking-steps-nav {
+        margin-bottom: 25px !important;
+    }
+
+    .step-circle {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 0.8rem !important;
+    }
+
+    .step-label {
+        font-size: 0.72rem !important;
+        text-align: center;
+    }
+
+    .service-select-card {
+        padding: 14px 16px !important;
+    }
+
+    .booking-step-3-grid {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+    }
+
+    #time-slots-container {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    .time-slot-btn {
+        padding: 10px 4px !important;
+        font-size: 0.9rem !important;
+        min-height: 42px;
+    }
+
+    .prof-grid {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+        gap: 12px !important;
+    }
+
+    /* Modals */
+    .personalize-card,
+    #crm-modal .card,
+    #auth-modal .card,
+    #success-modal .card,
+    #block-hours-modal .card {
+        width: 92% !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        padding: 24px 18px !important;
+        border-radius: var(--radius-md) !important;
+    }
+
+    /* Footer */
+    .footer {
+        padding: 40px 0 20px;
+        margin-top: 35px;
+    }
+
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 25px;
+        text-align: center;
+    }
+
+    .footer-contact p {
+        justify-content: center;
+    }
+
+    .social-icons {
+        justify-content: center;
+    }
+}
+
+/* Extra small mobile screens (<= 480px) */
+@media (max-width: 480px) {
+    .hero-title {
+        font-size: 1.9rem !important;
+    }
+
+    .step-label {
+        display: none !important;
+    }
+
+    .whatsapp-text {
+        display: none;
+    }
+
+    .whatsapp-float {
+        padding: 12px;
+        border-radius: 50%;
+        width: 48px;
+        height: 48px;
+        justify-content: center;
+    }
+
+    .whatsapp-icon {
+        width: 24px;
+        height: 24px;
     }
 }

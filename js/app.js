@@ -86,19 +86,19 @@ function renderHomeView() {
     return `
         <!-- Hero Section -->
         <section class="hero-section" style="padding: 100px 0; background-color: var(--clr-nude-light); position:relative; overflow:hidden;">
-            <div class="container" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 40px;">
-                <div style="flex: 1; min-width: 300px; z-index: 1;">
-                    <h1 style="font-size: 3.5rem; color: var(--clr-rose-gold-dark); margin-bottom: 20px; line-height: 1.2;">
+            <div class="container hero-container" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 40px;">
+                <div class="hero-text" style="flex: 1; min-width: 300px; z-index: 1;">
+                    <h1 class="hero-title" style="font-size: 3.5rem; color: var(--clr-rose-gold-dark); margin-bottom: 20px; line-height: 1.2;">
                         Belleza a tu ritmo<br>y sin barreras.
                     </h1>
-                    <p style="font-size: 1.2rem; color: var(--clr-neutral-gray); margin-bottom: 30px;">
+                    <p class="hero-subtitle" style="font-size: 1.2rem; color: var(--clr-neutral-gray); margin-bottom: 30px;">
                         Descubre una experiencia integral, cercana y adaptada a tus tiempos. Agenda tu momento de autocuidado hoy.
                     </p>
-                    <button class="btn btn-primary" onclick="AppRouter.navigate('agendar')" style="font-size: 1.1rem; padding: 15px 35px;">
+                    <button class="btn btn-primary hero-btn" onclick="AppRouter.navigate('agendar')" style="font-size: 1.1rem; padding: 15px 35px;">
                         <i data-lucide="calendar"></i> Agenda tu cita
                     </button>
                 </div>
-                <div style="flex: 1; min-width: 300px; position: relative;">
+                <div class="hero-image-wrap" style="flex: 1; min-width: 300px; position: relative;">
                     <!-- Imagen decorativa con bordes redondeados y sombra -->
                     <img src="https://images.unsplash.com/photo-1522337660859-02fbefca4702?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
                          alt="Nicolett Studio" 
@@ -110,16 +110,16 @@ function renderHomeView() {
         <!-- About Us Section -->
         <section class="section" id="sobre-nosotros" style="background-color: transparent;">
             <div class="container">
-                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 50px;">
-                    <div style="flex: 1; min-width: 300px; position: relative;">
+                <div class="about-flex" style="display: flex; flex-wrap: wrap; align-items: center; gap: 50px;">
+                    <div class="about-image-wrap" style="flex: 1; min-width: 300px; position: relative;">
                         <!-- Imagen decorativa 1 -->
                         <img src="img/sobre-nosotros.webp" 
                              alt="Sobre Nicolett Studio" 
                              style="width: 100%; border-radius: var(--radius-lg); box-shadow: var(--shadow-medium); position: relative; z-index: 2; object-fit: cover; aspect-ratio: 4/3;">
                         <!-- Fondo decorativo -->
-                        <div style="position: absolute; top: 20px; left: -20px; right: 20px; bottom: -20px; border: 2px solid var(--clr-rose-gold); border-radius: var(--radius-lg); z-index: 1;"></div>
+                        <div class="about-decorative-border" style="position: absolute; top: 20px; left: -20px; right: 20px; bottom: -20px; border: 2px solid var(--clr-rose-gold); border-radius: var(--radius-lg); z-index: 1;"></div>
                     </div>
-                    <div style="flex: 1; min-width: 300px;">
+                    <div class="about-text" style="flex: 1; min-width: 300px;">
                         <h2 class="section-title" style="text-align: left; margin-bottom: 10px;">Sobre Nosotros</h2>
                         <h3 style="color: var(--clr-rose-gold); margin-bottom: 20px; font-family: var(--font-heading); font-size: 1.5rem; font-style: italic;">Tu espacio seguro de belleza</h3>
                         <p style="font-size: 1.1rem; color: var(--clr-neutral-gray); margin-bottom: 20px; line-height: 1.8;">
@@ -128,7 +128,7 @@ function renderHomeView() {
                         <p style="font-size: 1.1rem; color: var(--clr-neutral-gray); margin-bottom: 30px; line-height: 1.8;">
                             Nuestro equipo está formado por especialistas apasionadas que no solo dominan las últimas tendencias, sino que te escuchan para entender exactamente lo que buscas. Aquí, la atención es a tu ritmo.
                         </p>
-                        <div style="display: flex; gap: 40px;">
+                        <div class="about-stats" style="display: flex; gap: 40px;">
                             <div>
                                 <h4 style="color: var(--clr-rose-gold-dark); font-size: 2rem; margin-bottom: 5px; font-family: var(--font-heading);">+500</h4>
                                 <p style="font-size: 0.95rem; color: var(--clr-neutral-gray); font-weight: 500;">Clientas Felices</p>
@@ -176,7 +176,7 @@ function renderHomeView() {
                     <p class="section-subtitle">Encuéntranos fácilmente y visítanos en el horario que más te acomode.</p>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; align-items: start;">
+                <div class="location-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; align-items: start;">
                     <div class="card" style="padding: 30px; border: none; box-shadow: var(--shadow-medium);">
                         <h3 style="margin-bottom: 15px; color: var(--clr-rose-gold-dark); display: flex; align-items: center; gap: 10px;">
                             <i data-lucide="map-pin" style="color: var(--clr-rose-gold);"></i> Nuestra Dirección
@@ -202,6 +202,7 @@ function renderHomeView() {
                     
                     <div style="border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-medium); height: 100%; min-height: 350px;">
                         <iframe 
+                            class="map-frame"
                             src="https://maps.google.com/maps?q=avenida+bernardo+o'higgins+979,+buin&t=&z=15&ie=UTF8&iwloc=&output=embed" 
                             width="100%" 
                             height="100%" 
@@ -227,10 +228,10 @@ function renderGaleriaView() {
                 <p class="section-subtitle">Conoce los espectaculares resultados creados por nuestras especialistas. Desliza para ver más.</p>
             </div>
             
-            <div style="display: flex; overflow-x: auto; gap: 30px; padding: 20px 0 40px; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--clr-rose-gold) var(--clr-nude-light);">
+            <div class="gallery-container" style="display: flex; overflow-x: auto; gap: 30px; padding: 20px 0 40px; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--clr-rose-gold) var(--clr-nude-light);">
                 ${images.length === 0 ? '<p style="text-align:center; width:100%;">Aún no hay fotos en la galería.</p>' : ''}
                 ${images.map(img => `
-                    <div style="width: 85vw; max-width: 600px; flex: 0 0 auto; scroll-snap-align: center; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; aspect-ratio: 1/1;">
+                    <div class="gallery-item" style="width: 85vw; max-width: 600px; flex: 0 0 auto; scroll-snap-align: center; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; aspect-ratio: 1/1;">
                         <img src="${img.src}" alt="${img.title}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
                     </div>
                 `).join('')}
@@ -258,14 +259,14 @@ function renderAgendarView() {
             <div class="booking-container" style="max-width: 800px; margin: 0 auto; background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-medium); padding: 40px; position: relative;">
                 
                 <!-- Progress Tabs -->
-                <div style="display: flex; justify-content: space-between; margin-bottom: 40px; position: relative;">
+                <div class="booking-steps-nav" style="display: flex; justify-content: space-between; margin-bottom: 40px; position: relative;">
                     <div style="position: absolute; top: 15px; left: 0; right: 0; height: 2px; background: var(--clr-nude); z-index: 1;"></div>
                     ${['Servicio', 'Profesional', 'Fecha', 'Tus Datos', 'Confirmar'].map((step, index) => `
                         <div style="z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px;">
                             <div class="step-circle ${index === 0 ? 'active' : ''}" id="step-circle-${index + 1}" style="width: 32px; height: 32px; border-radius: 50%; background: ${index === 0 ? 'var(--clr-rose-gold)' : 'var(--clr-nude)'}; color: ${index === 0 ? 'white' : 'var(--clr-neutral-gray)'}; display: flex; align-items: center; justify-content: center; font-weight: bold; transition: all 0.3s;">
                                 ${index + 1}
                             </div>
-                            <span style="font-size: 0.85rem; font-weight: 500; color: ${index === 0 ? 'var(--clr-neutral-dark)' : 'var(--clr-neutral-gray)'};">${step}</span>
+                            <span class="step-label" style="font-size: 0.85rem; font-weight: 500; color: ${index === 0 ? 'var(--clr-neutral-dark)' : 'var(--clr-neutral-gray)'};">${step}</span>
                         </div>
                     `).join('')}
                 </div>
@@ -312,7 +313,7 @@ function renderAgendarView() {
                 <div id="booking-step-3" class="booking-step" style="display: none;">
                     <h3 style="margin-bottom: 20px;">3. Fecha, Hora y Necesidades</h3>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <div class="booking-step-3-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
                         <div>
                             <label style="display: block; margin-bottom: 10px; font-weight: 500;">Fecha</label>
                             <input type="date" id="booking-date" style="width: 100%; padding: 12px; border: 1px solid var(--clr-nude); border-radius: var(--radius-sm); font-family: inherit; margin-bottom: 20px;">
