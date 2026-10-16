@@ -113,7 +113,7 @@ function renderHomeView() {
                 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 50px;">
                     <div style="flex: 1; min-width: 300px; position: relative;">
                         <!-- Imagen decorativa 1 -->
-                        <img src="img/sobre-nosotros.jpg" 
+                        <img src="img/sobre-nosotros.webp" 
                              alt="Sobre Nicolett Studio" 
                              style="width: 100%; border-radius: var(--radius-lg); box-shadow: var(--shadow-medium); position: relative; z-index: 2; object-fit: cover; aspect-ratio: 4/3;">
                         <!-- Fondo decorativo -->
