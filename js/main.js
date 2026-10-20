@@ -98,9 +98,9 @@ function setupPersonalization() {
             try {
                 if (typeof firebase !== 'undefined' && firebase.firestore) {
                     const db = firebase.firestore();
-                    const snapshot = await db.collection('client_profiles').where('email', '==', email).get();
+                    const snapshot = await db.collection('perfil_cliente').where('email', '==', email).get();
                     if (snapshot.empty) {
-                        await db.collection('client_profiles').add({
+                        await db.collection('perfil_cliente').add({
                             name: name,
                             email: email,
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
