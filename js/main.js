@@ -53,23 +53,61 @@ document.addEventListener('DOMContentLoaded', () => {
     setupPersonalization();
 });
 
+// --- Control de Sesión y Visibilidad en Navegación ---
+window.updateNavAuthVisibility = function() {
+    const btnLogout = document.getElementById('btn-logout');
+    const navPerfil = document.getElementById('nav-perfil');
+    const navAdmin = document.getElementById('nav-admin');
+    const authData = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
+    const isPersonalized = localStorage.getItem('nicolett_personalization');
+
+    if (authData && authData.loggedIn) {
+        if (btnLogout) {
+            btnLogout.style.display = 'inline-block';
+            btnLogout.title = 'Salir del portal administrador';
+        }
+        if (navAdmin) navAdmin.style.display = 'inline-block';
+    } else if (isPersonalized) {
+        if (btnLogout) {
+            btnLogout.style.display = 'inline-block';
+            btnLogout.title = 'Cerrar sesión de mi perfil';
+        }
+        if (navAdmin) navAdmin.style.display = 'none';
+    } else {
+        if (btnLogout) btnLogout.style.display = 'none';
+        if (navAdmin) navAdmin.style.display = 'none';
+    }
+
+    if (navPerfil) {
+        navPerfil.style.display = isPersonalized ? 'inline-block' : 'none';
+    }
+};
+
+window.logoutClientProfile = function() {
+    if (confirm('¿Estás segura de que deseas cerrar sesión de tu perfil?')) {
+        localStorage.removeItem('nicolett_personalization');
+        window.updateNavAuthVisibility();
+        if (typeof AppRouter !== 'undefined') {
+            AppRouter.navigate('home');
+        }
+    }
+};
+
 function setupPersonalization() {
     const modal = document.getElementById('personalize-modal');
     const form = document.getElementById('personalize-form');
     const navPerfil = document.getElementById('nav-perfil');
 
+    window.updateNavAuthVisibility();
+
     const isPersonalized = localStorage.getItem('nicolett_personalization');
 
-    if (isPersonalized) {
-        if (navPerfil) navPerfil.style.display = 'inline-block';
-    } else {
-        if (modal) {
-            setTimeout(() => {
-                modal.style.display = 'flex';
-                modal.offsetHeight;
-                modal.style.opacity = '1';
-            }, 10000);
-        }
+    if (!isPersonalized && modal) {
+        setTimeout(() => {
+            modal.style.display = 'flex';
+            modal.offsetHeight;
+            modal.style.opacity = '1';
+        }, 10000);
     }
 
     if (form) {
@@ -109,8 +147,7 @@ function setupPersonalization() {
                 }
 
                 localStorage.setItem('nicolett_personalization', JSON.stringify({ name, email }));
-
-                if (navPerfil) navPerfil.style.display = 'inline-block';
+                window.updateNavAuthVisibility();
 
                 if (modal) modal.style.opacity = '0';
                 setTimeout(() => {
@@ -168,10 +205,7 @@ function setupPersonalization() {
                 StorageHelper.setAuth({ loggedIn: true, user: prof });
 
                 // Mostrar botón de salir y link al portal
-                const btnLogout = document.getElementById('btn-logout');
-                if (btnLogout) btnLogout.style.display = 'inline-block';
-                const navAdmin = document.getElementById('nav-admin');
-                if (navAdmin) navAdmin.style.display = 'inline-block';
+                window.updateNavAuthVisibility();
 
                 document.getElementById('auth-modal').style.display = 'none';
 
@@ -194,30 +228,26 @@ function setupPersonalization() {
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
         btnLogout.addEventListener('click', async () => {
-            if (confirm('¿Seguro quieres salir del portal administrador?')) {
-                StorageHelper.setAuth({ loggedIn: false, user: null });
-                btnLogout.style.display = 'none';
-                const navAdmin = document.getElementById('nav-admin');
-                if (navAdmin) navAdmin.style.display = 'none';
-                if (typeof firebase !== 'undefined' && firebase.auth) {
-                    await firebase.auth().signOut();
+            const authData = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
+            if (authData && authData.loggedIn) {
+                if (confirm('¿Seguro quieres salir del portal administrador?')) {
+                    StorageHelper.setAuth({ loggedIn: false, user: null });
+                    if (typeof firebase !== 'undefined' && firebase.auth) {
+                        await firebase.auth().signOut();
+                    }
+                    window.updateNavAuthVisibility();
+                    if (typeof AppRouter !== 'undefined') {
+                        AppRouter.navigate('home');
+                    }
                 }
-                if (typeof AppRouter !== 'undefined') {
-                    AppRouter.navigate('home');
-                }
+            } else if (localStorage.getItem('nicolett_personalization')) {
+                window.logoutClientProfile();
             }
         });
     }
 
     // Restaurar estado visual del botón salir y portal admin
-    if (typeof StorageHelper !== 'undefined') {
-        const authData = StorageHelper.getAuth();
-        if (authData && authData.loggedIn) {
-            if (btnLogout) btnLogout.style.display = 'inline-block';
-            const navAdmin = document.getElementById('nav-admin');
-            if (navAdmin) navAdmin.style.display = 'inline-block';
-        }
-    }
+    window.updateNavAuthVisibility();
 }
 
 // --- Eventos de Home ---

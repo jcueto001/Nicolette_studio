@@ -1042,9 +1042,15 @@ function renderPerfilView() {
                 <p class="section-subtitle" style="color: var(--clr-neutral-gray); font-size: 1.05rem;">
                     Este es tu espacio personal y el historial de tus atenciones agendadas.
                 </p>
-                <div style="display:inline-flex; align-items:center; gap:8px; background:var(--clr-nude-light); padding:6px 16px; border-radius:30px; font-size:0.85rem; color:var(--clr-neutral-gray); margin-top:10px;">
-                    <i data-lucide="mail" style="width:14px; height:14px;"></i>
-                    <span>${pers.email}</span>
+                <div style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap;">
+                    <div style="display:inline-flex; align-items:center; gap:8px; background:var(--clr-nude-light); padding:6px 16px; border-radius:30px; font-size:0.85rem; color:var(--clr-neutral-gray);">
+                        <i data-lucide="mail" style="width:14px; height:14px;"></i>
+                        <span>${pers.email}</span>
+                    </div>
+                    <button type="button" class="btn" onclick="logoutClientProfile()" style="background:#ffffff; border:1px solid #e2b9c3; color:#b5455a; padding:6px 18px; border-radius:30px; font-size:0.85rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:var(--shadow-soft); transition:all 0.3s ease;">
+                        <i data-lucide="log-out" style="width:15px; height:15px;"></i>
+                        <span>Cerrar Sesión</span>
+                    </button>
                 </div>
             </div>
             

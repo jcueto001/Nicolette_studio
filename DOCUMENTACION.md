@@ -126,6 +126,7 @@ Accesible mediante la ruta `'perfil'` (`renderPerfilView`):
 * Muestra el resumen de la clienta (nombre y correo registrados en el navegador en la clave `nicolett_personalization`).
 * Consulta las citas históricas y futuras de esa clienta comparando `clientEmail` contra la colección `Citas`.
 * Ordena cronológicamente las visitas y muestra el estado actual de cada reserva.
+* **Cierre de Sesión de Clienta:** Incluye un botón para cerrar sesión directamente en la cabecera de la vista y sincroniza el botón de salida en la barra de navegación general (`logoutClientProfile()`). Al cerrar sesión, se eliminan los datos locales de personalización y se redirige a la vista principal.
 
 ### 4.4 Panel de Administración y BI
 Accesible en la ruta `'admin'` (`renderAdminView`). Protegido por autenticación: si no hay un usuario autenticado en `StorageHelper.getAuth()`, el router redirige automáticamente al home.
@@ -243,7 +244,8 @@ Colección indexada por el UID de Firebase Authentication (`user.uid`). Define l
 3. **Verificación de Rol:**  
    Al autenticar el usuario en Firebase Auth, el sistema consulta el documento en la colección `Usuarios` con el UID obtenido. Si el campo `rol` es `'Admin'`, se otorga permiso completo de gestión.
 4. **Cierre de Sesión:**  
-   El botón de salir ejecuta `firebase.auth().signOut()`, limpia la clave de sesión en `StorageHelper` y redirige a la vista principal (`home`).
+   - **Administración:** El botón de salir ejecuta `firebase.auth().signOut()`, limpia la sesión en `StorageHelper`, oculta el acceso al portal y redirige a la vista principal.
+   - **Perfil de Clienta:** La función `logoutClientProfile()` limpia la clave `nicolett_personalization` de `localStorage`, oculta el enlace de "Mi Perfil" en la navegación y regresa a la vista de inicio (`home`).
 
 ---
 

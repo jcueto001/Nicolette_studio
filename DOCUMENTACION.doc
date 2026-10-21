@@ -1,0 +1,364 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Manual Técnico - Nicolett Studio Fantasy</title>
+<!--[if gte mso 9]>
+<xml>
+ <w:WordDocument>
+  <w:View>Print</w:View>
+  <w:Zoom>100</w:Zoom>
+  <w:DoNotOptimizeForBrowser/>
+ </w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+  body {
+    font-family: 'Calibri', 'Arial', sans-serif;
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #2b2b2b;
+    margin: 40px;
+  }
+  h1 {
+    font-size: 22pt;
+    color: #8c4c5a;
+    border-bottom: 2px solid #8c4c5a;
+    padding-bottom: 6px;
+    margin-top: 24pt;
+    margin-bottom: 12pt;
+  }
+  h2 {
+    font-size: 16pt;
+    color: #a45d6e;
+    border-bottom: 1px solid #e0c5cb;
+    padding-bottom: 4px;
+    margin-top: 18pt;
+    margin-bottom: 8pt;
+  }
+  h3 {
+    font-size: 13pt;
+    color: #333333;
+    margin-top: 14pt;
+    margin-bottom: 6pt;
+  }
+  p, li {
+    font-size: 11pt;
+    margin-bottom: 6pt;
+  }
+  code {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 10pt;
+    background-color: #f7f3f1;
+    color: #8c4c5a;
+    padding: 2px 5px;
+    border-radius: 3px;
+  }
+  pre {
+    background-color: #f8f6f5;
+    border: 1px solid #e4d8d4;
+    padding: 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 9.5pt;
+    color: #2b2b2b;
+    line-height: 1.4;
+    border-radius: 4px;
+    white-space: pre-wrap;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12pt;
+    margin-bottom: 14pt;
+  }
+  th {
+    background-color: #8c4c5a;
+    color: #ffffff;
+    font-weight: bold;
+    text-align: left;
+    padding: 8px 10px;
+    border: 1px solid #773f4b;
+  }
+  td {
+    padding: 8px 10px;
+    border: 1px solid #d9cbce;
+    font-size: 10.5pt;
+  }
+  tr:nth-child(even) td {
+    background-color: #fdfaf9;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background-color: #f2e6e8;
+    color: #8c4c5a;
+    font-size: 9pt;
+    font-weight: bold;
+  }
+  .box-note {
+    background-color: #fcf6f7;
+    border-left: 4px solid #8c4c5a;
+    padding: 10px 15px;
+    margin: 12pt 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>Manual Técnico y Documentación del Sistema: Nicolett Studio Fantasy</h1>
+
+<p><strong>Versión:</strong> 1.2.0<br>
+<strong>Fecha de actualización:</strong> Octubre 2026<br>
+<strong>Estado:</strong> Producción / En Mantenimiento Activo</p>
+
+<hr style="border: 0; border-top: 1px solid #e0c5cb; margin: 15pt 0;">
+
+<h2>Índice</h2>
+<ol>
+  <li>Visión General del Sistema</li>
+  <li>Arquitectura Tecnológica</li>
+  <li>Estructura del Proyecto y Archivos</li>
+  <li>Módulos del Frontend (SPA)
+    <ul>
+      <li>4.1 Router y Ciclo de Vistas</li>
+      <li>4.2 Flujo de Agendamiento de Citas</li>
+      <li>4.3 Portal y Perfil de Clienta</li>
+      <li>4.4 Panel de Administración y BI</li>
+      <li>4.5 Fichas Clínicas y CRM</li>
+    </ul>
+  </li>
+  <li>Estructura de Base de Datos (Firebase Firestore)</li>
+  <li>Autenticación y Control de Accesos</li>
+  <li>Integraciones Externas
+    <ul>
+      <li>7.1 Pasarela de Pagos (Transbank Webpay Plus)</li>
+      <li>7.2 Notificaciones por Correo (EmailJS)</li>
+    </ul>
+  </li>
+  <li>Capa de Persistencia y Caché (StorageHelper)</li>
+  <li>Guía de Instalación y Despliegue</li>
+  <li>Mantenimiento y Preguntas Frecuentes</li>
+</ol>
+
+<hr style="border: 0; border-top: 1px solid #e0c5cb; margin: 15pt 0;">
+
+<h2>1. Visión General del Sistema</h2>
+<p><strong>Nicolett Studio Fantasy</strong> es una plataforma web desarrollada para la gestión integral de un centro de estética y belleza ubicado en Buin, Chile. El sistema cubre dos áreas operativas principales:</p>
+<ul>
+  <li><strong>Plataforma Pública (Clientas):</strong> Catálogo de servicios, visualización de trabajos en galería con filtros dinámicos, personalización de perfil de usuaria, motor de reservas de horas en tiempo real con validación de disponibilidad y opción de pago en línea vía Webpay Plus.</li>
+  <li><strong>Plataforma Privada (Administración):</strong> Panel de control con métricas de negocio (KPIs e ingresos), administración del estado de citas, fichas técnicas de clientas, historial de tratamientos, control de stock de insumos, gestión del equipo de trabajadoras y subida de fotografías a la galería.</li>
+</ul>
+
+<h2>2. Arquitectura Tecnológica</h2>
+<p>El sistema utiliza una arquitectura desacoplada: un <strong>Frontend SPA</strong> estático conectado directamente a <strong>Firebase</strong> (Firestore y Authentication) y a un <strong>microservicio Backend en Node.js/Express</strong> dedicado a la integración bancaria con Transbank.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Capa</th>
+      <th>Componente</th>
+      <th>Descripción</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Frontend Base</strong></td>
+      <td>HTML5, CSS3 Nativo, Vanilla JavaScript</td>
+      <td>Arquitectura sin frameworks compilados; ejecución nativa directa en el navegador.</td>
+    </tr>
+    <tr>
+      <td><strong>Diseño y Estilos</strong></td>
+      <td>CSS Variables, Flexbox, CSS Grid</td>
+      <td>Sistema de diseño con paleta de tonos nude, rose gold y diseño responsivo adaptado para dispositivos móviles.</td>
+    </tr>
+    <tr>
+      <td><strong>Iconografía</strong></td>
+      <td>Lucide Icons (CDN)</td>
+      <td>Iconos vectoriales SVG inyectados dinámicamente en el DOM.</td>
+    </tr>
+    <tr>
+      <td><strong>Gráficos BI</strong></td>
+      <td>Chart.js (CDN)</td>
+      <td>Visualización de ingresos mensuales y distribución de demanda por servicios en el panel administrativo.</td>
+    </tr>
+    <tr>
+      <td><strong>Notificaciones</strong></td>
+      <td>EmailJS SDK</td>
+      <td>Envío automatizado de correos transaccionales directos desde el cliente sin requerir servidor SMTP.</td>
+    </tr>
+    <tr>
+      <td><strong>Backend Pagos</strong></td>
+      <td>Node.js + Express</td>
+      <td>Servidor REST para la creación y confirmación de transacciones con Webpay Plus.</td>
+    </tr>
+    <tr>
+      <td><strong>Base de Datos</strong></td>
+      <td>Firebase Firestore (v10.7.1)</td>
+      <td>Base de datos NoSQL documental en tiempo real.</td>
+    </tr>
+    <tr>
+      <td><strong>Autenticación</strong></td>
+      <td>Firebase Authentication</td>
+      <td>Inicio de sesión seguro para administradora y especialistas del equipo.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>3. Estructura del Proyecto y Archivos</h2>
+<pre>
+Nicolette_studio/
+├── backend/
+│   ├── package.json          # Dependencias del backend (express, cors, transbank-sdk)
+│   ├── package-lock.json     # Bloqueo de versiones de paquetes de node
+│   ├── server.js             # API REST de integración con Webpay Plus
+│   └── README.md             # Guía de ejecución y despliegue del backend en Render
+├── css/
+│   └── styles.css            # Hoja de estilos global, variables CSS y responsive design
+├── img/                      # Recursos gráficos estáticos y fotografías del local
+├── js/
+│   ├── app.js                # Router SPA y funciones que renderizan el HTML de cada vista
+│   ├── firebase-config.js    # Inicialización y credenciales del cliente Firebase
+│   ├── main.js               # Controladores de eventos, lógica de formularios, sesión y CRM
+│   └── mockData.js           # Capa StorageHelper, estado local y datos semilla
+├── index.html                # Contenedor raíz, barra de navegación, modales y scripts CDN
+├── test.html                 # Archivo auxiliar de prueba para validar conexión con Firebase
+├── DOCUMENTACION.md          # Manual técnico en formato Markdown
+├── DOCUMENTACION.doc         # Este manual en formato Word
+└── README.md                 # Resumen inicial del repositorio
+</pre>
+
+<h2>4. Módulos del Frontend (SPA)</h2>
+
+<h3>4.1 Router y Ciclo de Vistas</h3>
+<p>El archivo <code>js/app.js</code> implementa el objeto global <code>AppRouter</code>, encargado de orquestar la navegación sin recarga de página:</p>
+<ul>
+  <li><code>AppRouter.navigate(route)</code>: Aplica una transición suave de salida, inyecta la plantilla HTML correspondiente y reactiva los controladores de eventos y los iconos de Lucide.</li>
+  <li><code>AppRouter.refresh()</code>: Re-renderiza la vista actual para reflejar cambios inmediatos en el panel de administración.</li>
+</ul>
+
+<h3>4.2 Flujo de Agendamiento de Citas</h3>
+<p>Ubicado en la ruta <code>agendar</code>, guía a la clienta a través de un proceso en 5 pasos:</p>
+<ol>
+  <li><strong>Selección de Servicio:</strong> Catálogo organizado por categorías (Manicure, Mirada, Capilar, Bienestar).</li>
+  <li><strong>Selección de Especialista:</strong> Elección de profesional o asignación automática.</li>
+  <li><strong>Fecha y Horario:</strong> Validación en tiempo real contra Firestore para deshabilitar bloques ocupados.</li>
+  <li><strong>Datos de Contacto:</strong> Nombre, teléfono y correo electrónico (con autorrellenado inteligente si el navegador está personalizado).</li>
+  <li><strong>Confirmación o Pago:</strong> Reserva directa confirmada o derivación a la pasarela bancaria Webpay Plus.</li>
+</ol>
+
+<h3>4.3 Portal y Perfil de Clienta</h3>
+<p>Disponible en la ruta <code>perfil</code>:</p>
+<ul>
+  <li>Identificación de la usuaria mediante sus datos guardados localmente (<code>nicolett_personalization</code>).</li>
+  <li>Historial cronológico de citas pasadas y reservas agendadas.</li>
+  <li><strong>Cierre de Sesión Integrado:</strong> Botón explícito de cierre de sesión en la vista y en la barra de navegación general (<code>logoutClientProfile()</code>), permitiendo alternar de perfil o salir del navegador compartido.</li>
+</ul>
+
+<h3>4.4 Panel de Administración y BI</h3>
+<p>Accesible en la ruta <code>admin</code> con control de acceso por sesión:</p>
+<ul>
+  <li><strong>Dashboard BI:</strong> Tarjetas con KPIs (Ingresos Totales, Citas, Tasa de Asistencia) y gráficos de evolución generados con Chart.js.</li>
+  <li><strong>Gestión de Citas:</strong> Modificación de estados (<code>confirmada</code>, <code>completada</code>, <code>cancelada</code>, <code>no asiste</code>).</li>
+  <li><strong>Fichas Técnicas:</strong> Registro por procedimiento y descuento automático de insumos en el inventario.</li>
+  <li><strong>Inventario:</strong> Monitor de existencias y alertas de reposición.</li>
+  <li><strong>Equipo y Galería:</strong> Administración de especialistas y publicación de imágenes.</li>
+</ul>
+
+<h2>5. Estructura de Base de Datos (Firebase Firestore)</h2>
+
+<h3>1. Colección <code>perfil_cliente</code></h3>
+<p>Guarda los datos capturados en el asistente de personalización:</p>
+<pre>
+{
+  "name": "Valentina Pérez",
+  "email": "valentina@ejemplo.cl",
+  "createdAt": "Timestamp"
+}
+</pre>
+
+<h3>2. Colección <code>Citas</code></h3>
+<p>Registro centralizado de reservas:</p>
+<pre>
+{
+  "clientName": "Valentina Pérez",
+  "clientPhone": "+56912345678",
+  "clientEmail": "valentina@ejemplo.cl",
+  "serviceId": "s1",
+  "servicio": "Esmaltado Permanente",
+  "price": 15000,
+  "profId": "p1",
+  "profesional": "Nicolett",
+  "date": "2026-11-05",
+  "time": "15:00",
+  "status": "confirmada",
+  "createdAt": "Timestamp"
+}
+</pre>
+
+<h3>3. Colección <code>FichasClinicas</code></h3>
+<p>Historial técnico del tratamiento:</p>
+<pre>
+{
+  "clientName": "Valentina Pérez",
+  "serviceName": "Uñas Acrílicas",
+  "date": "2026-10-18",
+  "notes": "Largo #3, punta almendrada, cutículas sensibles.",
+  "productsUsed": ["inv1"],
+  "createdAt": "Timestamp"
+}
+</pre>
+
+<h3>4. Colecciones de Apoyo</h3>
+<ul>
+  <li><code>Inventario</code>: Control de stock de insumos por categoría.</li>
+  <li><code>Profesionales</code>: Directorio del personal técnico y especialistas.</li>
+  <li><code>Usuarios</code>: Documentos indexados por UID de Firebase Auth con control de roles (<code>Admin</code> / <code>Profesional</code>).</li>
+</ul>
+
+<h2>6. Autenticación y Control de Accesos</h2>
+<ul>
+  <li><strong>Autenticación Administrativa:</strong> Integrada con Firebase Authentication (Email y Contraseña).</li>
+  <li><strong>Detección de Administradora:</strong> Si en el modal de bienvenida se introduce <code>nicolette@gmail.com</code>, el sistema abre directamente el formulario de clave de administración.</li>
+  <li><strong>Cierre de Sesión Diferenciado:</strong>
+    <ul>
+      <li><em>Administrador:</em> Cierra sesión en Firebase Auth, borra credenciales en <code>StorageHelper</code> y oculta el acceso al portal.</li>
+      <li><em>Clienta:</em> Ejecuta <code>logoutClientProfile()</code>, limpia la clave <code>nicolett_personalization</code>, oculta la pestaña "Mi Perfil" y regresa al inicio.</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>7. Integraciones Externas</h2>
+
+<h3>7.1 Pasarela de Pagos (Transbank Webpay Plus)</h3>
+<ol>
+  <li><strong>Inicio de Transacción:</strong> El cliente realiza una petición <code>POST /api/webpay/create</code> al backend enviando monto y orden de compra. El SDK de Transbank genera el token bancario y la URL de redirección.</li>
+  <li><strong>Retorno Seguro:</strong> Tras pagar, Transbank redirige a <code>GET /api/webpay/commit</code> en el backend, el cual confirma la operación mediante <code>tx.commit(token)</code> y devuelve al usuario a la web con estado aprobado.</li>
+</ol>
+
+<h3>7.2 Notificaciones con EmailJS</h3>
+<ul>
+  <li><strong>Service ID:</strong> <code>service_rmc9mu9</code></li>
+  <li><strong>Plantilla de Reserva Creada:</strong> <code>template_2h2ya38</code></li>
+  <li><strong>Plantilla de Confirmación Admin:</strong> <code>template_pcxbtx3</code></li>
+  <li><strong>Public Key:</strong> <code>tUxZAGW52juzs6H5Q</code></li>
+</ul>
+
+<h2>8. Capa de Persistencia y Caché (StorageHelper)</h2>
+<p>El objeto <code>StorageHelper</code> (en <code>js/mockData.js</code>) implementa un modelo híbrido:</p>
+<ol>
+  <li><strong>Caché en Memoria:</strong> Proporciona transiciones instantáneas en la interfaz de usuario sin latencia de red.</li>
+  <li><strong>Sincronización Firestore:</strong> Persistencia en la nube para citas, stock y fichas.</li>
+  <li><strong>Modo Fallback Offline:</strong> Si la conexión a la base de datos no está disponible, las reservas se protegen en <code>localStorage</code>, impidiendo fallos críticos ante la clienta.</li>
+</ol>
+
+<h2>9. Guía de Despliegue</h2>
+<ul>
+  <li><strong>Frontend:</strong> Al ser un sitio estático, puede alojarse en <strong>GitHub Pages</strong> seleccionando la rama <code>main</code> y la carpeta raíz <code>/</code> en la configuración del repositorio.</li>
+  <li><strong>Backend (Render.com):</strong> Crear un <em>Web Service</em> apuntando a la carpeta raíz <code>backend</code> con comando de inicio <code>npm start</code> y variable de entorno <code>FRONTEND_URL</code> con la URL pública de la aplicación.</li>
+</ul>
+
+<hr style="border: 0; border-top: 1px solid #e0c5cb; margin: 20pt 0;">
+<p style="text-align: center; color: #888888; font-size: 9.5pt;">Documento de Ingeniería Técnica — Nicolett Studio Fantasy © 2026</p>
+
+</body>
+</html>

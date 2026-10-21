@@ -127,12 +127,13 @@ const StorageHelper = {
                     this._refreshAdminIfSafe();
                 } else {
                     localStorage.setItem('nicolett_auth', JSON.stringify({ loggedIn: false, user: null }));
-                    const btnLogout = document.getElementById('btn-logout');
-                    if (btnLogout) btnLogout.style.display = 'none';
                     
                     if(window.location.hash.includes('admin') && typeof AppRouter !== 'undefined') {
                         AppRouter.navigate('home');
                     }
+                }
+                if (typeof window.updateNavAuthVisibility === 'function') {
+                    window.updateNavAuthVisibility();
                 }
             });
         }
