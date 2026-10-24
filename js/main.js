@@ -51,6 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Iniciar Personalizacion
     setupPersonalization();
+
+    // Iniciar Modal de Foto de Clienta
+    setupClientPhotoModal();
 });
 
 // --- Control de Sesión y Visibilidad en Navegación ---
@@ -967,11 +970,34 @@ function initAdminEvents() {
 
     // Eliminar imagen de galería
     document.querySelectorAll('.btn-del-gallery').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             if (confirm('¿Estás segura de eliminar esta imagen de la galería pública?')) {
-                StorageHelper.deleteGalleryImage(btn.getAttribute('data-id'));
+                await StorageHelper.deleteGalleryImage(btn.getAttribute('data-id'));
                 AppRouter.refresh();
             }
+        });
+    });
+
+    // Filtros de Galería en Panel Admin
+    const filterChips = document.querySelectorAll('#gallery-filter-chips .gallery-filter-chip');
+    filterChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            filterChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            const filter = chip.getAttribute('data-filter');
+            const items = document.querySelectorAll('#admin-gallery-grid .admin-gallery-item');
+            items.forEach(item => {
+                const source = item.getAttribute('data-source');
+                if (filter === 'all') {
+                    item.style.display = 'block';
+                } else if (filter === 'client' && source === 'client') {
+                    item.style.display = 'block';
+                } else if (filter === 'admin' && source !== 'client') {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
         });
     });
 
@@ -1365,6 +1391,29 @@ function initAdminEvents() {
                 historyContainer.innerHTML = html;
             }
 
+            // Fotos del servicio subidas por la clienta
+            const clientPhotosContainer = document.getElementById('crm-client-photos');
+            if (clientPhotosContainer) {
+                const clientGallery = StorageHelper.getGallery().filter(g => 
+                    g.source === 'client' && (
+                        (client.email && g.clientEmail && g.clientEmail.toLowerCase() === client.email.toLowerCase()) ||
+                        (client.name && g.clientName && g.clientName.toLowerCase() === client.name.toLowerCase())
+                    )
+                );
+                if (clientGallery.length === 0) {
+                    clientPhotosContainer.innerHTML = '<p style="color:var(--clr-neutral-gray); font-size:0.85rem; grid-column:1/-1; margin:0;">La clienta aún no ha subido fotos de sus servicios.</p>';
+                } else {
+                    clientPhotosContainer.innerHTML = clientGallery.map(img => `
+                        <div style="border-radius:6px; overflow:hidden; box-shadow:var(--shadow-soft); height:90px; position:relative; background:#000;">
+                            <img src="${img.src}" alt="${img.title || 'Foto de servicio'}" style="width:100%; height:100%; object-fit:cover; display:block;">
+                            <div style="position:absolute; bottom:0; left:0; width:100%; background:rgba(0,0,0,0.75); color:white; font-size:0.7rem; padding:2px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                ${img.serviceName || img.title || 'Servicio'}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
             if(window.lucide) window.lucide.createIcons();
             document.getElementById('crm-modal').style.display = 'flex';
         });
@@ -1381,4 +1430,396 @@ function initAdminEvents() {
         }
     });
 
+}
+
+// --- Control del Modal de Fotos de la Clienta (Cámara / Subida) ---
+let clientCapturedDataUrl = null;
+let clientWebcamStream = null;
+
+function setupClientPhotoModal() {
+    const modal = document.getElementById('client-photo-modal');
+    if (!modal) return;
+
+    const btnClose = document.getElementById('btn-close-client-photo');
+    const btnCancel = document.getElementById('btn-cancel-client-photo');
+    const btnTriggerCamera = document.getElementById('btn-trigger-camera');
+    const btnTriggerGallery = document.getElementById('btn-trigger-gallery');
+    const btnTriggerWebcam = document.getElementById('btn-trigger-webcam');
+    const cameraInput = document.getElementById('client-photo-camera-input');
+    const fileInput = document.getElementById('client-photo-file-input');
+    const webcamContainer = document.getElementById('client-webcam-container');
+    const webcamVideo = document.getElementById('client-webcam-video');
+    const btnWebcamCapture = document.getElementById('btn-webcam-capture');
+    const btnWebcamCancel = document.getElementById('btn-webcam-cancel');
+    const previewImg = document.getElementById('client-photo-img-tag');
+    const emptyMsg = document.getElementById('client-photo-empty-msg');
+    const btnRemovePhoto = document.getElementById('btn-remove-client-photo');
+    const statusMsg = document.getElementById('client-photo-status');
+    const btnSubmit = document.getElementById('btn-submit-client-photo');
+    const form = document.getElementById('form-client-photo');
+    const serviceSelect = document.getElementById('client-photo-service');
+
+    function stopWebcam() {
+        if (clientWebcamStream) {
+            clientWebcamStream.getTracks().forEach(track => track.stop());
+            clientWebcamStream = null;
+        }
+        if (webcamContainer) webcamContainer.style.display = 'none';
+    }
+
+    function resetModal() {
+        stopWebcam();
+        clientCapturedDataUrl = null;
+        if (cameraInput) cameraInput.value = '';
+        if (fileInput) fileInput.value = '';
+        if (previewImg) {
+            previewImg.src = '';
+            previewImg.style.display = 'none';
+        }
+        if (emptyMsg) emptyMsg.style.display = 'block';
+        if (btnRemovePhoto) btnRemovePhoto.style.display = 'none';
+        if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<i data-lucide="upload"></i> Guardar en Galería';
+        }
+        if (statusMsg) {
+            statusMsg.style.display = 'none';
+            statusMsg.innerText = '';
+        }
+        const titleInput = document.getElementById('client-photo-title');
+        if (titleInput) titleInput.value = '';
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function closeModal() {
+        stopWebcam();
+        resetModal();
+        modal.style.display = 'none';
+    }
+
+    if (btnClose) btnClose.addEventListener('click', closeModal);
+    if (btnCancel) btnCancel.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    if (btnRemovePhoto) {
+        btnRemovePhoto.addEventListener('click', () => {
+            resetModal();
+        });
+    }
+
+    // Procesar archivo con compresión Canvas
+    function processImageFile(file) {
+        if (!file) return;
+
+        if (statusMsg) {
+            statusMsg.style.display = 'block';
+            statusMsg.style.background = 'var(--clr-nude-light)';
+            statusMsg.style.color = 'var(--clr-rose-gold-dark)';
+            statusMsg.innerHTML = '<span class="spinner" style="display:inline-block; width:14px; height:14px; vertical-align:middle; margin-right:6px;"></span> Optimizando imagen...';
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const MAX_SIZE = 800;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height = Math.round(height * (MAX_SIZE / width));
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width = Math.round(width * (MAX_SIZE / height));
+                        height = MAX_SIZE;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.70);
+                clientCapturedDataUrl = dataUrl;
+
+                if (previewImg) {
+                    previewImg.src = dataUrl;
+                    previewImg.style.display = 'block';
+                }
+                if (emptyMsg) emptyMsg.style.display = 'none';
+                if (btnRemovePhoto) btnRemovePhoto.style.display = 'inline-block';
+                if (btnSubmit) btnSubmit.disabled = false;
+
+                if (statusMsg) {
+                    statusMsg.style.display = 'block';
+                    statusMsg.style.background = '#e8f5e9';
+                    statusMsg.style.color = '#2e7d32';
+                    statusMsg.innerText = '✓ Foto cargada y lista para publicar';
+                }
+                if (window.lucide) lucide.createIcons();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Botón Cámara nativa (en smartphones abre cámara directamente)
+    if (btnTriggerCamera && cameraInput) {
+        btnTriggerCamera.addEventListener('click', () => {
+            stopWebcam();
+            cameraInput.click();
+        });
+        cameraInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                processImageFile(e.target.files[0]);
+            }
+        });
+    }
+
+    // Botón Galería de archivos
+    if (btnTriggerGallery && fileInput) {
+        btnTriggerGallery.addEventListener('click', () => {
+            stopWebcam();
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                processImageFile(e.target.files[0]);
+            }
+        });
+    }
+
+    // Cámara Web para computadores
+    if (btnTriggerWebcam) {
+        btnTriggerWebcam.addEventListener('click', async () => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('Tu navegador no soporta captura de webcam directa. Por favor, usa "Abrir Cámara" o "Elegir de Galería".');
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                clientWebcamStream = stream;
+                if (webcamVideo) {
+                    webcamVideo.srcObject = stream;
+                    webcamVideo.play();
+                }
+                if (webcamContainer) webcamContainer.style.display = 'block';
+                if (window.lucide) lucide.createIcons();
+            } catch(err) {
+                console.error("Error accediendo a la cámara:", err);
+                alert("No se pudo acceder a la cámara web. Revisa los permisos de tu navegador o usa la opción de archivo.");
+            }
+        });
+    }
+
+    if (btnWebcamCancel) {
+        btnWebcamCancel.addEventListener('click', () => {
+            stopWebcam();
+        });
+    }
+
+    if (btnWebcamCapture) {
+        btnWebcamCapture.addEventListener('click', () => {
+            if (!webcamVideo || !clientWebcamStream) return;
+            const canvas = document.createElement('canvas');
+            canvas.width = webcamVideo.videoWidth || 640;
+            canvas.height = webcamVideo.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(webcamVideo, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.70);
+            clientCapturedDataUrl = dataUrl;
+
+            stopWebcam();
+
+            if (previewImg) {
+                previewImg.src = dataUrl;
+                previewImg.style.display = 'block';
+            }
+            if (emptyMsg) emptyMsg.style.display = 'none';
+            if (btnRemovePhoto) btnRemovePhoto.style.display = 'inline-block';
+            if (btnSubmit) btnSubmit.disabled = false;
+
+            if (statusMsg) {
+                statusMsg.style.display = 'block';
+                statusMsg.style.background = '#e8f5e9';
+                statusMsg.style.color = '#2e7d32';
+                statusMsg.innerText = '✓ Instantánea capturada con éxito';
+            }
+            if (window.lucide) lucide.createIcons();
+        });
+    }
+
+    // Enviar formulario y guardar foto
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!clientCapturedDataUrl) {
+                alert("Por favor, toma o selecciona una foto antes de guardar.");
+                return;
+            }
+
+            const serviceVal = serviceSelect ? serviceSelect.value : '';
+            if (!serviceVal) {
+                alert("Por favor, selecciona qué servicio te realizaste.");
+                return;
+            }
+
+            const titleInput = document.getElementById('client-photo-title');
+            const customTitle = titleInput ? titleInput.value.trim() : '';
+
+            let pers = { name: 'Clienta', email: '' };
+            try {
+                const persStr = localStorage.getItem('nicolett_personalization');
+                if (persStr) pers = JSON.parse(persStr);
+            } catch(err) {}
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = "Guardando en galería...";
+
+            const newPhoto = {
+                src: clientCapturedDataUrl,
+                title: customTitle || `${serviceVal} - ${pers.name}`,
+                serviceName: serviceVal,
+                clientName: pers.name,
+                clientEmail: pers.email,
+                source: 'client',
+                date: new Date().toLocaleDateString('es-CL'),
+                timestamp: Date.now()
+            };
+
+            try {
+                await StorageHelper.addGalleryImage(newPhoto);
+
+                alert("¡Excelente! Tu foto ha sido guardada en tu perfil y enviada a la galería del salón. ¡Gracias por compartir tu resultado!");
+                closeModal();
+
+                // Recargar vista para ver los cambios
+                if (typeof AppRouter !== 'undefined') {
+                    AppRouter.refresh();
+                }
+            } catch(err) {
+                console.error("Error guardando foto:", err);
+                alert("Hubo un problema al guardar la foto. Es posible que el almacenamiento esté lleno.");
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = "Reintentar Guardar";
+            }
+        });
+    }
+}
+
+// --- Eventos del Portal de la Clienta (Mi Perfil) ---
+function initPerfilEvents() {
+    if (window.lucide) lucide.createIcons();
+
+    let pers = null;
+    try {
+        const persStr = localStorage.getItem('nicolett_personalization');
+        if (persStr) pers = JSON.parse(persStr);
+    } catch(e) {}
+
+    const modal = document.getElementById('client-photo-modal');
+    const serviceSelect = document.getElementById('client-photo-service');
+
+    function populateServiceSelect(preselectedService) {
+        if (!serviceSelect) return;
+        serviceSelect.innerHTML = '<option value="">Selecciona un servicio...</option>';
+
+        const addedServices = new Set();
+
+        // 1. Citas de la clienta
+        if (pers && pers.email) {
+            const clientApps = StorageHelper.getAppointments().filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase());
+            if (clientApps.length > 0) {
+                const groupOpt = document.createElement('optgroup');
+                groupOpt.label = 'Tus Citas Realizadas';
+                clientApps.forEach(a => {
+                    const sName = a.servicio || 'Servicio';
+                    const label = `${sName} (${a.date} • ${a.profesional || 'Especialista'})`;
+                    const opt = document.createElement('option');
+                    opt.value = sName;
+                    opt.textContent = label;
+                    if (preselectedService && preselectedService === sName) {
+                        opt.selected = true;
+                    }
+                    groupOpt.appendChild(opt);
+                    addedServices.add(sName);
+                });
+                serviceSelect.appendChild(groupOpt);
+            }
+        }
+
+        // 2. Servicios del Estudio
+        const catalogGroup = document.createElement('optgroup');
+        catalogGroup.label = 'Servicios de Nicolett Studio';
+        const defaultServices = typeof mockData !== 'undefined' && mockData.services 
+            ? mockData.services.map(s => s.name)
+            : ['Esmaltado Permanente', 'Uñas Acrílicas', 'Lifting de Pestañas', 'Tratamiento Capilar', 'Perfilado de Cejas', 'Pedicure Spa'];
+
+        defaultServices.forEach(sName => {
+            if (!addedServices.has(sName)) {
+                const opt = document.createElement('option');
+                opt.value = sName;
+                opt.textContent = sName;
+                if (preselectedService && preselectedService === sName) {
+                    opt.selected = true;
+                }
+                catalogGroup.appendChild(opt);
+            }
+        });
+        serviceSelect.appendChild(catalogGroup);
+
+        // Opción personalizada
+        const otherOpt = document.createElement('option');
+        otherOpt.value = 'Otro Servicio';
+        otherOpt.textContent = 'Otro servicio de belleza';
+        serviceSelect.appendChild(otherOpt);
+    }
+
+    function openModalWithService(serviceName) {
+        populateServiceSelect(serviceName);
+        if (modal) {
+            modal.style.display = 'flex';
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+
+    // Botón en banner superior del perfil
+    const btnBanner = document.getElementById('btn-open-photo-modal-banner');
+    if (btnBanner) {
+        btnBanner.addEventListener('click', () => openModalWithService(''));
+    }
+
+    // Botones de acción "Nueva foto" o "Sacar mi primera foto"
+    document.querySelectorAll('.btn-open-photo-modal-action').forEach(btn => {
+        btn.addEventListener('click', () => openModalWithService(''));
+    });
+
+    // Botón específico en cada cita del historial
+    document.querySelectorAll('.btn-service-photo').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const sName = btn.getAttribute('data-service') || '';
+            openModalWithService(sName);
+        });
+    });
+
+    // Eliminar foto propia de la clienta
+    document.querySelectorAll('.btn-del-client-photo').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-id');
+            if (confirm('¿Deseas eliminar esta foto de tu perfil y de la galería del salón?')) {
+                await StorageHelper.deleteGalleryImage(id);
+                if (typeof AppRouter !== 'undefined') {
+                    AppRouter.refresh();
+                }
+            }
+        });
+    });
 }

@@ -68,6 +68,7 @@ const AppRouter = {
                 if (route === 'home') initHomeEvents();
                 if (route === 'agendar') initAgendarEvents();
                 if (route === 'admin') initAdminEvents();
+                if (route === 'perfil') initPerfilEvents();
 
                 // Animación de entrada
                 contentArea.style.transition = 'opacity 0.3s ease';
@@ -768,7 +769,7 @@ function renderAdminView() {
             <!-- Tab Galería -->
             <div id="tab-galeria" class="admin-tab-content" style="display:none;">
                 <div class="card" style="margin-bottom:20px; padding:20px;">
-                    <h3 style="margin-bottom:15px;">Subir Nueva Foto</h3>
+                    <h3 style="margin-bottom:15px;">Subir Nueva Foto (Administración)</h3>
                     <form id="form-upload-gallery" style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">
                         <div style="flex: 1; min-width: 200px;">
                             <label style="display:block; margin-bottom:5px; font-weight:bold;">Título / Servicio</label>
@@ -784,18 +785,59 @@ function renderAdminView() {
                     </form>
                     <p id="upload-status" style="margin-top:10px; color:var(--clr-neutral-gray); font-size:0.9rem; display:none;">Comprimiendo imagen...</p>
                 </div>
+
+                <!-- Filtros de Galería -->
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;" id="gallery-filter-chips">
+                        <button type="button" class="gallery-filter-chip active" data-filter="all">
+                            Todas (${StorageHelper.getGallery().length})
+                        </button>
+                        <button type="button" class="gallery-filter-chip" data-filter="client">
+                            <i data-lucide="camera" style="width:14px; height:14px;"></i> Subidas por Clientas (${StorageHelper.getGallery().filter(g => g.source === 'client').length})
+                        </button>
+                        <button type="button" class="gallery-filter-chip" data-filter="admin">
+                            Estudio (${StorageHelper.getGallery().filter(g => g.source !== 'client').length})
+                        </button>
+                    </div>
+                    <span style="font-size:0.85rem; color:var(--clr-neutral-gray);">
+                        <i data-lucide="info" style="width:14px; display:inline; vertical-align:middle;"></i> Las fotos subidas por clientas se integran automáticamente
+                    </span>
+                </div>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    ${StorageHelper.getGallery().map(img => `
-                        <div style="border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; height: 200px;">
-                            <img src="${img.src}" alt="${img.title}" style="width:100%; height:100%; object-fit:cover;">
-                            <div style="position:absolute; bottom:0; left:0; width:100%; padding:10px; background:rgba(0,0,0,0.7); color:white; display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${img.title}</span>
-                                <button class="btn-del-gallery" data-id="${img.id}" style="background:none; border:none; color:var(--clr-rose-gold); cursor:pointer;"><i data-lucide="trash-2" style="width:18px;"></i></button>
+                <div id="admin-gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
+                    ${StorageHelper.getGallery().map(img => {
+                        const isClient = img.source === 'client';
+                        return `
+                        <div class="admin-gallery-item" data-source="${isClient ? 'client' : 'admin'}" style="border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; height: 230px; background:#222;">
+                            <img src="${img.src}" alt="${img.title || 'Trabajo'}" style="width:100%; height:100%; object-fit:cover; display:block;">
+                            
+                            ${isClient ? `
+                                <div style="position:absolute; top:10px; left:10px; z-index:2;">
+                                    <span class="badge-client-photo">
+                                        <i data-lucide="sparkles" style="width:12px; height:12px;"></i> Clienta: ${img.clientName || 'Clienta'}
+                                    </span>
+                                </div>
+                            ` : ''}
+
+                            <div style="position:absolute; bottom:0; left:0; width:100%; padding:10px 12px; background:linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 75%, transparent 100%); color:white; display:flex; justify-content:space-between; align-items:flex-end;">
+                                <div style="overflow:hidden; padding-right:8px;">
+                                    <div style="font-size:0.88rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                        ${img.serviceName || img.title || 'Servicio'}
+                                    </div>
+                                    ${img.title && img.title !== img.serviceName ? `
+                                        <div style="font-size:0.75rem; color:#f0d0c0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"${img.title}"</div>
+                                    ` : ''}
+                                    <div style="font-size:0.72rem; color:#ccc; margin-top:2px;">
+                                        ${img.date ? img.date : ''} ${isClient && img.clientEmail ? '• ' + img.clientEmail : ''}
+                                    </div>
+                                </div>
+                                <button class="btn-del-gallery" data-id="${img.id}" title="Eliminar foto de la galería" style="background:rgba(0,0,0,0.4); border:none; color:var(--clr-rose-gold); cursor:pointer; padding:6px; border-radius:50%; flex-shrink:0;">
+                                    <i data-lucide="trash-2" style="width:18px; height:18px;"></i>
+                                </button>
                             </div>
                         </div>
-                    `).join('')}
-                    ${StorageHelper.getGallery().length === 0 ? '<p>No hay imágenes en la galería.</p>' : ''}
+                    `;}).join('')}
+                    ${StorageHelper.getGallery().length === 0 ? '<p style="grid-column: 1/-1; text-align:center; padding:30px; color:var(--clr-neutral-gray);">No hay imágenes en la galería.</p>' : ''}
                 </div>
             </div>
             ` : ''}
@@ -995,6 +1037,9 @@ function renderPerfilView() {
     const allAppointments = StorageHelper.getAppointments();
     const userAppointments = allAppointments.filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase());
     
+    // Obtener fotos que esta clienta ha subido
+    const clientPhotos = StorageHelper.getClientGallery ? StorageHelper.getClientGallery(pers.email) : [];
+
     // Ordenar citas por fecha descendente
     userAppointments.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -1014,6 +1059,15 @@ function renderPerfilView() {
                         Especialista: <strong style="color:var(--clr-neutral-dark);">${appt.profesional}</strong>
                     </p>
                     ${appt.abono ? `<p style="margin:6px 0 0 0; font-size:0.85rem; color:#28a745; font-weight:500;">✓ Abono verificado: $5.000</p>` : ''}
+                    
+                    <div style="margin-top:14px; padding-top:12px; border-top: 1px dashed #e8dcd0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <span style="font-size:0.85rem; color:var(--clr-neutral-gray); display:inline-flex; align-items:center; gap:5px;">
+                            <i data-lucide="sparkles" style="width:13px; height:13px; color:var(--clr-rose-gold);"></i> ¿Cómo quedó tu resultado?
+                        </span>
+                        <button type="button" class="btn btn-outline btn-sm btn-service-photo" data-service="${appt.servicio || ''}" data-prof="${appt.profesional || ''}" data-date="${appt.date || ''}" style="padding:6px 14px; font-size:0.82rem; font-weight:600; border-radius:20px; display:inline-flex; align-items:center; gap:6px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark);">
+                            <i data-lucide="camera" style="width:14px; height:14px;"></i> Sacar foto de este servicio
+                        </button>
+                    </div>
                 </div>
             `;
         });
@@ -1035,12 +1089,71 @@ function renderPerfilView() {
         `;
     }
 
+    // Sección de fotos tomadas / subidas por la clienta
+    let clientGalleryHtml = `
+        <div style="max-width:680px; margin:40px auto 0; text-align:left;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <h3 style="margin:0; font-size:1.35rem; color:var(--clr-rose-gold-dark); display:flex; align-items:center; gap:8px;">
+                        <i data-lucide="images" style="width:22px; height:22px;"></i> Galería de mis Resultados
+                    </h3>
+                    <p style="margin:4px 0 0; font-size:0.88rem; color:var(--clr-neutral-gray);">
+                        Fotos de tus servicios guardadas en tu perfil y enviadas a la galería del salón.
+                    </p>
+                </div>
+                <button type="button" class="btn btn-outline btn-sm btn-open-photo-modal-action" style="display:inline-flex; align-items:center; gap:6px; border-radius:20px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark);">
+                    <i data-lucide="plus"></i> Nueva Foto
+                </button>
+            </div>
+
+            ${clientPhotos.length > 0 ? `
+                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:16px;">
+                    ${clientPhotos.map(photo => `
+                        <div class="card client-photo-card" style="padding:0; overflow:hidden; border-radius:var(--radius-md); box-shadow:var(--shadow-soft); background:#fff; position:relative;">
+                            <div style="height:170px; width:100%; overflow:hidden; background:#000;">
+                                <img src="${photo.src}" alt="${photo.title || 'Foto de servicio'}" style="width:100%; height:100%; object-fit:cover; display:block;">
+                            </div>
+                            <div style="padding:12px 14px;">
+                                <div style="font-weight:600; color:var(--clr-neutral-dark); font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    ${photo.serviceName || photo.title || 'Servicio realizado'}
+                                </div>
+                                ${photo.title && photo.title !== photo.serviceName ? `
+                                    <p style="margin:3px 0 0; font-size:0.8rem; color:var(--clr-neutral-gray); line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">"${photo.title}"</p>
+                                ` : ''}
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:0.75rem; color:var(--clr-neutral-gray);">
+                                    <span><i data-lucide="calendar" style="width:12px; height:12px; vertical-align:middle;"></i> ${photo.date || 'Reciente'}</span>
+                                    <button type="button" class="btn-del-client-photo" data-id="${photo.id}" title="Eliminar mi foto" style="background:none; border:none; color:#c62828; cursor:pointer; padding:4px;">
+                                        <i data-lucide="trash-2" style="width:15px; height:15px;"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <span style="position:absolute; top:8px; right:8px; background:rgba(40,167,69,0.92); color:white; padding:2px 8px; border-radius:12px; font-size:0.7rem; font-weight:600; backdrop-filter:blur(3px);">
+                                ✓ En Galería
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : `
+                <div class="card" style="padding:28px 20px; text-align:center; background:#ffffff; box-shadow:var(--shadow-soft); border-radius:var(--radius-md); border:1.5px dashed #dfd5cb;">
+                    <i data-lucide="camera" style="width:36px; height:36px; color:var(--clr-rose-gold); margin-bottom:8px;"></i>
+                    <h4 style="margin:0 0 6px; font-size:1.1rem; color:var(--clr-neutral-dark);">Aún no has compartido fotos de tus servicios</h4>
+                    <p style="margin:0 auto 16px; font-size:0.88rem; color:var(--clr-neutral-gray); max-width:440px; line-height:1.5;">
+                        Toma una foto de tus uñas, pestañas o peinado para mostrar el resultado de tu atención. ¡Aparecerá aquí y en la galería del salón!
+                    </p>
+                    <button type="button" class="btn btn-outline btn-sm btn-open-photo-modal-action" style="display:inline-flex; align-items:center; gap:6px; border-radius:20px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); padding:8px 18px; font-weight:600;">
+                        <i data-lucide="camera"></i> Sacar mi primera foto
+                    </button>
+                </div>
+            `}
+        </div>
+    `;
+
     return `
         <div class="container section text-center" style="padding: 60px 20px;">
-            <div style="max-width: 680px; margin: 0 auto 35px; text-align: center;">
+            <div style="max-width: 680px; margin: 0 auto 28px; text-align: center;">
                 <h2 class="section-title" style="margin-bottom: 8px;">Hola, ${pers.name}</h2>
                 <p class="section-subtitle" style="color: var(--clr-neutral-gray); font-size: 1.05rem;">
-                    Este es tu espacio personal y el historial de tus atenciones agendadas.
+                    Este es tu espacio personal, el historial de tus atenciones y la galería de tus resultados.
                 </p>
                 <div style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap;">
                     <div style="display:inline-flex; align-items:center; gap:8px; background:var(--clr-nude-light); padding:6px 16px; border-radius:30px; font-size:0.85rem; color:var(--clr-neutral-gray);">
@@ -1053,8 +1166,30 @@ function renderPerfilView() {
                     </button>
                 </div>
             </div>
+
+            <!-- Banner para tomar/subir fotos del servicio -->
+            <div class="card" style="padding: 22px 24px; max-width: 680px; margin: 0 auto 28px; background: linear-gradient(135deg, #FFF9F5 0%, #FFFFFF 100%); border: 1.5px solid var(--clr-rose-gold-light); box-shadow: var(--shadow-soft); border-radius: var(--radius-md); text-align: left;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+                    <div style="display:flex; align-items:center; gap:16px; flex:1; min-width:240px;">
+                        <div style="width:50px; height:50px; border-radius:50%; background:var(--clr-nude); display:flex; align-items:center; justify-content:center; color:var(--clr-rose-gold-dark); flex-shrink:0;">
+                            <i data-lucide="camera" style="width:24px; height:24px;"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin:0 0 4px 0; color:var(--clr-rose-gold-dark); font-size:1.15rem;">¿Te encantó tu resultado?</h4>
+                            <p style="margin:0; font-size:0.88rem; color:var(--clr-neutral-gray); line-height:1.4;">
+                                Saca una foto con tu cámara o sube una imagen de tu atención para guardarla en tu perfil y compartirla en la galería del salón.
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" id="btn-open-photo-modal-banner" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; font-size:0.92rem; white-space:nowrap;">
+                        <i data-lucide="camera"></i> Sacar / Subir Foto
+                    </button>
+                </div>
+            </div>
             
             ${historyHtml}
+
+            ${clientGalleryHtml}
 
             ${userAppointments.length > 0 ? `
             <div style="margin-top: 40px;">

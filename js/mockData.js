@@ -211,6 +211,31 @@ const StorageHelper = {
             if(this._inventoryCache.length === 0) this._inventoryCache = mockData.inventory;
         }
 
+        try {
+            const galSnapshot = await db.collection("Galeria").get();
+            if (!galSnapshot.empty) {
+                const currentGallery = this.getGallery();
+                const existingIds = new Set(currentGallery.map(img => img.fbId || img.id));
+                let addedAny = false;
+                galSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (!existingIds.has(doc.id)) {
+                        currentGallery.unshift({
+                            id: doc.id,
+                            fbId: doc.id,
+                            ...data
+                        });
+                        addedAny = true;
+                    }
+                });
+                if (addedAny) {
+                    localStorage.setItem('nicolett_gallery_v2', JSON.stringify(currentGallery));
+                }
+            }
+        } catch(e) {
+            console.warn("Firestore Galeria (usando fallback local):", e);
+        }
+
         this._refreshAdminIfSafe();
     },
 
@@ -378,18 +403,62 @@ const StorageHelper = {
         return mockData.gallery;
     },
 
-    addGalleryImage: function(imageObj) {
+    getClientGallery: function(email) {
         const gallery = this.getGallery();
-        imageObj.id = 'g' + Date.now();
+        if (!email) return [];
+        const normEmail = email.trim().toLowerCase();
+        return gallery.filter(img => img.source === 'client' && img.clientEmail && img.clientEmail.trim().toLowerCase() === normEmail);
+    },
+
+    addGalleryImage: async function(imageObj) {
+        const gallery = this.getGallery();
+        imageObj.id = imageObj.id || ('g' + Date.now());
+        imageObj.timestamp = imageObj.timestamp || Date.now();
+        imageObj.date = imageObj.date || new Date().toLocaleDateString('es-CL');
         gallery.unshift(imageObj); // Agregar al principio
         localStorage.setItem('nicolett_gallery_v2', JSON.stringify(gallery));
+
+        // Intento de persistencia en Firebase Firestore (asíncrono y resiliente)
+        if (typeof db !== 'undefined') {
+            try {
+                const docData = {
+                    title: imageObj.title || '',
+                    src: imageObj.src,
+                    serviceName: imageObj.serviceName || '',
+                    clientName: imageObj.clientName || '',
+                    clientEmail: imageObj.clientEmail || '',
+                    source: imageObj.source || 'admin',
+                    date: imageObj.date,
+                    createdAt: (typeof firebase !== 'undefined' && firebase.firestore) 
+                        ? firebase.firestore.FieldValue.serverTimestamp() 
+                        : new Date().toISOString()
+                };
+                const docRef = await db.collection("Galeria").add(docData);
+                imageObj.fbId = docRef.id;
+            } catch(e) {
+                console.warn("Firestore Galeria add error (usando local):", e);
+            }
+        }
+
         return imageObj;
     },
 
-    deleteGalleryImage: function(id) {
+    deleteGalleryImage: async function(id) {
         let gallery = this.getGallery();
-        gallery = gallery.filter(img => img.id !== id);
+        const imgToDelete = gallery.find(img => img.id === id || img.fbId === id);
+        gallery = gallery.filter(img => img.id !== id && img.fbId !== id);
         localStorage.setItem('nicolett_gallery_v2', JSON.stringify(gallery));
+
+        if (typeof db !== 'undefined' && imgToDelete) {
+            try {
+                const docId = imgToDelete.fbId || (imgToDelete.id && !imgToDelete.id.startsWith('g') ? imgToDelete.id : null);
+                if (docId) {
+                    await db.collection("Galeria").doc(docId).delete();
+                }
+            } catch (e) {
+                console.warn("Firestore Galeria delete error:", e);
+            }
+        }
     },
 
     // Fichas Clínicas

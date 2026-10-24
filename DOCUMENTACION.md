@@ -126,6 +126,15 @@ Accesible mediante la ruta `'perfil'` (`renderPerfilView`):
 * Muestra el resumen de la clienta (nombre y correo registrados en el navegador en la clave `nicolett_personalization`).
 * Consulta las citas históricas y futuras de esa clienta comparando `clientEmail` contra la colección `Citas`.
 * Ordena cronológicamente las visitas y muestra el estado actual de cada reserva.
+* **Captura de Fotos del Servicio:**
+  - Incluye un banner principal y botones directos en cada tarjeta de cita ("Sacar foto de este servicio").
+  - Abre el modal `#client-photo-modal` que permite:
+    - **Cámara Móvil Nativa:** Abre la cámara trasera en smartphones/tablets (`accept="image/*" capture="environment"`).
+    - **Archivos / Galería:** Selección de fotografías desde la biblioteca local.
+    - **Webcam en Vivo:** Transmisión y captura de instantánea en computadores mediante `navigator.mediaDevices.getUserMedia`.
+  - Optimización en cliente: Redimensionamiento automático a máximo 800px y compresión JPEG al 70% mediante Canvas HTML5 para no saturar memoria.
+  - Guarda la imagen con metadatos (`source: 'client'`, nombre y correo de la clienta, servicio y fecha) en `StorageHelper` y la sincroniza con Firebase Firestore.
+* **Galería de Resultados de la Clienta:** Muestra el listado de fotos aportadas por la usuaria, con fecha, servicio e indicador de publicación en la galería del salón, permitiéndole además eliminar sus fotos si lo desea.
 * **Cierre de Sesión de Clienta:** Incluye un botón para cerrar sesión directamente en la cabecera de la vista y sincroniza el botón de salida en la barra de navegación general (`logoutClientProfile()`). Al cerrar sesión, se eliminan los datos locales de personalización y se redirige a la vista principal.
 
 ### 4.4 Panel de Administración y BI
@@ -143,8 +152,12 @@ El panel se organiza en pestañas operativas:
 3. **Fichas Clínicas:** Registro del expediente técnico por sesión de cada clienta.
 4. **Inventario:** Vista de insumos con niveles de alerta para productos con stock bajo.
 5. **Equipo / Profesionales:** Alta y baja de especialistas.
-6. **Galería:** Carga de fotografías con redimensionamiento y compresión automática en el navegador antes de guardar.
-7. **Directorio de Clientas (CRM):** Resumen de clientes con total de visitas y monto acumulado gastado en el salón.
+6. **Galería:**
+   - Carga de fotografías oficiales del estudio con compresión automática.
+   - **Integración con Fotos de Clientas:** Despliega todas las fotos subidas desde el portal de clientas identificadas con insignias rose gold (`Clienta: [Nombre]`, servicio y fecha).
+   - **Filtros Dinámicos:** Pestañas de filtrado ("Todas", "Subidas por Clientas 💕", "Estudio").
+   - Eliminación de imágenes con confirmación tanto para fotos oficiales como aportadas.
+7. **Directorio de Clientas (CRM):** Resumen de clientes con total de visitas y monto acumulado gastado en el salón. Al abrir la ficha CRM de una clienta, se exhibe adicionalmente la galería de fotos de servicios subidas por ella.
 
 ### 4.5 Fichas Clínicas y CRM
 Al guardar una ficha clínica:
@@ -364,6 +377,10 @@ service cloud.firestore {
     }
     match /perfil_cliente/{document=**} {
       allow read, create: if true;
+    }
+    match /Galeria/{document=**} {
+      allow read, create: if true;
+      allow update, delete: if request.auth != null;
     }
     match /{document=**} {
       allow read, write: if request.auth != null;

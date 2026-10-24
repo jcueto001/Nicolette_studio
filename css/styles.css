@@ -700,6 +700,7 @@ button {
     #crm-modal .card,
     #auth-modal .card,
     #success-modal .card,
+    #client-photo-modal .card,
     #block-hours-modal .card {
         width: 92% !important;
         max-height: 90vh !important;
@@ -756,3 +757,53 @@ button {
         height: 24px;
     }
 }
+
+/* --- Galería y Fotos de Clientas --- */
+.gallery-filter-chip {
+    padding: 7px 16px;
+    border-radius: var(--radius-pill);
+    border: 1px solid #ddd;
+    background: #ffffff;
+    color: var(--clr-neutral-gray);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gallery-filter-chip:hover {
+    border-color: var(--clr-rose-gold);
+    color: var(--clr-rose-gold-dark);
+}
+
+.gallery-filter-chip.active {
+    background: var(--clr-rose-gold);
+    color: #ffffff;
+    border-color: var(--clr-rose-gold);
+    box-shadow: 0 2px 8px rgba(182, 141, 93, 0.3);
+}
+
+.badge-client-photo {
+    background: linear-gradient(135deg, #c48b71 0%, #b5455a 100%);
+    color: #ffffff;
+    padding: 3px 10px;
+    border-radius: 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.client-photo-card {
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.client-photo-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-medium);
+}
