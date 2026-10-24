@@ -714,11 +714,31 @@ function initAgendarEvents() {
         };
         sessionStorage.setItem('nicolett_pending_booking', JSON.stringify(pendingBooking));
 
-        // Actualizar URL del botón de Flow en el modal
+        // Configurar estado del botón de Flow en el modal
         const btnOpenFlow = document.getElementById('btn-flow-open-gateway');
+        const unconfiguredBox = document.getElementById('flow-unconfigured-box');
+        const quickUrlInput = document.getElementById('flow-quick-url');
+        const hasValidUrl = flowConfig.flowUrl && !flowConfig.flowUrl.includes('abono5000') && flowConfig.flowUrl.startsWith('http');
+
+        if (unconfiguredBox) {
+            unconfiguredBox.style.display = hasValidUrl ? 'none' : 'block';
+        }
+        if (quickUrlInput && flowConfig.flowUrl && !flowConfig.flowUrl.includes('abono5000')) {
+            quickUrlInput.value = flowConfig.flowUrl;
+        }
+
         if (btnOpenFlow) {
-            let flowUrl = flowConfig.flowUrl || 'https://www.flow.cl/btn.php?token=abono5000';
-            btnOpenFlow.href = flowUrl;
+            if (hasValidUrl) {
+                btnOpenFlow.href = flowConfig.flowUrl;
+                btnOpenFlow.onclick = null;
+            } else {
+                btnOpenFlow.href = '#';
+                btnOpenFlow.onclick = (e) => {
+                    e.preventDefault();
+                    alert('Debes ingresar tu enlace de cobro de Flow (de $5.000) en el recuadro superior o en el Panel Administrador para conectar con Flow.');
+                    document.getElementById('flow-quick-url')?.focus();
+                };
+            }
         }
 
         // Mostrar modal de Flow
@@ -727,6 +747,43 @@ function initAgendarEvents() {
             flowModal.style.display = 'flex';
             if (window.lucide) lucide.createIcons();
         }
+    });
+
+    // Guardado rápido del enlace de Flow dentro del modal
+    const btnSaveQuickFlow = document.getElementById('btn-save-quick-flow');
+    btnSaveQuickFlow?.addEventListener('click', async () => {
+        const input = document.getElementById('flow-quick-url');
+        const val = input ? input.value.trim() : '';
+        if (!val || !val.startsWith('http')) {
+            alert('Por favor ingresa un enlace válido que comience con https:// (ej: https://www.flow.cl/btn.php?token=... o https://flow.cl/p/...)');
+            return;
+        }
+        btnSaveQuickFlow.disabled = true;
+        btnSaveQuickFlow.innerText = 'Guardando...';
+        const cfg = StorageHelper.getFlowConfig();
+        cfg.flowUrl = val;
+        await StorageHelper.saveFlowConfig(cfg);
+        alert('¡Enlace de Flow guardado con éxito! Ya puedes presionar "Abrir Pasarela de Pago Flow".');
+        btnSaveQuickFlow.disabled = false;
+        btnSaveQuickFlow.innerText = 'Guardar Link';
+
+        const unconfiguredBox = document.getElementById('flow-unconfigured-box');
+        if (unconfiguredBox) unconfiguredBox.style.display = 'none';
+
+        const btnOpenFlow = document.getElementById('btn-flow-open-gateway');
+        if (btnOpenFlow) {
+            btnOpenFlow.href = val;
+            btnOpenFlow.onclick = null;
+        }
+    });
+
+    // Simulación de prueba para agendar sin salir a Flow
+    const btnFlowSimulate = document.getElementById('btn-flow-simulate');
+    btnFlowSimulate?.addEventListener('click', () => {
+        const proofInput = document.getElementById('flow-proof-order');
+        if (proofInput && !proofInput.value) proofInput.value = 'DEMO-FLOW-' + Math.floor(100000 + Math.random() * 900000);
+        const btnPaid = document.getElementById('btn-flow-confirm-paid');
+        if (btnPaid) btnPaid.click();
     });
 
     // Cerrar modal de Flow
@@ -1218,7 +1275,7 @@ function initAdminEvents() {
             }
 
             const updatedCfg = {
-                flowUrl: urlInput?.value.trim() || 'https://www.flow.cl/btn.php?token=abono5000',
+                flowUrl: urlInput?.value.trim() || '',
                 apiKey: apiKeyInput?.value.trim() || '',
                 secretKey: secretInput?.value.trim() || '',
                 isSandbox: sandboxInput ? sandboxInput.checked : false

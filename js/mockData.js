@@ -550,14 +550,22 @@ const StorageHelper = {
     getFlowConfig: function() {
         if (this._flowConfigCache) return this._flowConfigCache;
         const def = {
-            flowUrl: 'https://www.flow.cl/btn.php?token=abono5000',
+            flowUrl: '',
             apiKey: '',
             secretKey: '',
             isSandbox: false
         };
         try {
             const stored = localStorage.getItem('nicolett_flow_config');
-            this._flowConfigCache = stored ? { ...def, ...JSON.parse(stored) } : def;
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.flowUrl && parsed.flowUrl.includes('abono5000')) {
+                    parsed.flowUrl = '';
+                }
+                this._flowConfigCache = { ...def, ...parsed };
+            } else {
+                this._flowConfigCache = def;
+            }
         } catch(e) {
             this._flowConfigCache = def;
         }

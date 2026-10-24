@@ -506,6 +506,17 @@ function renderAgendarView() {
                         <div style="color: #1b5e20; font-weight: 700;"><strong>Monto Abono:</strong> $5.000 CLP</div>
                     </div>
 
+                    <div id="flow-unconfigured-box" style="display:none; background:#fff8e1; border:1px solid #ffe082; padding:14px; border-radius:6px; margin-bottom:15px; font-size:0.85rem; color:#b78103; text-align:left;">
+                        <strong style="display:block; margin-bottom:4px;"><i data-lucide="alert-circle" style="width:15px; height:15px; display:inline; vertical-align:middle;"></i> Enlace de cobro de Flow no configurado</strong>
+                        <p style="margin:0 0 8px; color:#5d4037; font-size:0.82rem; line-height:1.4;">
+                            Para redirigir a tu cuenta real de Flow.cl, pega a continuación el enlace de cobro de $5.000 generado en tu portal de Flow:
+                        </p>
+                        <div style="display:flex; gap:6px;">
+                            <input type="url" id="flow-quick-url" placeholder="https://www.flow.cl/btn.php?token=... o https://flow.cl/p/..." style="flex:1; padding:7px 9px; font-size:0.82rem; border:1px solid #ccc; border-radius:4px; font-family:inherit;">
+                            <button type="button" id="btn-save-quick-flow" class="btn btn-primary" style="padding:7px 12px; font-size:0.82rem; font-weight:600; white-space:nowrap;">Guardar Link</button>
+                        </div>
+                    </div>
+
                     <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;">
                         <a id="btn-flow-open-gateway" href="#" target="_blank" class="btn btn-primary" style="background: linear-gradient(135deg, #1b75bb, #0b4f82); border: none; padding: 13px; font-size: 1rem; font-weight: 700; display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none;">
                             <i data-lucide="credit-card" style="width:18px; height:18px;"></i> Abrir Pasarela de Pago Flow ($5.000)
@@ -522,6 +533,10 @@ function renderAgendarView() {
 
                         <button id="btn-flow-confirm-paid" class="btn" style="background: #2e7d32; color: white; border: none; padding: 13px; font-size: 0.98rem; font-weight: 700; display:flex; align-items:center; justify-content:center; gap:8px;">
                             <i data-lucide="check-circle" style="width:18px; height:18px;"></i> ¡Ya pagué en Flow! Confirmar Cita
+                        </button>
+
+                        <button id="btn-flow-simulate" type="button" class="btn btn-outline" style="border-color:#1b75bb; color:#1b75bb; padding:8px 12px; font-size:0.82rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px;">
+                            <i data-lucide="play-circle" style="width:15px; height:15px;"></i> Modo Prueba: Simular pago de $5.000 y agendar
                         </button>
                     </div>
 
