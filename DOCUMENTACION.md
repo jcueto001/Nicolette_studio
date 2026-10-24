@@ -253,19 +253,21 @@ Colección indexada por el UID de Firebase Authentication (`user.uid`). Define l
 
 ## 6. Autenticación y Control de Accesos
 
-1. **Acceso Oculto al Portal (Disparadores Privados para Administradora y Trabajadoras):**  
-   Para evitar que las clientas vean botones de administración o inicio de sesión en el menú principal, el portal cuenta con vías de acceso discretas:
-   - **Pie de Página (Footer):** Enlace sutil al lado del copyright (`Acceso Equipo` con ícono de candado y opacidad reducida).
-   - **Monograma del Logo ("NS"):** Clic directo sobre el distintivo circular `NS` en la barra de navegación.
-   - **Atajo Secreto de Teclado:** Presionar `Ctrl + Shift + A` o `Alt + A` en cualquier parte de la web.
-   - **Enlace Directo por URL:** Escribir `/#admin`, `/#portal` o `/#login` en la barra del navegador.
-   - **Detección Automática en Bienvenida:** Si en el modal inicial de clienta se ingresa el correo de la administradora o de alguna trabajadora registrada, el sistema abre directamente el modal de autenticación.
-2. **Verificación de Rol y Vistas Diferenciadas:**  
-   Al autenticar en Firebase Auth (o fallback local):
+1. **Acceso Independiente y Dedicado (Sin Pop-ups ni Mezcla con Clientas):**  
+   El ingreso de administración y colaboradoras está completamente desvinculado del formulario o ventana emergente de clientas ("Personaliza tu experiencia").
+   - Cuenta con una **página/vista integrada dedicada** (`renderAdminView`), donde se ingresa directamente correo y contraseña en pantalla completa, sin depender de ventanas emergentes (pop-ups).
+2. **Disparadores Privados y Discretos para el Equipo:**  
+   - **Barra de Navegación (Navbar):** Un candado discreto (`#nav-staff-door`) al final del menú, visible para el equipo con baja opacidad. Al autenticarse, se transforma automáticamente en `Portal Administradora` o `Portal Trabajadora (Nombre)`.
+   - **Pie de Página (Footer):** Enlace discreto al lado del copyright (`Acceso Equipo` con ícono de candado).
+   - **Monograma del Logo ("NS"):** Clic directo sobre el monograma `NS` en la barra superior.
+   - **Atajo Secreto de Teclado:** Presionar `Ctrl + Shift + A` o `Alt + A` en cualquier pantalla.
+   - **Enlace Directo por URL:** Escribir `/#admin` o `/#portal` en la barra de direcciones.
+3. **Verificación de Rol y Vistas Diferenciadas:**  
+   Al autenticar en Firebase Auth (o credenciales de contingencia):
    - **Administradora (`admin`):** Acceso total a Agenda, Fichas Clínicas, Galería, Dashboard & Finanzas, Directorio de Clientas, Inventario y Gestión de Trabajadoras.
-   - **Trabajadora (`profesional`):** Acceso filtrado a su Agenda de atenciones, Fichas Clínicas correspondientes a sus clientas y visualización/subida de fotos en Galería.
-3. **Cierre de Sesión:**  
-   - **Portal de Equipo:** El botón de salida (`#btn-logout`) limpia la sesión en `StorageHelper`, ejecuta `firebase.auth().signOut()`, oculta el enlace del portal en la barra de navegación y redirige a la vista de inicio.
+   - **Trabajadora (`profesional`):** Acceso a su Agenda de atenciones asignadas, Fichas Clínicas de sus clientas y visualización/subida de fotos en Galería.
+4. **Cierre de Sesión:**  
+   - **Portal de Equipo:** El botón de salida (`#btn-logout`) limpia la sesión en `StorageHelper`, ejecuta `firebase.auth().signOut()`, oculta el portal en el menú y redirige a la vista de inicio.
    - **Perfil de Clienta:** La función `logoutClientProfile()` limpia la clave `nicolett_personalization`, oculta el enlace de "Mi Perfil" y regresa a la vista de inicio.
 
 ---

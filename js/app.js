@@ -454,25 +454,43 @@ function renderAgendarView() {
 function renderAdminView() {
     const auth = StorageHelper.getAuth();
     if (!auth.loggedIn) {
-        if (typeof window.openAuthModal === 'function') {
-            setTimeout(() => window.openAuthModal(), 200);
-        }
         return `
-            <div class="container section" style="padding: 70px 20px; max-width: 520px; margin: 0 auto; text-align: center;">
-                <div class="card" style="padding: 40px 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); border-radius: var(--radius-md); border-top: 4px solid var(--clr-rose-gold);">
-                    <div style="width: 65px; height: 65px; background: var(--clr-nude-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--clr-rose-gold-dark);">
-                        <i data-lucide="shield-alert" style="width: 32px; height: 32px;"></i>
+            <div class="container section" style="padding: 70px 20px; max-width: 440px; margin: 0 auto;">
+                <div class="card" style="padding: 40px 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.07); border-radius: var(--radius-md); border-top: 4px solid var(--clr-rose-gold); background: white;">
+                    <div style="text-align: center; margin-bottom: 25px;">
+                        <div style="width: 64px; height: 64px; background: var(--clr-nude-light); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px; color: var(--clr-rose-gold-dark);">
+                            <i data-lucide="shield" style="width: 32px; height: 32px;"></i>
+                        </div>
+                        <h2 style="font-size: 1.6rem; color: var(--clr-neutral-dark); margin-bottom: 8px;">Portal de Administración</h2>
+                        <p style="color: var(--clr-neutral-gray); font-size: 0.9rem; margin: 0;">
+                            Acceso para Administradora y Trabajadoras
+                        </p>
                     </div>
-                    <h2 style="font-size: 1.6rem; color: var(--clr-neutral-dark); margin-bottom: 12px;">Portal Interno Privado</h2>
-                    <p style="color: var(--clr-neutral-gray); font-size: 0.95rem; margin-bottom: 25px; line-height: 1.5;">
-                        Este portal está reservado exclusivamente para la <strong>Administradora</strong> y <strong>Trabajadoras</strong> de Nicolett Studio.
-                    </p>
-                    <button class="btn btn-primary btn-block" onclick="window.openAuthModal()" style="display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; padding: 14px;">
-                        <i data-lucide="lock" style="width: 18px; height: 18px;"></i> Iniciar Sesión de Equipo
-                    </button>
-                    <p style="margin-top: 18px; font-size: 0.85rem; color: var(--clr-neutral-gray); margin-bottom: 0;">
-                        <a href="#" onclick="AppRouter.navigate('home')" style="color: var(--clr-rose-gold-dark); text-decoration: underline;">Volver a la Página Principal</a>
-                    </p>
+                    
+                    <form id="admin-login-form" style="display: flex; flex-direction: column; gap: 16px;">
+                        <div>
+                            <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem; color:var(--clr-neutral-dark);">Correo Electrónico</label>
+                            <input type="email" id="admin-login-email" required placeholder="tu-correo@estudio.cl" autocomplete="username"
+                                style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                        </div>
+                        <div>
+                            <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem; color:var(--clr-neutral-dark);">Contraseña</label>
+                            <input type="password" id="admin-login-password" required placeholder="••••••••" autocomplete="current-password"
+                                style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                        </div>
+                        
+                        <p id="admin-login-error" style="color:#c62828; background:#ffebee; padding:9px 12px; border-radius:4px; font-size:0.85rem; display:none; margin:0;"></p>
+                        
+                        <button type="submit" class="btn btn-primary btn-block" id="btn-admin-submit-login" style="padding:13px; font-weight:600; font-size:1rem; display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px;">
+                            <i data-lucide="log-in" style="width:18px; height:18px;"></i> Ingresar al Portal
+                        </button>
+                    </form>
+                    
+                    <div style="text-align: center; margin-top: 22px; padding-top: 15px; border-top: 1px solid #eee;">
+                        <a href="#" onclick="AppRouter.navigate('home')" style="color: var(--clr-neutral-gray); text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px;">
+                            <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Volver a la página principal
+                        </a>
+                    </div>
                 </div>
             </div>
         `;

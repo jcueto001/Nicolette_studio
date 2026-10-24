@@ -85,6 +85,7 @@ window.updateNavAuthVisibility = function() {
     const btnLogout = document.getElementById('btn-logout');
     const navPerfil = document.getElementById('nav-perfil');
     const navAdmin = document.getElementById('nav-admin');
+    const navStaffDoor = document.getElementById('nav-staff-door');
     const authData = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
     const isPersonalized = localStorage.getItem('nicolett_personalization');
 
@@ -98,15 +99,18 @@ window.updateNavAuthVisibility = function() {
             const isAdm = authData.user?.role === 'admin';
             navAdmin.textContent = isAdm ? 'Portal Administradora' : `Portal Trabajadora (${authData.user?.name || 'Equipo'})`;
         }
+        if (navStaffDoor) navStaffDoor.style.display = 'none';
     } else if (isPersonalized) {
         if (btnLogout) {
             btnLogout.style.display = 'inline-block';
             btnLogout.title = 'Cerrar sesión de mi perfil';
         }
         if (navAdmin) navAdmin.style.display = 'none';
+        if (navStaffDoor) navStaffDoor.style.display = 'inline-flex';
     } else {
         if (btnLogout) btnLogout.style.display = 'none';
         if (navAdmin) navAdmin.style.display = 'none';
+        if (navStaffDoor) navStaffDoor.style.display = 'inline-flex';
     }
 
     if (navPerfil) {
@@ -132,13 +136,25 @@ function setupPersonalization() {
     window.updateNavAuthVisibility();
 
     const isPersonalized = localStorage.getItem('nicolett_personalization');
+    const authData = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
+
+    // Si ya tiene sesión activa como administradora o trabajadora, NUNCA mostrar este popup
+    if (authData && authData.loggedIn) {
+        if (modal) modal.style.display = 'none';
+        return;
+    }
 
     if (!isPersonalized && modal) {
         setTimeout(() => {
+            // No mostrar si está en el portal admin o ya inició sesión
+            if (typeof AppRouter !== 'undefined' && AppRouter.currentRoute === 'admin') return;
+            const currentAuth = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
+            if (currentAuth && currentAuth.loggedIn) return;
+
             modal.style.display = 'flex';
             modal.offsetHeight;
             modal.style.opacity = '1';
-        }, 10000);
+        }, 12000);
     }
 
     if (form) {
@@ -147,19 +163,6 @@ function setupPersonalization() {
             const name = document.getElementById('personalize-name').value.trim();
             const email = document.getElementById('personalize-email').value.trim();
             const btn = form.querySelector('button[type="submit"]');
-
-            // --- Lógica Especial para Administradora y Trabajadoras ---
-            const allProfs = typeof StorageHelper !== 'undefined' ? StorageHelper.getProfessionals() : [];
-            const isTeamEmail = email.toLowerCase() === 'nicolette@gmail.com' || allProfs.some(p => p.email && p.email.toLowerCase() === email.toLowerCase());
-
-            if (isTeamEmail) {
-                if (modal) modal.style.display = 'none';
-                window.openAuthModal();
-                const authEmail = document.getElementById('auth-email');
-                if (authEmail) authEmail.value = email;
-                return; // Detenemos el flujo normal de clienta
-            }
-            // -----------------------------------------------------------
 
             btn.disabled = true;
             btn.innerText = 'Guardando...';
@@ -194,20 +197,96 @@ function setupPersonalization() {
         });
     }
 
-    // --- Lógica de Autenticación Modal Administradora y Trabajadoras ---
-    const closeAuth = document.getElementById('close-auth');
-    if (closeAuth) {
-        closeAuth.addEventListener('click', () => {
-            window.closeAuthModal();
-        });
-    }
+    // --- Autenticación Compartida para Administradora y Trabajadoras ---
+    window.authenticateStaffUser = async function(email, password) {
+        let prof = null;
+
+        if (typeof firebase !== 'undefined' && firebase.auth) {
+            try {
+                const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+                const uid = userCredential.user.uid;
+                const userEmail = userCredential.user.email || email;
+
+                let role = 'profesional';
+                let userName = 'Colaboradora';
+
+                try {
+                    const db = firebase.firestore();
+                    const userDoc = await db.collection('Usuarios').doc(uid).get();
+                    if (userDoc.exists) {
+                        const uData = userDoc.data();
+                        const isAdm = (uData.rol === 'Admin' || uData.rol === 'admin');
+                        role = isAdm ? 'admin' : 'profesional';
+                        userName = uData.nombre || uData.name || (isAdm ? 'Nicolett' : 'Trabajadora');
+                    } else {
+                        const profs = StorageHelper.getProfessionals();
+                        const found = profs.find(p => p.email && p.email.toLowerCase() === userEmail.toLowerCase());
+                        if (found) {
+                            role = found.role || 'profesional';
+                            userName = found.name || 'Colaboradora';
+                        } else if (userEmail.toLowerCase().includes('nicolette') || userEmail.toLowerCase().includes('admin')) {
+                            role = 'admin';
+                            userName = 'Nicolett';
+                        }
+                    }
+                } catch (docErr) {
+                    console.warn("No se pudo leer colección Usuarios:", docErr);
+                }
+
+                prof = {
+                    id: uid,
+                    name: userName,
+                    email: userEmail,
+                    role: role
+                };
+            } catch (fbAuthErr) {
+                console.warn("Firebase Auth falló, verificando credenciales locales:", fbAuthErr);
+                const profs = StorageHelper.getProfessionals();
+                const localFound = profs.find(p => p.email && p.email.toLowerCase() === email.toLowerCase());
+                if (localFound && (password === 'admin123' || password === '123456')) {
+                    prof = {
+                        id: localFound.id || 'p_local',
+                        name: localFound.name,
+                        email: localFound.email,
+                        role: localFound.role || 'profesional'
+                    };
+                } else if (email.toLowerCase() === 'nicolette@gmail.com' && (password === 'admin123' || password === '123456')) {
+                    prof = {
+                        id: 'p1',
+                        name: 'Nicolett',
+                        email: 'nicolette@gmail.com',
+                        role: 'admin'
+                    };
+                } else {
+                    throw fbAuthErr;
+                }
+            }
+        } else {
+            const profs = StorageHelper.getProfessionals();
+            const localFound = profs.find(p => p.email && p.email.toLowerCase() === email.toLowerCase());
+            if (localFound) {
+                prof = {
+                    id: localFound.id || 'p_local',
+                    name: localFound.name,
+                    email: localFound.email,
+                    role: localFound.role || 'profesional'
+                };
+            } else {
+                throw new Error("Credenciales inválidas.");
+            }
+        }
+
+        return prof;
+    };
 
     // Disparador 1: Enlace discreto en el pie de página (footer)
     const linkPortalOculto = document.getElementById('link-portal-oculto');
     if (linkPortalOculto) {
         linkPortalOculto.addEventListener('click', (e) => {
             e.preventDefault();
-            window.openAuthModal();
+            if (typeof AppRouter !== 'undefined') {
+                AppRouter.navigate('admin');
+            }
         });
     }
 
@@ -217,7 +296,9 @@ function setupPersonalization() {
         logoSecret.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            window.openAuthModal();
+            if (typeof AppRouter !== 'undefined') {
+                AppRouter.navigate('admin');
+            }
         });
     }
 
@@ -225,10 +306,13 @@ function setupPersonalization() {
     document.addEventListener('keydown', (e) => {
         if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') || (e.altKey && e.key.toLowerCase() === 'a')) {
             e.preventDefault();
-            window.openAuthModal();
+            if (typeof AppRouter !== 'undefined') {
+                AppRouter.navigate('admin');
+            }
         }
     });
 
+    // Formulario modal opcional si se invoca
     const authForm = document.getElementById('auth-form');
     if (authForm) {
         authForm.addEventListener('submit', async (e) => {
@@ -243,100 +327,15 @@ function setupPersonalization() {
             btnLogin.innerHTML = 'Ingresando...';
 
             try {
-                let prof = null;
-
-                // 1. Intentar autenticación mediante Firebase Auth
-                if (typeof firebase !== 'undefined' && firebase.auth) {
-                    try {
-                        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
-                        const uid = userCredential.user.uid;
-                        const userEmail = userCredential.user.email || email;
-
-                        let role = 'profesional';
-                        let userName = 'Colaboradora';
-
-                        // Consultar colección Usuarios en Firestore
-                        try {
-                            const db = firebase.firestore();
-                            const userDoc = await db.collection('Usuarios').doc(uid).get();
-                            if (userDoc.exists) {
-                                const uData = userDoc.data();
-                                const isAdm = (uData.rol === 'Admin' || uData.rol === 'admin');
-                                role = isAdm ? 'admin' : 'profesional';
-                                userName = uData.nombre || uData.name || (isAdm ? 'Nicolett' : 'Trabajadora');
-                            } else {
-                                // Si no está en Usuarios, buscar en Profesionales o StorageHelper
-                                const profs = StorageHelper.getProfessionals();
-                                const found = profs.find(p => p.email && p.email.toLowerCase() === userEmail.toLowerCase());
-                                if (found) {
-                                    role = found.role || 'profesional';
-                                    userName = found.name || 'Colaboradora';
-                                } else if (userEmail.toLowerCase().includes('nicolette') || userEmail.toLowerCase().includes('admin')) {
-                                    role = 'admin';
-                                    userName = 'Nicolett';
-                                }
-                            }
-                        } catch (docErr) {
-                            console.warn("No se pudo leer colección Usuarios:", docErr);
-                        }
-
-                        prof = {
-                            id: uid,
-                            name: userName,
-                            email: userEmail,
-                            role: role
-                        };
-                    } catch (fbAuthErr) {
-                        console.warn("Firebase Auth falló, verificando credenciales locales de contingencia:", fbAuthErr);
-                        // Fallback de contingencia para pruebas locales
-                        const profs = StorageHelper.getProfessionals();
-                        const localFound = profs.find(p => p.email && p.email.toLowerCase() === email.toLowerCase());
-                        if (localFound && (password === 'admin123' || password === '123456')) {
-                            prof = {
-                                id: localFound.id || 'p_local',
-                                name: localFound.name,
-                                email: localFound.email,
-                                role: localFound.role || 'profesional'
-                            };
-                        } else if (email.toLowerCase() === 'nicolette@gmail.com' && (password === 'admin123' || password === '123456')) {
-                            prof = {
-                                id: 'p1',
-                                name: 'Nicolett',
-                                email: 'nicolette@gmail.com',
-                                role: 'admin'
-                            };
-                        } else {
-                            throw fbAuthErr;
-                        }
-                    }
-                } else {
-                    const profs = StorageHelper.getProfessionals();
-                    const localFound = profs.find(p => p.email && p.email.toLowerCase() === email.toLowerCase());
-                    if (localFound) {
-                        prof = {
-                            id: localFound.id || 'p_local',
-                            name: localFound.name,
-                            email: localFound.email,
-                            role: localFound.role || 'profesional'
-                        };
-                    } else {
-                        throw new Error("Credenciales inválidas.");
-                    }
-                }
-
+                const prof = await window.authenticateStaffUser(email, password);
                 if (prof) {
                     StorageHelper.setAuth({ loggedIn: true, user: prof });
-
-                    // Actualizar visibilidad de enlaces en el menú
                     window.updateNavAuthVisibility();
                     window.closeAuthModal();
-
-                    // Navegar al portal interno
                     if (typeof AppRouter !== 'undefined') {
                         AppRouter.navigate('admin');
                     }
                 }
-
             } catch (error) {
                 console.error("Error Auth:", error);
                 errorEl.innerText = error.message || 'Credenciales inválidas o error de conexión.';
@@ -698,7 +697,41 @@ function initAdminEvents() {
     if (window.lucide) window.lucide.createIcons();
 
     const auth = StorageHelper.getAuth();
-    if (!auth.loggedIn) return;
+    if (!auth.loggedIn) {
+        // Enlazar formulario de login integrado directamente en la página (sin popups)
+        const loginForm = document.getElementById('admin-login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('admin-login-email').value.trim();
+                const password = document.getElementById('admin-login-password').value.trim();
+                const errorEl = document.getElementById('admin-login-error');
+                const btnSubmit = document.getElementById('btn-admin-submit-login');
+
+                errorEl.style.display = 'none';
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = 'Ingresando...';
+
+                try {
+                    const prof = await window.authenticateStaffUser(email, password);
+                    if (prof) {
+                        StorageHelper.setAuth({ loggedIn: true, user: prof });
+                        window.updateNavAuthVisibility();
+                        AppRouter.navigate('admin');
+                    }
+                } catch (err) {
+                    console.error("Error Auth:", err);
+                    errorEl.innerText = err.message || 'Credenciales inválidas o error de conexión.';
+                    errorEl.style.display = 'block';
+                } finally {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '<i data-lucide="log-in" style="width:18px; height:18px;"></i> Ingresar al Portal';
+                    if (window.lucide) lucide.createIcons();
+                }
+            });
+        }
+        return;
+    }
 
     // Pestañas (Tabs)
     const tabs = document.querySelectorAll('.admin-tab');
