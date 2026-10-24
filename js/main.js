@@ -4,7 +4,9 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Inicializar Iconos
-    lucide.createIcons();
+    if (window.lucide) {
+        lucide.createIcons();
+    }
 
     // Mobile Menu Toggle
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
@@ -919,7 +921,7 @@ function initAdminEvents() {
                 const reader = new FileReader();
                 reader.onload = function (event) {
                     const img = new Image();
-                    img.onload = function () {
+                    img.onload = async function () {
                         const canvas = document.createElement('canvas');
                         let width = img.width;
                         let height = img.height;
