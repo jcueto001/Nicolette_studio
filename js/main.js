@@ -243,14 +243,15 @@ function setupPersonalization() {
                 console.warn("Firebase Auth falló, verificando credenciales locales:", fbAuthErr);
                 const profs = StorageHelper.getProfessionals();
                 const localFound = profs.find(p => p.email && p.email.toLowerCase() === email.toLowerCase());
-                if (localFound && (password === 'admin123' || password === '123456')) {
+                const validPasswords = ['admin123', '123456', 'Nicolett123!'];
+                if (localFound && validPasswords.includes(password)) {
                     prof = {
                         id: localFound.id || 'p_local',
                         name: localFound.name,
                         email: localFound.email,
                         role: localFound.role || 'profesional'
                     };
-                } else if (email.toLowerCase() === 'nicolette@gmail.com' && (password === 'admin123' || password === '123456')) {
+                } else if (email.toLowerCase() === 'nicolette@gmail.com' && validPasswords.includes(password)) {
                     prof = {
                         id: 'p1',
                         name: 'Nicolett',
