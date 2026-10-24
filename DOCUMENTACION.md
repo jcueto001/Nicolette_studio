@@ -253,15 +253,20 @@ Colección indexada por el UID de Firebase Authentication (`user.uid`). Define l
 
 ## 6. Autenticación y Control de Accesos
 
-1. **Flujo de Acceso:**  
-   El acceso administrativo se realiza mediante Firebase Auth con correo y contraseña a través del modal `#auth-modal`.
-2. **Detección Automática de Administradora:**  
-   En `js/main.js`, si en el formulario de bienvenida de clienta se ingresa el correo `nicolette@gmail.com`, el sistema interrumpe el flujo normal y despliega directamente el modal de contraseña administrativo.
-3. **Verificación de Rol:**  
-   Al autenticar el usuario en Firebase Auth, el sistema consulta el documento en la colección `Usuarios` con el UID obtenido. Si el campo `rol` es `'Admin'`, se otorga permiso completo de gestión.
-4. **Cierre de Sesión:**  
-   - **Administración:** El botón de salir ejecuta `firebase.auth().signOut()`, limpia la sesión en `StorageHelper`, oculta el acceso al portal y redirige a la vista principal.
-   - **Perfil de Clienta:** La función `logoutClientProfile()` limpia la clave `nicolett_personalization` de `localStorage`, oculta el enlace de "Mi Perfil" en la navegación y regresa a la vista de inicio (`home`).
+1. **Acceso Oculto al Portal (Disparadores Privados para Administradora y Trabajadoras):**  
+   Para evitar que las clientas vean botones de administración o inicio de sesión en el menú principal, el portal cuenta con vías de acceso discretas:
+   - **Pie de Página (Footer):** Enlace sutil al lado del copyright (`Acceso Equipo` con ícono de candado y opacidad reducida).
+   - **Monograma del Logo ("NS"):** Clic directo sobre el distintivo circular `NS` en la barra de navegación.
+   - **Atajo Secreto de Teclado:** Presionar `Ctrl + Shift + A` o `Alt + A` en cualquier parte de la web.
+   - **Enlace Directo por URL:** Escribir `/#admin`, `/#portal` o `/#login` en la barra del navegador.
+   - **Detección Automática en Bienvenida:** Si en el modal inicial de clienta se ingresa el correo de la administradora o de alguna trabajadora registrada, el sistema abre directamente el modal de autenticación.
+2. **Verificación de Rol y Vistas Diferenciadas:**  
+   Al autenticar en Firebase Auth (o fallback local):
+   - **Administradora (`admin`):** Acceso total a Agenda, Fichas Clínicas, Galería, Dashboard & Finanzas, Directorio de Clientas, Inventario y Gestión de Trabajadoras.
+   - **Trabajadora (`profesional`):** Acceso filtrado a su Agenda de atenciones, Fichas Clínicas correspondientes a sus clientas y visualización/subida de fotos en Galería.
+3. **Cierre de Sesión:**  
+   - **Portal de Equipo:** El botón de salida (`#btn-logout`) limpia la sesión en `StorageHelper`, ejecuta `firebase.auth().signOut()`, oculta el enlace del portal en la barra de navegación y redirige a la vista de inicio.
+   - **Perfil de Clienta:** La función `logoutClientProfile()` limpia la clave `nicolett_personalization`, oculta el enlace de "Mi Perfil" y regresa a la vista de inicio.
 
 ---
 

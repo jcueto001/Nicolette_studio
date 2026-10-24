@@ -29,8 +29,33 @@ const AppRouter = {
             });
         });
 
-        // Cargar ruta inicial
-        this.navigate('home');
+        // Revisar si viene con un hash directo en la URL (ej: #admin, #portal o #login)
+        const initialHash = window.location.hash.replace('#', '').toLowerCase();
+        if (initialHash === 'admin' || initialHash === 'portal') {
+            this.navigate('admin');
+        } else if (initialHash === 'login') {
+            this.navigate('home');
+            setTimeout(() => {
+                if (typeof window.openAuthModal === 'function') window.openAuthModal();
+            }, 300);
+        } else if (initialHash && this.routes[initialHash]) {
+            this.navigate(initialHash);
+        } else {
+            // Cargar ruta inicial
+            this.navigate('home');
+        }
+
+        // Escuchar cambios de hash en la barra de direcciones
+        window.addEventListener('hashchange', () => {
+            const h = window.location.hash.replace('#', '').toLowerCase();
+            if (h === 'admin' || h === 'portal') {
+                this.navigate('admin');
+            } else if (h === 'login') {
+                if (typeof window.openAuthModal === 'function') window.openAuthModal();
+            } else if (h && this.routes[h]) {
+                this.navigate(h);
+            }
+        });
     },
 
     refresh: function () {
@@ -429,7 +454,28 @@ function renderAgendarView() {
 function renderAdminView() {
     const auth = StorageHelper.getAuth();
     if (!auth.loggedIn) {
-        return `<div class="container section text-center"><h3>Acceso Restringido</h3><p>Por favor inicie sesión desde el botón "Portal Interno".</p></div>`;
+        if (typeof window.openAuthModal === 'function') {
+            setTimeout(() => window.openAuthModal(), 200);
+        }
+        return `
+            <div class="container section" style="padding: 70px 20px; max-width: 520px; margin: 0 auto; text-align: center;">
+                <div class="card" style="padding: 40px 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); border-radius: var(--radius-md); border-top: 4px solid var(--clr-rose-gold);">
+                    <div style="width: 65px; height: 65px; background: var(--clr-nude-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--clr-rose-gold-dark);">
+                        <i data-lucide="shield-alert" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h2 style="font-size: 1.6rem; color: var(--clr-neutral-dark); margin-bottom: 12px;">Portal Interno Privado</h2>
+                    <p style="color: var(--clr-neutral-gray); font-size: 0.95rem; margin-bottom: 25px; line-height: 1.5;">
+                        Este portal está reservado exclusivamente para la <strong>Administradora</strong> y <strong>Trabajadoras</strong> de Nicolett Studio.
+                    </p>
+                    <button class="btn btn-primary btn-block" onclick="window.openAuthModal()" style="display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; padding: 14px;">
+                        <i data-lucide="lock" style="width: 18px; height: 18px;"></i> Iniciar Sesión de Equipo
+                    </button>
+                    <p style="margin-top: 18px; font-size: 0.85rem; color: var(--clr-neutral-gray); margin-bottom: 0;">
+                        <a href="#" onclick="AppRouter.navigate('home')" style="color: var(--clr-rose-gold-dark); text-decoration: underline;">Volver a la Página Principal</a>
+                    </p>
+                </div>
+            </div>
+        `;
     }
 
     const isAdmin = auth.user.role === 'admin';
@@ -608,20 +654,23 @@ function renderAdminView() {
 
     return `
         <div class="container section">
-            <div class="section-header" style="margin-bottom: 30px; display:flex; justify-content: space-between; align-items:center;">
+            <div class="section-header" style="margin-bottom: 30px; display:flex; justify-content: space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                 <h2 class="section-title" style="text-align: left; margin:0;">Portal ${isAdmin ? 'Administrador' : 'Trabajadora'}</h2>
-                <div style="font-weight:bold; color:var(--clr-rose-gold);">${auth.user.name}</div>
+                <div style="font-weight:bold; color:var(--clr-rose-gold-dark); background:var(--clr-nude-light); padding:6px 14px; border-radius:20px; font-size:0.9rem;">
+                    <i data-lucide="user" style="width:14px; height:14px; display:inline-block; vertical-align:middle; margin-right:4px;"></i>
+                    ${auth.user.name || (isAdmin ? 'Administradora' : 'Trabajadora')}
+                </div>
             </div>
             
             <div class="tabs-container" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid #ddd; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; -webkit-overflow-scrolling: touch;">
                 <button class="admin-tab active" data-target="tab-agenda" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid var(--clr-rose-gold); font-weight:bold; color:var(--clr-neutral-dark); flex-shrink: 0;">Agenda</button>
                 <button class="admin-tab" data-target="tab-fichas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Fichas Clínicas</button>
+                <button class="admin-tab" data-target="tab-galeria" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Galería</button>
                 ${isAdmin ? `
                 <button class="admin-tab" data-target="tab-finanzas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Dashboard & Finanzas</button>
                 <button class="admin-tab" data-target="tab-clientas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Directorio</button>
                 <button class="admin-tab" data-target="tab-inventario" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Inventario</button>
                 <button class="admin-tab" data-target="tab-profs" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Trabajadoras</button>
-                <button class="admin-tab" data-target="tab-galeria" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Galería</button>
                 ` : ''}
             </div>
 

@@ -25,7 +25,7 @@
     <header class="navbar">
         <div class="container nav-content">
             <a href="#" class="logo" data-route="home">
-                <div class="logo-icon-text">NS</div>
+                <div class="logo-icon-text" id="logo-icon-secret" title="Nicolett Studio">NS</div>
                 <div style="display: flex; flex-direction: column;">
                     <span class="logo-text">Nicolett Studio</span>
                     <span
@@ -84,6 +84,10 @@
         </div>
         <div class="footer-bottom">
             <p>&copy; 2026 Nicolett Studio Fantasy. Todos los derechos reservados.</p>
+            <a href="#" id="link-portal-oculto" class="footer-staff-link" title="Acceso de Colaboradoras y Administración" aria-label="Acceso privado para el equipo">
+                <i data-lucide="lock"></i>
+                <span>Acceso Equipo</span>
+            </a>
         </div>
     </footer>
 
@@ -283,29 +287,38 @@
         </div>
     </div>
 
-    <!-- Auth Modal (Simulado) -->
+    <!-- Auth Modal (Portal Privado para Administradora y Trabajadoras) -->
     <div id="auth-modal"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 3000; align-items:center; justify-content:center;">
-        <div class="card" style="max-width: 400px; width: 90%; background: white;">
-            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>Acceso Interno</h3>
-                <button onclick="document.getElementById('auth-modal').style.display='none'"
-                    style="background:none; border:none; cursor:pointer;"><i data-lucide="x"></i></button>
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(3px); z-index: 3000; align-items:center; justify-content:center;">
+        <div class="card" style="max-width: 420px; width: 90%; background: white; border-top: 4px solid var(--clr-rose-gold); box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 1.3rem; display: flex; align-items: center; gap: 8px; color: var(--clr-neutral-dark);">
+                    <i data-lucide="shield" style="width: 20px; height: 20px; color: var(--clr-rose-gold-dark);"></i>
+                    Portal de Equipo
+                </h3>
+                <button id="close-auth" onclick="window.closeAuthModal()"
+                    style="background:none; border:none; cursor:pointer; color: var(--clr-neutral-gray); padding: 4px;">
+                    <i data-lucide="x"></i>
+                </button>
             </div>
-            <p style="margin-bottom: 20px; color: var(--clr-neutral-gray);">Ingresa tus credenciales para acceder.</p>
+            <p style="margin-bottom: 20px; color: var(--clr-neutral-gray); font-size: 0.9rem; line-height: 1.4;">
+                Acceso exclusivo para la <strong>Administradora</strong> y <strong>Trabajadoras</strong> de Nicolett Studio.
+            </p>
             <form id="auth-form" style="display: flex; flex-direction: column; gap: 15px;">
                 <div>
-                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Correo Electrónico</label>
-                    <input type="email" id="auth-email" required placeholder="ejemplo@estudio.cl"
-                        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                    <label style="display:block; margin-bottom:6px; font-weight:600; font-size: 0.9rem;">Correo Electrónico</label>
+                    <input type="email" id="auth-email" required placeholder="tu-correo@estudio.cl" autocomplete="username"
+                        style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size: 0.95rem;">
                 </div>
                 <div>
-                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Contraseña</label>
-                    <input type="password" id="auth-password" required placeholder="••••••••"
-                        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                    <label style="display:block; margin-bottom:6px; font-weight:600; font-size: 0.9rem;">Contraseña</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" autocomplete="current-password"
+                        style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size: 0.95rem;">
                 </div>
-                <p id="auth-error" style="color: red; font-size: 0.9rem; display: none; margin: 0;"></p>
-                <button type="submit" class="btn btn-primary" id="btn-login" style="margin-top: 10px;">Ingresar</button>
+                <p id="auth-error" style="color: #c62828; background: #ffebee; padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; display: none; margin: 0;"></p>
+                <button type="submit" class="btn btn-primary" id="btn-login" style="margin-top: 5px; padding: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i data-lucide="log-in" style="width: 16px; height: 16px;"></i> Ingresar al Portal
+                </button>
             </form>
         </div>
     </div>

@@ -383,11 +383,40 @@ button {
 }
 
 .footer-bottom {
-    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
     padding-top: 20px;
     border-top: 1px solid var(--clr-nude);
     color: var(--clr-neutral-gray);
-    font-size: 0.9rem;
+    font-size: 0.88rem;
+}
+
+.footer-staff-link {
+    color: var(--clr-neutral-gray);
+    opacity: 0.35;
+    text-decoration: none;
+    font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: opacity var(--transition-fast), color var(--transition-fast), background-color var(--transition-fast);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.footer-staff-link:hover {
+    opacity: 0.95;
+    color: var(--clr-rose-gold-dark);
+    background-color: var(--clr-nude-light);
+}
+
+.footer-staff-link i {
+    width: 13px;
+    height: 13px;
 }
 
 /* --- Floating WhatsApp CTA --- */
