@@ -939,10 +939,16 @@ function initAdminEvents() {
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
 
                         try {
-                            StorageHelper.addGalleryImage({
+                            await StorageHelper.addGalleryImage({
                                 title: titleInput.value.trim(),
+                                serviceName: titleInput.value.trim(),
+                                source: 'admin',
+                                date: new Date().toLocaleDateString('es-CL'),
                                 src: dataUrl
                             });
+                            formGallery.reset();
+                            statusGallery.style.display = 'none';
+                            alert("¡Foto agregada a la galería con éxito desde el panel de administración!");
                             AppRouter.refresh(); // Recargar para ver los cambios
                         } catch (err) {
                             alert("Error: No hay más espacio en la memoria. Por favor, elimina algunas fotos de la galería primero.");
@@ -964,6 +970,48 @@ function initAdminEvents() {
             if (confirm('¿Estás segura de eliminar permanentemente esta ficha?')) {
                 await StorageHelper.deleteFicha(btn.getAttribute('data-fichaid'));
                 if (typeof AppRouter !== 'undefined') AppRouter.refresh();
+            }
+        });
+    });
+
+    // Descargar imagen de galería (Panel Admin)
+    document.querySelectorAll('.btn-download-gallery').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const src = btn.getAttribute('data-src');
+            const title = btn.getAttribute('data-title') || 'trabajo';
+            const filename = `nicolett-studio-${title}-${Date.now()}.jpg`;
+
+            try {
+                if (src.startsWith('data:')) {
+                    const a = document.createElement('a');
+                    a.href = src;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    return;
+                }
+                const res = await fetch(src, { mode: 'cors' });
+                const blob = await res.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+            } catch (err) {
+                console.warn("Descarga con blob no permitida por CORS, abriendo:", err);
+                const a = document.createElement('a');
+                a.href = src;
+                a.target = '_blank';
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
             }
         });
     });
@@ -1681,6 +1729,17 @@ function setupClientPhotoModal() {
                 if (persStr) pers = JSON.parse(persStr);
             } catch(err) {}
 
+            // Validar que la clienta tenga citas agendadas previamente
+            const clientAppointments = (pers && pers.email) 
+                ? StorageHelper.getAppointments().filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase())
+                : [];
+
+            if (clientAppointments.length === 0) {
+                alert("Acción no permitida: Solo las clientas con citas agendadas previamente pueden subir fotos.");
+                closeModal();
+                return;
+            }
+
             btnSubmit.disabled = true;
             btnSubmit.innerText = "Guardando en galería...";
 
@@ -1725,65 +1784,42 @@ function initPerfilEvents() {
         if (persStr) pers = JSON.parse(persStr);
     } catch(e) {}
 
+    // Obtener citas de la clienta
+    const clientAppointments = (pers && pers.email)
+        ? StorageHelper.getAppointments().filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase())
+        : [];
+
     const modal = document.getElementById('client-photo-modal');
     const serviceSelect = document.getElementById('client-photo-service');
 
     function populateServiceSelect(preselectedService) {
         if (!serviceSelect) return;
-        serviceSelect.innerHTML = '<option value="">Selecciona un servicio...</option>';
+        serviceSelect.innerHTML = '<option value="">Selecciona el servicio que te realizaste...</option>';
 
-        const addedServices = new Set();
-
-        // 1. Citas de la clienta
-        if (pers && pers.email) {
-            const clientApps = StorageHelper.getAppointments().filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase());
-            if (clientApps.length > 0) {
-                const groupOpt = document.createElement('optgroup');
-                groupOpt.label = 'Tus Citas Realizadas';
-                clientApps.forEach(a => {
-                    const sName = a.servicio || 'Servicio';
-                    const label = `${sName} (${a.date} • ${a.profesional || 'Especialista'})`;
-                    const opt = document.createElement('option');
-                    opt.value = sName;
-                    opt.textContent = label;
-                    if (preselectedService && preselectedService === sName) {
-                        opt.selected = true;
-                    }
-                    groupOpt.appendChild(opt);
-                    addedServices.add(sName);
-                });
-                serviceSelect.appendChild(groupOpt);
-            }
-        }
-
-        // 2. Servicios del Estudio
-        const catalogGroup = document.createElement('optgroup');
-        catalogGroup.label = 'Servicios de Nicolett Studio';
-        const defaultServices = typeof mockData !== 'undefined' && mockData.services 
-            ? mockData.services.map(s => s.name)
-            : ['Esmaltado Permanente', 'Uñas Acrílicas', 'Lifting de Pestañas', 'Tratamiento Capilar', 'Perfilado de Cejas', 'Pedicure Spa'];
-
-        defaultServices.forEach(sName => {
-            if (!addedServices.has(sName)) {
+        if (clientAppointments.length > 0) {
+            const groupOpt = document.createElement('optgroup');
+            groupOpt.label = 'Tus Citas Realizadas en Nicolett Studio';
+            clientAppointments.forEach(a => {
+                const sName = a.servicio || 'Servicio';
+                const label = `${sName} (${a.date} • ${a.profesional || 'Especialista'})`;
                 const opt = document.createElement('option');
                 opt.value = sName;
-                opt.textContent = sName;
-                if (preselectedService && preselectedService === sName) {
+                opt.textContent = label;
+                if (preselectedService && (preselectedService === sName || preselectedService === label)) {
                     opt.selected = true;
                 }
-                catalogGroup.appendChild(opt);
-            }
-        });
-        serviceSelect.appendChild(catalogGroup);
-
-        // Opción personalizada
-        const otherOpt = document.createElement('option');
-        otherOpt.value = 'Otro Servicio';
-        otherOpt.textContent = 'Otro servicio de belleza';
-        serviceSelect.appendChild(otherOpt);
+                groupOpt.appendChild(opt);
+            });
+            serviceSelect.appendChild(groupOpt);
+        }
     }
 
     function openModalWithService(serviceName) {
+        // Validación obligatoria: Solo clientas con citas pueden subir fotos
+        if (clientAppointments.length === 0) {
+            alert("Para poder subir fotos a la galería, debes tener al menos una cita agendada o completada previamente.");
+            return;
+        }
         populateServiceSelect(serviceName);
         if (modal) {
             modal.style.display = 'flex';

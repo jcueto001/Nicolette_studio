@@ -126,12 +126,14 @@ Accesible mediante la ruta `'perfil'` (`renderPerfilView`):
 * Muestra el resumen de la clienta (nombre y correo registrados en el navegador en la clave `nicolett_personalization`).
 * Consulta las citas históricas y futuras de esa clienta comparando `clientEmail` contra la colección `Citas`.
 * Ordena cronológicamente las visitas y muestra el estado actual de cada reserva.
-* **Captura de Fotos del Servicio:**
-  - Incluye un banner principal y botones directos en cada tarjeta de cita ("Sacar foto de este servicio").
+* **Captura de Fotos del Servicio (Exclusivo con Citas Agendadas):**
+  - **Restricción de Acceso:** La clienta **solo** puede acceder a la subida y captura de fotos si tiene al menos una cita agendada o completada previamente. Si no cuenta con citas, el sistema muestra una tarjeta informativa con candado invitándola a agendar su primera cita.
+  - Al contar con citas previas, se habilita el banner de invitación y el botón en cada cita ("Sacar foto de este servicio").
   - Abre el modal `#client-photo-modal` que permite:
     - **Cámara Móvil Nativa:** Abre la cámara trasera en smartphones/tablets (`accept="image/*" capture="environment"`).
     - **Archivos / Galería:** Selección de fotografías desde la biblioteca local.
     - **Webcam en Vivo:** Transmisión y captura de instantánea en computadores mediante `navigator.mediaDevices.getUserMedia`.
+    - **Selector Estricto de Servicio:** El menú desplegable muestra exclusivamente los servicios de las citas que la clienta agendó o se realizó.
   - Optimización en cliente: Redimensionamiento automático a máximo 800px y compresión JPEG al 70% mediante Canvas HTML5 para no saturar memoria.
   - Guarda la imagen con metadatos (`source: 'client'`, nombre y correo de la clienta, servicio y fecha) en `StorageHelper` y la sincroniza con Firebase Firestore.
 * **Galería de Resultados de la Clienta:** Muestra el listado de fotos aportadas por la usuaria, con fecha, servicio e indicador de publicación en la galería del salón, permitiéndole además eliminar sus fotos si lo desea.
@@ -153,7 +155,8 @@ El panel se organiza en pestañas operativas:
 4. **Inventario:** Vista de insumos con niveles de alerta para productos con stock bajo.
 5. **Equipo / Profesionales:** Alta y baja de especialistas.
 6. **Galería:**
-   - Carga de fotografías oficiales del estudio con compresión automática.
+   - **Subida desde Administración:** Carga directa de fotografías oficiales del estudio con título/servicio, compresión automática y reseteo del formulario.
+   - **Descarga de Fotos:** Cada tarjeta en la galería incluye un botón de descarga directa (`.btn-download-gallery`) que permite a la administradora guardar en su dispositivo cualquier foto (tanto subida por clientas como oficiales).
    - **Integración con Fotos de Clientas:** Despliega todas las fotos subidas desde el portal de clientas identificadas con insignias rose gold (`Clienta: [Nombre]`, servicio y fecha).
    - **Filtros Dinámicos:** Pestañas de filtrado ("Todas", "Subidas por Clientas 💕", "Estudio").
    - Eliminación de imágenes con confirmación tanto para fotos oficiales como aportadas.

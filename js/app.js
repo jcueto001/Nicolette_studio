@@ -831,9 +831,14 @@ function renderAdminView() {
                                         ${img.date ? img.date : ''} ${isClient && img.clientEmail ? '• ' + img.clientEmail : ''}
                                     </div>
                                 </div>
-                                <button class="btn-del-gallery" data-id="${img.id}" title="Eliminar foto de la galería" style="background:rgba(0,0,0,0.4); border:none; color:var(--clr-rose-gold); cursor:pointer; padding:6px; border-radius:50%; flex-shrink:0;">
-                                    <i data-lucide="trash-2" style="width:18px; height:18px;"></i>
-                                </button>
+                                <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                                    <button type="button" class="btn-download-gallery" data-src="${img.src}" data-title="${(img.serviceName || img.title || 'trabajo').replace(/[^a-zA-Z0-9_-]/g, '_')}" title="Descargar foto" style="background:rgba(255,255,255,0.25); border:none; color:white; cursor:pointer; padding:6px; border-radius:50%; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); transition:all 0.2s ease;">
+                                        <i data-lucide="download" style="width:16px; height:16px;"></i>
+                                    </button>
+                                    <button type="button" class="btn-del-gallery" data-id="${img.id}" title="Eliminar foto de la galería" style="background:rgba(0,0,0,0.4); border:none; color:var(--clr-rose-gold); cursor:pointer; padding:6px; border-radius:50%; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;">
+                                        <i data-lucide="trash-2" style="width:18px; height:18px;"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `;}).join('')}
@@ -1089,6 +1094,9 @@ function renderPerfilView() {
         `;
     }
 
+    // Condición: La clienta solo puede subir fotos si tiene citas agendadas previamente
+    const hasAppointments = userAppointments.length > 0;
+
     // Sección de fotos tomadas / subidas por la clienta
     let clientGalleryHtml = `
         <div style="max-width:680px; margin:40px auto 0; text-align:left;">
@@ -1101,9 +1109,11 @@ function renderPerfilView() {
                         Fotos de tus servicios guardadas en tu perfil y enviadas a la galería del salón.
                     </p>
                 </div>
-                <button type="button" class="btn btn-outline btn-sm btn-open-photo-modal-action" style="display:inline-flex; align-items:center; gap:6px; border-radius:20px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark);">
-                    <i data-lucide="plus"></i> Nueva Foto
-                </button>
+                ${hasAppointments ? `
+                    <button type="button" class="btn btn-outline btn-sm btn-open-photo-modal-action" style="display:inline-flex; align-items:center; gap:6px; border-radius:20px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark);">
+                        <i data-lucide="plus"></i> Nueva Foto
+                    </button>
+                ` : ''}
             </div>
 
             ${clientPhotos.length > 0 ? `
@@ -1135,14 +1145,24 @@ function renderPerfilView() {
                 </div>
             ` : `
                 <div class="card" style="padding:28px 20px; text-align:center; background:#ffffff; box-shadow:var(--shadow-soft); border-radius:var(--radius-md); border:1.5px dashed #dfd5cb;">
-                    <i data-lucide="camera" style="width:36px; height:36px; color:var(--clr-rose-gold); margin-bottom:8px;"></i>
-                    <h4 style="margin:0 0 6px; font-size:1.1rem; color:var(--clr-neutral-dark);">Aún no has compartido fotos de tus servicios</h4>
+                    <i data-lucide="${hasAppointments ? 'camera' : 'calendar-plus'}" style="width:36px; height:36px; color:var(--clr-rose-gold); margin-bottom:8px;"></i>
+                    <h4 style="margin:0 0 6px; font-size:1.1rem; color:var(--clr-neutral-dark);">
+                        ${hasAppointments ? 'Aún no has compartido fotos de tus servicios' : 'Aún no tienes fotos de servicios'}
+                    </h4>
                     <p style="margin:0 auto 16px; font-size:0.88rem; color:var(--clr-neutral-gray); max-width:440px; line-height:1.5;">
-                        Toma una foto de tus uñas, pestañas o peinado para mostrar el resultado de tu atención. ¡Aparecerá aquí y en la galería del salón!
+                        ${hasAppointments 
+                            ? 'Toma una foto de tus uñas, pestañas o peinado para mostrar el resultado de tu atención. ¡Aparecerá aquí y en la galería del salón!'
+                            : 'Para poder subir fotos a la galería y compartir tus resultados, primero debes agendar tu atención con nosotros.'}
                     </p>
-                    <button type="button" class="btn btn-outline btn-sm btn-open-photo-modal-action" style="display:inline-flex; align-items:center; gap:6px; border-radius:20px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); padding:8px 18px; font-weight:600;">
-                        <i data-lucide="camera"></i> Sacar mi primera foto
-                    </button>
+                    ${hasAppointments ? `
+                        <button type="button" class="btn btn-outline btn-sm btn-open-photo-modal-action" style="display:inline-flex; align-items:center; gap:6px; border-radius:20px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); padding:8px 18px; font-weight:600;">
+                            <i data-lucide="camera"></i> Sacar mi primera foto
+                        </button>
+                    ` : `
+                        <button type="button" class="btn btn-primary btn-sm" onclick="AppRouter.navigate('agendar')" style="display:inline-flex; align-items:center; gap:6px; border-radius:20px; padding:8px 20px; font-weight:600;">
+                            <i data-lucide="calendar"></i> Agendar mi primera cita
+                        </button>
+                    `}
                 </div>
             `}
         </div>
@@ -1167,7 +1187,8 @@ function renderPerfilView() {
                 </div>
             </div>
 
-            <!-- Banner para tomar/subir fotos del servicio -->
+            ${hasAppointments ? `
+            <!-- Banner para tomar/subir fotos del servicio (Habilitado para clientas con citas) -->
             <div class="card" style="padding: 22px 24px; max-width: 680px; margin: 0 auto 28px; background: linear-gradient(135deg, #FFF9F5 0%, #FFFFFF 100%); border: 1.5px solid var(--clr-rose-gold-light); box-shadow: var(--shadow-soft); border-radius: var(--radius-md); text-align: left;">
                 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
                     <div style="display:flex; align-items:center; gap:16px; flex:1; min-width:240px;">
@@ -1186,6 +1207,21 @@ function renderPerfilView() {
                     </button>
                 </div>
             </div>
+            ` : `
+            <!-- Aviso de bloqueo: solo clientas con citas pueden subir fotos -->
+            <div class="card" style="padding: 24px 20px; max-width: 680px; margin: 0 auto 28px; background: #faf7f4; border: 1.5px dashed var(--clr-rose-gold-light); box-shadow: var(--shadow-soft); border-radius: var(--radius-md); text-align: center;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; color: var(--clr-rose-gold-dark); box-shadow: var(--shadow-soft);">
+                    <i data-lucide="lock" style="width: 22px; height: 22px;"></i>
+                </div>
+                <h4 style="margin: 0 0 6px 0; color: var(--clr-rose-gold-dark); font-size: 1.15rem;">Subida de fotos para clientas con citas</h4>
+                <p style="margin: 0 auto 16px; color: var(--clr-neutral-gray); font-size: 0.9rem; max-width: 480px; line-height: 1.5;">
+                    Para compartir fotos de tus servicios en la galería, primero debes tener al menos una cita agendada o realizada con nosotras.
+                </p>
+                <button class="btn btn-outline btn-sm" onclick="AppRouter.navigate('agendar')" style="padding: 8px 22px; border-radius: 20px; border-color: var(--clr-rose-gold); color: var(--clr-rose-gold-dark); font-weight: 600;">
+                    <i data-lucide="calendar"></i> Agendar mi primera cita
+                </button>
+            </div>
+            `}
             
             ${historyHtml}
 
