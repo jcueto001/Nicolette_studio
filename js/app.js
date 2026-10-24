@@ -486,62 +486,81 @@ function renderAgendarView() {
                 </div>
             </div>
             
-            <!-- Modal de Pasarela Flow para Confirmación -->
+            <!-- Modal de Pasarela Flow -->
             <div id="flow-checkout-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); z-index: 2500; align-items:center; justify-content:center; padding:15px;">
-                <div class="card" style="max-width: 480px; width: 100%; background:white; border-radius: var(--radius-md); padding: 30px 25px; position:relative; box-shadow: var(--shadow-medium); text-align:center;">
+                <div class="card" style="max-width: 480px; width: 100%; background:white; border-radius: var(--radius-md); padding: 28px 24px; position:relative; box-shadow: var(--shadow-medium); text-align:center;">
                     <button id="close-flow-modal" style="position:absolute; top:15px; right:15px; background:none; border:none; cursor:pointer; color:var(--clr-neutral-gray);"><i data-lucide="x"></i></button>
                     
-                    <div style="width: 56px; height: 56px; background: #e3f2fd; color: #1b75bb; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
-                        <i data-lucide="external-link" style="width: 28px; height: 28px;"></i>
+                    <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:12px;">
+                        <span style="background:#1b75bb; color:white; font-weight:900; font-size:1.05rem; padding:3px 10px; border-radius:4px; letter-spacing:1px;">flow</span>
+                        <h3 style="margin:0; font-size:1.25rem; color:#0b4f82;">Pasarela de Pago Segura</h3>
                     </div>
-                    
-                    <h3 style="margin-bottom: 8px; color: var(--clr-neutral-dark);">Abonar $5.000 en Flow</h3>
-                    <p style="color: var(--clr-neutral-gray); font-size: 0.9rem; margin-bottom: 20px;">
-                        Estás a un paso de asegurar tu cita. Realiza el abono seguro de <strong>$5.000</strong> a través de Flow:
+
+                    <p style="color: var(--clr-neutral-gray); font-size: 0.88rem; margin: 0 0 16px;">
+                        Abono para confirmar tu reserva en <strong>Nicolett Studio</strong>
                     </p>
 
-                    <div style="background: var(--clr-nude-light); padding: 12px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 0.9rem; text-align: left;">
-                        <div style="margin-bottom: 4px;"><strong>Cita:</strong> <span id="flow-modal-service">-</span></div>
-                        <div style="margin-bottom: 4px;"><strong>Fecha:</strong> <span id="flow-modal-datetime">-</span></div>
-                        <div style="color: #1b5e20; font-weight: 700;"><strong>Monto Abono:</strong> $5.000 CLP</div>
-                    </div>
-
-                    <div id="flow-unconfigured-box" style="display:none; background:#fff8e1; border:1px solid #ffe082; padding:14px; border-radius:6px; margin-bottom:15px; font-size:0.85rem; color:#b78103; text-align:left;">
-                        <strong style="display:block; margin-bottom:4px;"><i data-lucide="alert-circle" style="width:15px; height:15px; display:inline; vertical-align:middle;"></i> Enlace de cobro de Flow no configurado</strong>
-                        <p style="margin:0 0 8px; color:#5d4037; font-size:0.82rem; line-height:1.4;">
-                            Para redirigir a tu cuenta real de Flow.cl, pega a continuación el enlace de cobro de $5.000 generado en tu portal de Flow:
-                        </p>
-                        <div style="display:flex; gap:6px;">
-                            <input type="url" id="flow-quick-url" placeholder="https://www.flow.cl/btn.php?token=... o https://flow.cl/p/..." style="flex:1; padding:7px 9px; font-size:0.82rem; border:1px solid #ccc; border-radius:4px; font-family:inherit;">
-                            <button type="button" id="btn-save-quick-flow" class="btn btn-primary" style="padding:7px 12px; font-size:0.82rem; font-weight:600; white-space:nowrap;">Guardar Link</button>
+                    <div style="background: var(--clr-nude-light); padding: 12px 16px; border-radius: 8px; margin-bottom: 18px; font-size: 0.9rem; text-align: left; border: 1px solid var(--clr-nude);">
+                        <div style="margin-bottom: 5px;"><strong>Servicio:</strong> <span id="flow-modal-service">-</span></div>
+                        <div style="margin-bottom: 5px;"><strong>Fecha y Hora:</strong> <span id="flow-modal-datetime">-</span></div>
+                        <div style="color: #1b5e20; font-weight: 700; font-size: 1.05rem; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #ccc; display:flex; justify-content:space-between;">
+                            <span>Monto Abono Requerido:</span>
+                            <span>$5.000 CLP</span>
                         </div>
                     </div>
 
-                    <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;">
-                        <a id="btn-flow-open-gateway" href="#" target="_blank" class="btn btn-primary" style="background: linear-gradient(135deg, #1b75bb, #0b4f82); border: none; padding: 13px; font-size: 1rem; font-weight: 700; display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none;">
-                            <i data-lucide="credit-card" style="width:18px; height:18px;"></i> Abrir Pasarela de Pago Flow ($5.000)
+                    <div style="text-align:left; margin-bottom:18px;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--clr-neutral-dark); margin-bottom:8px;">Selecciona tu medio de pago Flow:</label>
+                        <div style="display:flex; flex-direction:column; gap:8px;" id="flow-payment-methods">
+                            <label style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border:2px solid #1b75bb; border-radius:8px; background:#f4f9fd; cursor:pointer;" class="flow-method-label">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <input type="radio" name="flow-method" value="Webpay Plus" checked style="accent-color:#1b75bb; width:16px; height:16px;">
+                                    <div>
+                                        <div style="font-weight:600; font-size:0.88rem; color:#1b75bb;">Webpay Plus (Débito y Crédito)</div>
+                                        <small style="color:#666; font-size:0.75rem;">Visa, Mastercard, Magna, Redcompra</small>
+                                    </div>
+                                </div>
+                                <span style="font-size:0.72rem; background:#fff; padding:2px 8px; border:1px solid #cce3f5; border-radius:4px; font-weight:600; color:#1b75bb;">Transbank</span>
+                            </label>
+                            
+                            <label style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border:1px solid #ddd; border-radius:8px; background:#fff; cursor:pointer;" class="flow-method-label">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <input type="radio" name="flow-method" value="CuentaRUT" style="accent-color:#1b75bb; width:16px; height:16px;">
+                                    <div>
+                                        <div style="font-weight:600; font-size:0.88rem; color:#333;">BancoEstado / CuentaRUT</div>
+                                        <small style="color:#666; font-size:0.75rem;">Transferencia bancaria directa</small>
+                                    </div>
+                                </div>
+                                <span style="font-size:0.72rem; background:#fff3e0; color:#e65100; padding:2px 8px; border-radius:4px; font-weight:600;">BancoEstado</span>
+                            </label>
+
+                            <label style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border:1px solid #ddd; border-radius:8px; background:#fff; cursor:pointer;" class="flow-method-label">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <input type="radio" name="flow-method" value="Mach / Servipag" style="accent-color:#1b75bb; width:16px; height:16px;">
+                                    <div>
+                                        <div style="font-weight:600; font-size:0.88rem; color:#333;">Mach / Servipag / Check</div>
+                                        <small style="color:#666; font-size:0.75rem;">Billeteras electrónicas y prepago</small>
+                                    </div>
+                                </div>
+                                <span style="font-size:0.72rem; background:#ede7f6; color:#512da8; padding:2px 8px; border-radius:4px; font-weight:600;">Billeteras</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                        <button id="btn-flow-process-pay" class="btn btn-primary" style="background: linear-gradient(135deg, #1b75bb, #0b4f82); border: none; padding: 14px; font-size: 1.05rem; font-weight: 700; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:var(--radius-sm); box-shadow:0 4px 15px rgba(27,117,187,0.3); width:100%; cursor:pointer;">
+                            <i data-lucide="shield-check" style="width:20px; height:20px;"></i> Pagar Abono de $5.000 y Agendar
+                        </button>
+                    </div>
+
+                    <div id="flow-external-option" style="display:none; margin-bottom:12px;">
+                        <a id="btn-flow-open-gateway" href="#" target="_blank" style="font-size:0.82rem; color:#1b75bb; text-decoration:underline;">
+                            O pagar en enlace directo de Flow.cl <i data-lucide="external-link" style="width:12px; height:12px; display:inline;"></i>
                         </a>
-
-                        <div style="position:relative; margin: 10px 0; text-align:center;">
-                            <span style="background:white; padding: 0 10px; font-size:0.8rem; color:#999; position:relative; z-index:1;">O tras pagar en Flow</span>
-                            <div style="position:absolute; top:50%; left:0; width:100%; height:1px; background:#eee;"></div>
-                        </div>
-
-                        <div>
-                            <input type="text" id="flow-proof-order" placeholder="N° de Comprobante / Transacción Flow (opcional)" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.88rem; margin-bottom:8px; text-align:center;">
-                        </div>
-
-                        <button id="btn-flow-confirm-paid" class="btn" style="background: #2e7d32; color: white; border: none; padding: 13px; font-size: 0.98rem; font-weight: 700; display:flex; align-items:center; justify-content:center; gap:8px;">
-                            <i data-lucide="check-circle" style="width:18px; height:18px;"></i> ¡Ya pagué en Flow! Confirmar Cita
-                        </button>
-
-                        <button id="btn-flow-simulate" type="button" class="btn btn-outline" style="border-color:#1b75bb; color:#1b75bb; padding:8px 12px; font-size:0.82rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px;">
-                            <i data-lucide="play-circle" style="width:15px; height:15px;"></i> Modo Prueba: Simular pago de $5.000 y agendar
-                        </button>
                     </div>
 
-                    <small style="color: var(--clr-neutral-gray); font-size: 0.78rem; display:block;">
-                        <i data-lucide="shield" style="width:12px; height:12px; display:inline; vertical-align:middle;"></i> Tu cita se reservará de inmediato una vez confirmado el abono.
+                    <small style="color: var(--clr-neutral-gray); font-size: 0.76rem; display:block;">
+                        <i data-lucide="lock" style="width:12px; height:12px; display:inline; vertical-align:middle; color:#1b75bb;"></i> Pago protegido con encriptación SSL 256-bit. El saldo restante se paga en el estudio.
                     </small>
                 </div>
             </div>

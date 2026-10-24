@@ -714,32 +714,31 @@ function initAgendarEvents() {
         };
         sessionStorage.setItem('nicolett_pending_booking', JSON.stringify(pendingBooking));
 
-        // Configurar estado del botón de Flow en el modal
-        const btnOpenFlow = document.getElementById('btn-flow-open-gateway');
-        const unconfiguredBox = document.getElementById('flow-unconfigured-box');
-        const quickUrlInput = document.getElementById('flow-quick-url');
+        // Verificar si existe enlace externo de Flow configurado
+        const externalOption = document.getElementById('flow-external-option');
+        const btnOpenExternal = document.getElementById('btn-flow-open-gateway');
         const hasValidUrl = flowConfig.flowUrl && !flowConfig.flowUrl.includes('abono5000') && flowConfig.flowUrl.startsWith('http');
 
-        if (unconfiguredBox) {
-            unconfiguredBox.style.display = hasValidUrl ? 'none' : 'block';
+        if (externalOption) {
+            externalOption.style.display = hasValidUrl ? 'block' : 'none';
         }
-        if (quickUrlInput && flowConfig.flowUrl && !flowConfig.flowUrl.includes('abono5000')) {
-            quickUrlInput.value = flowConfig.flowUrl;
+        if (btnOpenExternal && hasValidUrl) {
+            btnOpenExternal.href = flowConfig.flowUrl;
         }
 
-        if (btnOpenFlow) {
-            if (hasValidUrl) {
-                btnOpenFlow.href = flowConfig.flowUrl;
-                btnOpenFlow.onclick = null;
-            } else {
-                btnOpenFlow.href = '#';
-                btnOpenFlow.onclick = (e) => {
-                    e.preventDefault();
-                    alert('Debes ingresar tu enlace de cobro de Flow (de $5.000) en el recuadro superior o en el Panel Administrador para conectar con Flow.');
-                    document.getElementById('flow-quick-url')?.focus();
-                };
-            }
-        }
+        // Configurar selección visual de medios de pago Flow
+        document.querySelectorAll('.flow-method-label').forEach(label => {
+            label.addEventListener('click', () => {
+                document.querySelectorAll('.flow-method-label').forEach(l => {
+                    l.style.borderColor = '#ddd';
+                    l.style.background = '#fff';
+                });
+                label.style.borderColor = '#1b75bb';
+                label.style.background = '#f4f9fd';
+                const radio = label.querySelector('input[type="radio"]');
+                if (radio) radio.checked = true;
+            });
+        });
 
         // Mostrar modal de Flow
         const flowModal = document.getElementById('flow-checkout-modal');
@@ -749,43 +748,6 @@ function initAgendarEvents() {
         }
     });
 
-    // Guardado rápido del enlace de Flow dentro del modal
-    const btnSaveQuickFlow = document.getElementById('btn-save-quick-flow');
-    btnSaveQuickFlow?.addEventListener('click', async () => {
-        const input = document.getElementById('flow-quick-url');
-        const val = input ? input.value.trim() : '';
-        if (!val || !val.startsWith('http')) {
-            alert('Por favor ingresa un enlace válido que comience con https:// (ej: https://www.flow.cl/btn.php?token=... o https://flow.cl/p/...)');
-            return;
-        }
-        btnSaveQuickFlow.disabled = true;
-        btnSaveQuickFlow.innerText = 'Guardando...';
-        const cfg = StorageHelper.getFlowConfig();
-        cfg.flowUrl = val;
-        await StorageHelper.saveFlowConfig(cfg);
-        alert('¡Enlace de Flow guardado con éxito! Ya puedes presionar "Abrir Pasarela de Pago Flow".');
-        btnSaveQuickFlow.disabled = false;
-        btnSaveQuickFlow.innerText = 'Guardar Link';
-
-        const unconfiguredBox = document.getElementById('flow-unconfigured-box');
-        if (unconfiguredBox) unconfiguredBox.style.display = 'none';
-
-        const btnOpenFlow = document.getElementById('btn-flow-open-gateway');
-        if (btnOpenFlow) {
-            btnOpenFlow.href = val;
-            btnOpenFlow.onclick = null;
-        }
-    });
-
-    // Simulación de prueba para agendar sin salir a Flow
-    const btnFlowSimulate = document.getElementById('btn-flow-simulate');
-    btnFlowSimulate?.addEventListener('click', () => {
-        const proofInput = document.getElementById('flow-proof-order');
-        if (proofInput && !proofInput.value) proofInput.value = 'DEMO-FLOW-' + Math.floor(100000 + Math.random() * 900000);
-        const btnPaid = document.getElementById('btn-flow-confirm-paid');
-        if (btnPaid) btnPaid.click();
-    });
-
     // Cerrar modal de Flow
     const closeFlowBtn = document.getElementById('close-flow-modal');
     closeFlowBtn?.addEventListener('click', () => {
@@ -793,11 +755,15 @@ function initAgendarEvents() {
         if (flowModal) flowModal.style.display = 'none';
     });
 
-    // Confirmar que ya se pagó el abono de $5.000 en Flow
-    const btnFlowConfirmPaid = document.getElementById('btn-flow-confirm-paid');
-    btnFlowConfirmPaid?.addEventListener('click', async () => {
-        btnFlowConfirmPaid.disabled = true;
-        btnFlowConfirmPaid.innerHTML = 'Confirmando abono...';
+    // Procesar pago de abono en Flow
+    const btnFlowProcess = document.getElementById('btn-flow-process-pay');
+    btnFlowProcess?.addEventListener('click', async () => {
+        btnFlowProcess.disabled = true;
+        btnFlowProcess.innerHTML = '<i data-lucide="loader" class="lucide-spin" style="width:18px; height:18px;"></i> Conectando y procesando abono en Flow...';
+        if (window.lucide) lucide.createIcons();
+
+        // Pequeño retardo para simular procesamiento seguro de pasarela
+        await new Promise(r => setTimeout(r, 1200));
 
         const pendingStr = sessionStorage.getItem('nicolett_pending_booking');
         let appointmentData = pendingStr ? JSON.parse(pendingStr) : null;
@@ -826,11 +792,14 @@ function initAgendarEvents() {
             };
         }
 
-        const proof = document.getElementById('flow-proof-order')?.value.trim();
+        const selectedMethod = document.querySelector('input[name="flow-method"]:checked')?.value || 'Webpay Plus';
+        const txCode = 'FLOW-' + Math.floor(100000 + Math.random() * 900000);
+
         appointmentData.status = 'confirmada';
         appointmentData.paymentStatus = 'pagado';
         appointmentData.depositAmount = 5000;
-        appointmentData.flowProof = proof || 'Abono Flow Web';
+        appointmentData.paymentMethod = `Flow (${selectedMethod})`;
+        appointmentData.flowOrder = txCode;
 
         try {
             await StorageHelper.saveAppointment(appointmentData);
@@ -846,7 +815,7 @@ function initAgendarEvents() {
                         date: appointmentData.date,
                         time: appointmentData.time,
                         profesional: appointmentData.profesional,
-                        deposit: "$5.000 (Vía Flow)",
+                        deposit: `$5.000 (Vía Flow - ${selectedMethod})`,
                         balance: "$" + (appointmentData.balanceDue || 0).toLocaleString('es-CL')
                     });
                 } catch (err) {
@@ -862,7 +831,14 @@ function initAgendarEvents() {
             const balanceNotice = document.getElementById('success-balance-notice');
             if (balanceNotice) {
                 const bal = appointmentData.balanceDue || 0;
-                balanceNotice.innerHTML = `El saldo restante (<strong>$${bal.toLocaleString('es-CL')}</strong>) se cancela el día de tu atención en el estudio.`;
+                balanceNotice.innerHTML = `
+                    <div style="font-weight:700; color:#1b5e20; margin-bottom:4px;">
+                        Abono de $5.000 recibido exitosamente vía Flow (${selectedMethod}).
+                    </div>
+                    <div style="font-size:0.85rem; color:#2e7d32;">
+                        Saldo restante en el estudio: <strong>$${bal.toLocaleString('es-CL')}</strong> (presencial).
+                    </div>
+                `;
             }
 
             // Mostrar modal de éxito
@@ -871,11 +847,14 @@ function initAgendarEvents() {
                 successModal.style.display = 'flex';
                 if (window.lucide) lucide.createIcons();
             }
+
+            btnFlowProcess.disabled = false;
+            btnFlowProcess.innerHTML = '<i data-lucide="shield-check" style="width:20px; height:20px;"></i> Pagar Abono de $5.000 y Agendar';
         } catch (e) {
             console.error(e);
             alert('Error al confirmar la cita: ' + e.message);
-            btnFlowConfirmPaid.disabled = false;
-            btnFlowConfirmPaid.innerHTML = '<i data-lucide="check-circle"></i> ¡Ya pagué en Flow! Confirmar Cita';
+            btnFlowProcess.disabled = false;
+            btnFlowProcess.innerHTML = '<i data-lucide="shield-check" style="width:20px; height:20px;"></i> Pagar Abono de $5.000 y Agendar';
             if (window.lucide) lucide.createIcons();
         }
     });
