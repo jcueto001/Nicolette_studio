@@ -59,6 +59,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Revisar retorno de pago de Flow
     checkFlowPaymentReturn();
+
+    // Botón de salir del portal (Navbar)
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.handleGlobalLogout();
+        });
+    }
 });
 
 // --- Manejo de Retorno de Pasarela Flow ---
@@ -145,6 +154,28 @@ window.updateNavAuthVisibility = function() {
 
     if (navPerfil) {
         navPerfil.style.display = isPersonalized ? 'inline-block' : 'none';
+    }
+};
+
+window.logoutStaff = async function() {
+    if (confirm('¿Segura que deseas salir del panel de administración?')) {
+        StorageHelper.setAuth({ loggedIn: false, user: null });
+        if (typeof firebase !== 'undefined' && firebase.auth) {
+            try { await firebase.auth().signOut(); } catch(e) {}
+        }
+        window.updateNavAuthVisibility();
+        if (typeof AppRouter !== 'undefined') {
+            AppRouter.navigate('home');
+        }
+    }
+};
+
+window.handleGlobalLogout = function() {
+    const authData = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
+    if (authData && authData.loggedIn) {
+        window.logoutStaff();
+    } else if (localStorage.getItem('nicolett_personalization')) {
+        window.logoutClientProfile();
     }
 };
 
@@ -374,27 +405,6 @@ function setupPersonalization() {
             } finally {
                 btnLogin.disabled = false;
                 btnLogin.innerHTML = 'Ingresar al Portal';
-            }
-        });
-    }
-
-    const btnLogout = document.getElementById('btn-logout');
-    if (btnLogout) {
-        btnLogout.addEventListener('click', async () => {
-            const authData = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
-            if (authData && authData.loggedIn) {
-                if (confirm('¿Seguro quieres salir del portal interno de equipo?')) {
-                    StorageHelper.setAuth({ loggedIn: false, user: null });
-                    if (typeof firebase !== 'undefined' && firebase.auth) {
-                        await firebase.auth().signOut();
-                    }
-                    window.updateNavAuthVisibility();
-                    if (typeof AppRouter !== 'undefined') {
-                        AppRouter.navigate('home');
-                    }
-                }
-            } else if (localStorage.getItem('nicolett_personalization')) {
-                window.logoutClientProfile();
             }
         });
     }
@@ -855,6 +865,15 @@ function initAdminEvents() {
             });
         }
         return;
+    }
+
+    // Botón Salir del Panel Admin
+    const btnAdminLogout = document.getElementById('btn-admin-logout');
+    if (btnAdminLogout) {
+        btnAdminLogout.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.logoutStaff();
+        });
     }
 
     // Pestañas (Tabs)

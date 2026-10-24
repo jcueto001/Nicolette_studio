@@ -771,11 +771,16 @@ function renderAdminView() {
 
     return `
         <div class="container section">
-            <div class="section-header" style="margin-bottom: 30px; display:flex; justify-content: space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div class="section-header" style="margin-bottom: 30px; display:flex; justify-content: space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                 <h2 class="section-title" style="text-align: left; margin:0;">Portal ${isAdmin ? 'Administrador' : 'Trabajadora'}</h2>
-                <div style="font-weight:bold; color:var(--clr-rose-gold-dark); background:var(--clr-nude-light); padding:6px 14px; border-radius:20px; font-size:0.9rem;">
-                    <i data-lucide="user" style="width:14px; height:14px; display:inline-block; vertical-align:middle; margin-right:4px;"></i>
-                    ${auth.user.name || (isAdmin ? 'Administradora' : 'Trabajadora')}
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div style="font-weight:bold; color:var(--clr-rose-gold-dark); background:var(--clr-nude-light); padding:7px 16px; border-radius:20px; font-size:0.9rem; display:inline-flex; align-items:center; gap:6px;">
+                        <i data-lucide="user" style="width:14px; height:14px;"></i>
+                        ${auth.user.name || (isAdmin ? 'Administradora' : 'Trabajadora')}
+                    </div>
+                    <button type="button" onclick="window.logoutStaff()" id="btn-admin-logout" class="btn btn-outline" style="border-color:#d32f2f; color:#d32f2f; padding:7px 16px; font-size:0.88rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:white; font-weight:600; border-radius:20px; transition:all 0.2s;">
+                        <i data-lucide="log-out" style="width:15px; height:15px;"></i> Salir del Panel
+                    </button>
                 </div>
             </div>
             
