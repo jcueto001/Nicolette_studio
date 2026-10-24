@@ -169,13 +169,20 @@ const StorageHelper = {
         } catch(e) { console.error("Error cargando appointments:", e); }
         
         try {
-            const fichasSnapshot = await db.collection("FichasClinicas").get();
+            let fichasSnapshot = await db.collection("FichasClientas").get();
+            // Fallback si la colección anterior FichasClinicas contiene datos históricos
+            if (fichasSnapshot.empty) {
+                try {
+                    const legacySnap = await db.collection("FichasClinicas").get();
+                    if (!legacySnap.empty) fichasSnapshot = legacySnap;
+                } catch(err) {}
+            }
             const fichas = [];
             fichasSnapshot.forEach((doc) => {
                 fichas.push({ id: doc.id, ...doc.data() });
             });
             this._fichasCache = fichas;
-        } catch(e) { console.error("Error cargando fichas:", e); }
+        } catch(e) { console.error("Error cargando fichas clientas:", e); }
         
         try {
             const profsSnapshot = await db.collection("Profesionales").get();
@@ -461,7 +468,7 @@ const StorageHelper = {
         }
     },
 
-    // Fichas Clínicas
+    // Fichas Clientas
     getFichas: function() {
         return this._fichasCache || [];
     },
@@ -469,11 +476,11 @@ const StorageHelper = {
         if(typeof db !== 'undefined') {
             try {
                 ficha.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                const docRef = await db.collection("FichasClinicas").add(ficha);
+                const docRef = await db.collection("FichasClientas").add(ficha);
                 ficha.id = docRef.id;
                 this._fichasCache.push(ficha);
             } catch (e) {
-                console.error("Error guardando ficha en Firebase (posible falta de permisos o reglas):", e);
+                console.error("Error guardando ficha clienta en Firebase (posible falta de permisos o reglas):", e);
                 // Fallback
                 ficha.id = 'ficha_' + Date.now();
                 ficha.createdAt = new Date().toISOString();
@@ -488,10 +495,11 @@ const StorageHelper = {
     deleteFicha: async function(id) {
         if(typeof db !== 'undefined') {
             try {
-                await db.collection("FichasClinicas").doc(id).delete();
+                await db.collection("FichasClientas").doc(id).delete();
+                try { await db.collection("FichasClinicas").doc(id).delete(); } catch(err){}
                 this._fichasCache = this._fichasCache.filter(f => f.id !== id);
             } catch (e) {
-                console.error("Error eliminando ficha:", e);
+                console.error("Error eliminando ficha clienta:", e);
             }
         } else {
             this._fichasCache = this._fichasCache.filter(f => f.id !== id);

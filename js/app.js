@@ -577,7 +577,7 @@ function renderAdminView() {
 
     let fichasRows = '';
     if (myFichas.length === 0) {
-        fichasRows = `<tr><td colspan="5" class="text-center" style="padding: 20px;">No hay fichas registradas.</td></tr>`;
+        fichasRows = `<tr><td colspan="5" class="text-center" style="padding: 20px;">No hay fichas de clientas registradas.</td></tr>`;
     } else {
         myFichas.forEach(f => {
             fichasRows += `
@@ -594,18 +594,16 @@ function renderAdminView() {
         });
     }
 
-    // Dashboard Metrics
+    // Dashboard Metrics (Solo $5.000 del abono de la clienta, ya que el resto se paga presencial)
     let totalEarnings = 0;
     let completedAppointmentsCount = 0;
+    const ABONO_MONTO = 5000;
     
     if (isAdmin) {
         appointments.forEach(a => {
             if (a.status === 'completada' || a.status === 'confirmada' || a.status === 'Pago Reportado') {
-                const s = mockData.services.find(s => s.id === a.serviceId || s.name === a.servicio);
-                if (s && s.price) {
-                    totalEarnings += s.price;
-                    completedAppointmentsCount++;
-                }
+                totalEarnings += (a.depositAmount || ABONO_MONTO);
+                completedAppointmentsCount++;
             }
         });
     }
@@ -682,7 +680,7 @@ function renderAdminView() {
             
             <div class="tabs-container" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid #ddd; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; -webkit-overflow-scrolling: touch;">
                 <button class="admin-tab active" data-target="tab-agenda" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid var(--clr-rose-gold); font-weight:bold; color:var(--clr-neutral-dark); flex-shrink: 0;">Agenda</button>
-                <button class="admin-tab" data-target="tab-fichas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Fichas Clínicas</button>
+                <button class="admin-tab" data-target="tab-fichas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Fichas Clientas</button>
                 <button class="admin-tab" data-target="tab-galeria" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Galería</button>
                 ${isAdmin ? `
                 <button class="admin-tab" data-target="tab-finanzas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Dashboard & Finanzas</button>
@@ -700,12 +698,14 @@ function renderAdminView() {
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
                     <div class="card" style="text-align:center; background: var(--clr-nude-light); border: 1px solid var(--clr-rose-gold);">
-                        <h4 style="color: var(--clr-neutral-gray); margin-bottom: 10px; font-size:0.9rem;">Ingresos Totales Brutos</h4>
+                        <h4 style="color: var(--clr-neutral-gray); margin-bottom: 8px; font-size:0.9rem;">Ingresos por Abonos ($5.000 c/u)</h4>
                         <h2 style="color: var(--clr-neutral-dark); font-size: 2rem; margin:0;">$${totalEarnings.toLocaleString('es-CL')}</h2>
+                        <small style="color: var(--clr-neutral-gray); font-size: 0.78rem; display:block; margin-top: 6px;">Saldo restante se paga presencial</small>
                     </div>
                     <div class="card" style="text-align:center; background: #e8f5e9; border: 1px solid #81c784;">
-                        <h4 style="color: #2e7d32; margin-bottom: 10px; font-size:0.9rem;">Citas Completadas</h4>
+                        <h4 style="color: #2e7d32; margin-bottom: 8px; font-size:0.9rem;">Citas con Abono Confirmado</h4>
                         <h2 style="color: #1b5e20; font-size: 2rem; margin:0;">${completedAppointmentsCount}</h2>
+                        <small style="color: #2e7d32; font-size: 0.78rem; display:block; margin-top: 6px;">Confirmadas / Pagadas</small>
                     </div>
                 </div>
                 
@@ -716,7 +716,7 @@ function renderAdminView() {
                         <canvas id="chart-services" style="max-height: 250px;"></canvas>
                     </div>
                     <div class="card" style="background: white; border: 1px solid #eee; padding: 20px;">
-                        <h4 style="text-align:center; margin-bottom: 15px; color: var(--clr-neutral-dark);">Ingresos por Profesional</h4>
+                        <h4 style="text-align:center; margin-bottom: 15px; color: var(--clr-neutral-dark);">Abonos por Profesional ($5.000 c/u)</h4>
                         <canvas id="chart-earnings" style="max-height: 250px;"></canvas>
                     </div>
                 </div>
@@ -746,10 +746,10 @@ function renderAdminView() {
                 </div>
             </div>
 
-            <!-- Tab Fichas -->
+            <!-- Tab Fichas Clientas -->
             <div id="tab-fichas" class="admin-tab-content" style="display:none;">
                 <div style="display:flex; justify-content:flex-end; margin-bottom: 15px;">
-                    <button class="btn btn-primary" id="btn-crear-ficha-manual"><i data-lucide="plus"></i> Crear Ficha Manual</button>
+                    <button class="btn btn-primary" id="btn-crear-ficha-manual"><i data-lucide="plus"></i> Crear Ficha Clienta</button>
                 </div>
                 <div class="card" style="padding: 0; overflow: hidden;">
                     <div style="overflow-x: auto;">
@@ -918,7 +918,7 @@ function renderAdminView() {
             <div id="ficha-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 2000; align-items:center; justify-content:center; padding:20px;">
                 <div class="card" style="max-width: 500px; width: 100%; position:relative; max-height:90vh; overflow-y:auto; background:white;">
                     <button id="close-ficha" style="position:absolute; top:15px; right:15px; background:none; border:none; cursor:pointer;"><i data-lucide="x"></i></button>
-                    <h3 style="margin-bottom: 20px;">Ficha Clínica</h3>
+                    <h3 style="margin-bottom: 20px;">Ficha Clienta</h3>
                     <form id="form-ficha">
                         <input type="hidden" id="ficha-appid">
                         <div style="margin-bottom: 15px;">
@@ -960,7 +960,7 @@ function renderAdminView() {
             <div id="view-ficha-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 2000; align-items:center; justify-content:center; padding:20px;">
                 <div class="card" style="max-width: 500px; width: 100%; position:relative; max-height:90vh; overflow-y:auto; background:white;">
                     <button onclick="document.getElementById('view-ficha-modal').style.display='none'" style="position:absolute; top:15px; right:15px; background:none; border:none; cursor:pointer;"><i data-lucide="x"></i></button>
-                    <h3 style="margin-bottom: 20px;">Detalle de Ficha</h3>
+                    <h3 style="margin-bottom: 20px;">Detalle de Ficha Clienta</h3>
                     <div id="view-ficha-content"></div>
                     <div style="margin-top: 20px; text-align:center;">
                         <button class="btn btn-outline" id="btn-whatsapp-reminder" style="border-color:#25D366; color:#25D366;"><i data-lucide="message-circle" style="display:inline; vertical-align:middle; width:18px;"></i> Enviar Recordatorio</button>

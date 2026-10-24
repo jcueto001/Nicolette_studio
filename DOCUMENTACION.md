@@ -16,7 +16,7 @@
    - [4.2 Flujo de Agendamiento de Citas](#42-flujo-de-agendamiento-de-citas)
    - [4.3 Portal y Perfil de Clienta](#43-portal-y-perfil-de-clienta)
    - [4.4 Panel de Administración y BI](#44-panel-de-administración-y-bi)
-   - [4.5 Fichas Clínicas y CRM](#45-fichas-clínicas-y-crm)
+   - [4.5 Fichas Clientas y CRM](#45-fichas-clientas-y-crm)
 5. [Estructura de Base de Datos (Firebase Firestore)](#5-estructura-de-base-de-datos-firebase-firestore)
 6. [Autenticación y Control de Accesos](#6-autenticación-y-control-de-accesos)
 7. [Integraciones Externas](#7-integraciones-externas)
@@ -144,14 +144,14 @@ Accesible en la ruta `'admin'` (`renderAdminView`). Protegido por autenticación
 
 El panel se organiza en pestañas operativas:
 1. **Dashboard BI:**
-   - Tarjetas de KPIs: Ingresos Totales acumulados, Citas Totales, Tasa de Asistencia (%) y Clientas Registradas.
-   - Gráfico de Línea: Evolución mensual de ingresos generados.
+   - Tarjetas de KPIs: Ingresos por Abonos ($5.000 por cita confirmada/completada ya que el saldo restante se paga presencial en el estudio), Citas con Abono Confirmado y análisis de demanda.
    - Gráfico de Dona: Distribución de la demanda por categoría de servicio.
+   - Gráfico de Barras: Abonos recibidos por cada profesional ($5.000 c/u).
 2. **Gestión de Citas:** Tabla con todas las reservas. Permite cambiar el estado en vivo a:
    - `confirmada` (dispara correo de confirmación a la clienta).
-   - `completada` (suma automáticamente a las métricas de ingresos).
+   - `completada` (suma automáticamente a las métricas de ingresos de abonos).
    - `cancelada` o `no asiste` (libera el bloque horario).
-3. **Fichas Clínicas:** Registro del expediente técnico por sesión de cada clienta.
+3. **Fichas Clientas:** Registro del expediente técnico por sesión de cada clienta.
 4. **Inventario:** Vista de insumos con niveles de alerta para productos con stock bajo.
 5. **Equipo / Profesionales:** Alta y baja de especialistas.
 6. **Galería:**
@@ -162,8 +162,8 @@ El panel se organiza en pestañas operativas:
    - Eliminación de imágenes con confirmación tanto para fotos oficiales como aportadas.
 7. **Directorio de Clientas (CRM):** Resumen de clientes con total de visitas y monto acumulado gastado en el salón. Al abrir la ficha CRM de una clienta, se exhibe adicionalmente la galería de fotos de servicios subidas por ella.
 
-### 4.5 Fichas Clínicas y CRM
-Al guardar una ficha clínica:
+### 4.5 Fichas Clientas y CRM
+Al guardar una ficha de clienta:
 * Se registra la fecha, la clienta, el servicio y las notas de procedimiento (ej. alergias, fórmula de tinte, curvatura de pestañas).
 * Se descuenta el stock de los insumos seleccionados en la colección `Inventario`.
 * Si la clienta no existía en el directorio local, se añade automáticamente.
@@ -205,7 +205,7 @@ Registra cada reserva generada desde la web o manualmente por el equipo.
 ```
 *Estados válidos de una cita:* `'confirmada'`, `'completada'`, `'cancelada'`, `'no asiste'`, `'bloqueada'`, `'Pago Reportado'`.
 
-### 3. Colección `FichasClinicas`
+### 3. Colección `FichasClientas`
 Expedientes de tratamientos y procedimientos técnicos aplicados a las clientas.
 ```json
 {
@@ -264,8 +264,8 @@ Colección indexada por el UID de Firebase Authentication (`user.uid`). Define l
    - **Enlace Directo por URL:** Escribir `/#admin` o `/#portal` en la barra de direcciones.
 3. **Verificación de Rol y Vistas Diferenciadas:**  
    Al autenticar en Firebase Auth (o credenciales de contingencia):
-   - **Administradora (`admin`):** Acceso total a Agenda, Fichas Clínicas, Galería, Dashboard & Finanzas, Directorio de Clientas, Inventario y Gestión de Trabajadoras.
-   - **Trabajadora (`profesional`):** Acceso a su Agenda de atenciones asignadas, Fichas Clínicas de sus clientas y visualización/subida de fotos en Galería.
+   - **Administradora (`admin`):** Acceso total a Agenda, Fichas Clientas, Galería, Dashboard & Finanzas, Directorio de Clientas, Inventario y Gestión de Trabajadoras.
+   - **Trabajadora (`profesional`):** Acceso a su Agenda de atenciones asignadas, Fichas Clientas de sus clientas y visualización/subida de fotos en Galería.
 4. **Cierre de Sesión:**  
    - **Portal de Equipo:** El botón de salida (`#btn-logout`) limpia la sesión en `StorageHelper`, ejecuta `firebase.auth().signOut()`, oculta el portal en el menú y redirige a la vista de inicio.
    - **Perfil de Clienta:** La función `logoutClientProfile()` limpia la clave `nicolett_personalization`, oculta el enlace de "Mi Perfil" y regresa a la vista de inicio.

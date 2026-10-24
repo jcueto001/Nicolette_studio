@@ -1033,10 +1033,10 @@ function initAdminEvents() {
         });
     });
 
-    // Eliminar Ficha (Solo Admin)
+    // Eliminar Ficha Clienta (Solo Admin)
     document.querySelectorAll('.btn-del-ficha').forEach(btn => {
         btn.addEventListener('click', () => {
-            if (confirm('¿Estás segura de eliminar esta ficha clínica? Esta acción no se puede deshacer.')) {
+            if (confirm('¿Estás segura de eliminar esta ficha de clienta? Esta acción no se puede deshacer.')) {
                 StorageHelper.deleteFicha(btn.getAttribute('data-fichaid'));
                 AppRouter.refresh();
             }
@@ -1460,16 +1460,18 @@ function initAdminEvents() {
 
             // Crear cabeceras del CSV
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Fecha,Hora,Cliente,Servicio,Profesional,Estado,Precio Estimado\n";
+            csvContent += "Fecha,Hora,Cliente,Servicio,Profesional,Estado,Abono Pagado ($),Precio Total Estimado ($)\n";
 
             appointments.forEach(app => {
                 // Saltar si es un bloqueo de agenda para no ensuciar los números (opcional)
                 if (app.status === 'bloqueada') return;
 
-                // Buscar el precio
+                // Buscar el precio total
                 let price = 0;
                 const s = typeof mockData !== 'undefined' ? mockData.services.find(ser => ser.id === app.serviceId || ser.name === app.servicio) : null;
                 if (s && s.price) price = s.price;
+
+                const abono = (app.status === 'completada' || app.status === 'confirmada' || app.status === 'Pago Reportado') ? 5000 : 0;
 
                 const row = [
                     app.date || '',
@@ -1478,6 +1480,7 @@ function initAdminEvents() {
                     `"${(app.servicio || '').replace(/"/g, '""')}"`,
                     `"${(app.profesional || '').replace(/"/g, '""')}"`,
                     app.status || '',
+                    abono,
                     price
                 ].join(",");
 
@@ -1518,15 +1521,13 @@ function initAdminEvents() {
             options: { responsive: true, maintainAspectRatio: false }
         });
 
-        // Data para Ingresos por Profesional
+        // Data para Ingresos por Profesional (Abonos de $5.000 por cita)
         const profEarnings = {};
         apps.forEach(a => {
             if (a.status === 'completada' || a.status === 'confirmada' || a.status === 'Pago Reportado') {
-                const s = typeof mockData !== 'undefined' ? mockData.services.find(ser => ser.id === a.serviceId || ser.name === a.servicio) : null;
                 const pName = a.profesional || 'Desconocida';
-                if (s && s.price) {
-                    profEarnings[pName] = (profEarnings[pName] || 0) + s.price;
-                }
+                const abono = a.depositAmount || 5000;
+                profEarnings[pName] = (profEarnings[pName] || 0) + abono;
             }
         });
 
@@ -1535,7 +1536,7 @@ function initAdminEvents() {
             data: {
                 labels: Object.keys(profEarnings),
                 datasets: [{
-                    label: 'Ingresos ($)',
+                    label: 'Abonos Recibidos ($5.000 c/u)',
                     data: Object.values(profEarnings),
                     backgroundColor: '#e4a8a0'
                 }]
