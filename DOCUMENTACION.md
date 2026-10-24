@@ -117,9 +117,11 @@ Ubicado en la ruta `'agendar'` (`renderAgendarView`), implementa un asistente se
 2. **Paso 2: Selección de Profesional:** Permite elegir a la especialista deseada o marcar "Cualquiera disponible".
 3. **Paso 3: Fecha y Horario:** El calendario consulta a Firestore (`StorageHelper.getAvailableTimeSlots`) las citas ocupadas en la fecha para esa profesional y deshabilita los bloques ya tomados.
 4. **Paso 4: Datos del Cliente:** Formulario de nombre, teléfono y correo electrónico. Si la clienta ya personalizó su navegador, estos datos se autorrellenan automáticamente.
-5. **Paso 5: Confirmación / Pago:**
-   - **Confirmación directa:** Guarda la cita en la colección `Citas` con estado `'confirmada'` y envía el correo de respaldo con EmailJS.
-   - **Pago con Webpay:** Llama al backend en `/api/webpay/create`, redirige al formulario seguro de Transbank y tras el pago exitoso redirige con confirmación de orden.
+5. **Paso 5: Abono y Confirmación (Flow.cl):**
+   - **Desglose Financiero Transparente:** Muestra el valor total del servicio, el **abono obligatorio de $5.000** mediante Flow, y el saldo restante que se pagará de forma presencial en el estudio el día de la atención.
+   - **Pasarela Segura Flow:** Acepta Webpay (Crédito y Débito), CuentaRUT BancoEstado, tarjetas Visa/Mastercard, Mach y Servipag.
+   - **Modal de Pago Flow (`#flow-checkout-modal`):** Al presionar "Pagar Abono $5.000 con Flow", abre el checkout oficial de Flow y permite confirmar inmediatamente la cita con el comprobante/token correspondiente.
+   - **Confirmación Automática:** Guarda la cita en la colección `Citas` con estado `'confirmada'`, `depositAmount: 5000`, `paymentMethod: 'Flow'`, y envía el correo electrónico de respaldo con EmailJS.
 
 ### 4.3 Portal y Perfil de Clienta
 Accesible mediante la ruta `'perfil'` (`renderPerfilView`):
@@ -274,28 +276,21 @@ Colección indexada por el UID de Firebase Authentication (`user.uid`). Define l
 
 ## 7. Integraciones Externas
 
-### 7.1 Pasarela de Pagos (Transbank Webpay Plus)
-El flujo opera contra el servidor Node.js en la carpeta `backend/`:
+### 7.1 Pasarela de Pagos de Abonos (Flow.cl)
+El sistema opera con **Flow.cl** (pasarela chilena líder en Webpay, CuentaRUT, tarjetas y transferencias) para exigir el abono de $5.000 previo a la confirmación de la cita:
 
-1. **Creación de Transacción:**
-   - **Frontend:** Hace una petición `POST /api/webpay/create` enviando:
-     ```json
-     {
-       "buyOrder": "O-1729000000",
-       "sessionId": "S-1729000000",
-       "amount": 15000,
-       "returnUrl": "https://<BACKEND_URL>/api/webpay/commit"
-     }
-     ```
-   - **Backend:** Emplea el SDK oficial de Transbank (`WebpayPlus.Transaction`). Retorna un token (`token`) y una URL oficial de Transbank (`url`).
-   - **Frontend:** Crea un formulario dinámico en memoria y hace POST a la URL de Transbank con el token recibido.
+1. **Gestión desde el Panel Administrador:**
+   - En la pestaña **"Configuración Flow"** del portal administrador, la dueña del salón puede configurar directamente:
+     - **Link o Botón de Pago Flow:** URL directa de cobro de $5.000 creada en Flow (ej. `https://www.flow.cl/btn.php?token=...` o `https://flow.cl/p/...`).
+     - **API Key y Secret Key:** Credenciales de Flow para integración directa mediante API REST.
+     - **Modo Sandbox:** Interruptor para alternar entre entorno de pruebas y producción.
+   - Las configuraciones se sincronizan en Firestore en la colección `Configuracion` (documento `flow`).
 
-2. **Confirmación y Retorno:**
-   - El cliente ingresa sus datos en la pantalla bancaria de Webpay.
-   - Transbank envía a la clienta de vuelta al endpoint del backend: `GET /api/webpay/commit?token_ws=...`.
-   - El backend llama a `tx.commit(token)`. Si la respuesta es `'AUTHORIZED'`, redirige al frontend con los parámetros:
-     `?action=webpay-success&buyOrder=...&authCode=...`.
-   - El script `main.js` captura estos parámetros al cargar la página, guarda la cita confirmada y muestra la pantalla de confirmación.
+2. **Endpoints en Backend Node.js (`backend/server.js`):**
+   - `POST /api/flow/create`: Crea la orden de pago firmada con HMAC-SHA256 (`s`) hacia `https://www.flow.cl/api/payment/create`.
+   - `GET|POST /api/flow/return`: Endpoint de retorno donde Flow redirige a la usuaria con el `token`. Verifica el estado con `getStatus` (`status == 2`) y redirige al frontend con `?action=flow-success`.
+   - `POST /api/flow/notify`: Webhook asíncrono oficial de Flow.
+   - `POST /api/webpay/create` y `GET /api/webpay/commit`: Integración alternativa de respaldo con Transbank Webpay Plus.
 
 ### 7.2 Notificaciones por Correo (EmailJS)
 Se ejecuta en el lado del cliente utilizando el script `@emailjs/browser`:

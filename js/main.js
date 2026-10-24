@@ -56,7 +56,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Iniciar Modal de Foto de Clienta
     setupClientPhotoModal();
+
+    // Revisar retorno de pago de Flow
+    checkFlowPaymentReturn();
 });
+
+// --- Manejo de Retorno de Pasarela Flow ---
+function checkFlowPaymentReturn() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'flow-success') {
+        const pendingStr = sessionStorage.getItem('nicolett_pending_booking');
+        if (pendingStr) {
+            try {
+                const app = JSON.parse(pendingStr);
+                app.status = 'confirmada';
+                app.paymentStatus = 'pagado';
+                app.depositAmount = 5000;
+                app.flowToken = params.get('token') || '';
+                app.paymentMethod = 'Flow';
+                StorageHelper.saveAppointment(app);
+                sessionStorage.removeItem('nicolett_pending_booking');
+                // Limpiar la URL sin recargar
+                window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+                setTimeout(() => {
+                    alert('¡Excelente! Tu abono de $5.000 vía Flow ha sido recibido y tu cita está confirmada.');
+                }, 500);
+            } catch (e) {
+                console.error("Error confirmando retorno Flow:", e);
+            }
+        }
+    }
+}
 
 // --- Modal y Acceso Privado para Administradora y Trabajadoras ---
 window.openAuthModal = function() {
@@ -616,32 +646,44 @@ function initAgendarEvents() {
         const professionals = StorageHelper.getProfessionals();
         const p = professionals.find(x => x.id === bookingState.profId);
 
+        const price = s ? s.price : 0;
+        const abono = 5000;
+        const balance = Math.max(0, price - abono);
+
         document.getElementById('summary-client').innerText = bookingState.clientName;
         document.getElementById('summary-service').innerText = s ? s.name : '';
         document.getElementById('summary-prof').innerText = p ? p.name : '';
         document.getElementById('summary-date').innerText = bookingState.date;
         document.getElementById('summary-time').innerText = bookingState.time;
-        document.getElementById('summary-price').innerText = s ? `$${s.price.toLocaleString('es-CL')}` : '';
+        document.getElementById('summary-price').innerText = s ? `$${price.toLocaleString('es-CL')}` : '$0';
+        
+        const balanceEl = document.getElementById('summary-balance');
+        if (balanceEl) {
+            balanceEl.innerText = `$${balance.toLocaleString('es-CL')}`;
+        }
+
+        const modalServiceEl = document.getElementById('flow-modal-service');
+        if (modalServiceEl) modalServiceEl.innerText = s ? s.name : '';
+        const modalDatetimeEl = document.getElementById('flow-modal-datetime');
+        if (modalDatetimeEl) modalDatetimeEl.innerText = `${bookingState.date} a las ${bookingState.time} con ${p ? p.name : 'especialista'}`;
 
         showStep(5);
     });
 
-    // Step 5: Confirm
+    // Step 5: Abono previo de $5.000 con Flow y Confirmación
     const btnPrev5 = document.getElementById('btn-prev-5');
     const btnConfirm = document.getElementById('btn-confirm-booking');
 
     btnPrev5?.addEventListener('click', () => showStep(4));
 
     btnConfirm?.addEventListener('click', async () => {
-        btnConfirm.disabled = true;
-        btnConfirm.innerHTML = 'Procesando...';
-
         const professionals = StorageHelper.getProfessionals();
         const prof = professionals.find(p => p.id === bookingState.profId);
         const service = mockData.services.find(s => s.id === bookingState.serviceId);
+        const flowConfig = StorageHelper.getFlowConfig();
 
-        // Guardar cita directamente como confirmada (sin pago previo)
-        const appointmentData = {
+        // Guardar cita pendiente en sessionStorage
+        const pendingBooking = {
             servicio: service ? service.name : bookingState.serviceId,
             profesional: prof ? prof.name : bookingState.profId,
             profId: bookingState.profId,
@@ -653,40 +695,121 @@ function initAgendarEvents() {
             clientName: bookingState.clientName,
             clientPhone: bookingState.clientPhone,
             clientEmail: bookingState.clientEmail,
-            status: 'confirmada'
+            totalPrice: service ? service.price : 0,
+            depositAmount: 5000,
+            balanceDue: service ? Math.max(0, service.price - 5000) : 0,
+            paymentMethod: 'Flow',
+            paymentStatus: 'pendiente',
+            orderId: 'FLOW-' + Date.now()
         };
+        sessionStorage.setItem('nicolett_pending_booking', JSON.stringify(pendingBooking));
+
+        // Actualizar URL del botón de Flow en el modal
+        const btnOpenFlow = document.getElementById('btn-flow-open-gateway');
+        if (btnOpenFlow) {
+            let flowUrl = flowConfig.flowUrl || 'https://www.flow.cl/btn.php?token=abono5000';
+            btnOpenFlow.href = flowUrl;
+        }
+
+        // Mostrar modal de Flow
+        const flowModal = document.getElementById('flow-checkout-modal');
+        if (flowModal) {
+            flowModal.style.display = 'flex';
+            if (window.lucide) lucide.createIcons();
+        }
+    });
+
+    // Cerrar modal de Flow
+    const closeFlowBtn = document.getElementById('close-flow-modal');
+    closeFlowBtn?.addEventListener('click', () => {
+        const flowModal = document.getElementById('flow-checkout-modal');
+        if (flowModal) flowModal.style.display = 'none';
+    });
+
+    // Confirmar que ya se pagó el abono de $5.000 en Flow
+    const btnFlowConfirmPaid = document.getElementById('btn-flow-confirm-paid');
+    btnFlowConfirmPaid?.addEventListener('click', async () => {
+        btnFlowConfirmPaid.disabled = true;
+        btnFlowConfirmPaid.innerHTML = 'Confirmando abono...';
+
+        const pendingStr = sessionStorage.getItem('nicolett_pending_booking');
+        let appointmentData = pendingStr ? JSON.parse(pendingStr) : null;
+
+        if (!appointmentData) {
+            const professionals = StorageHelper.getProfessionals();
+            const prof = professionals.find(p => p.id === bookingState.profId);
+            const service = mockData.services.find(s => s.id === bookingState.serviceId);
+            appointmentData = {
+                servicio: service ? service.name : bookingState.serviceId,
+                profesional: prof ? prof.name : bookingState.profId,
+                profId: bookingState.profId,
+                serviceId: bookingState.serviceId,
+                date: bookingState.date,
+                time: bookingState.time,
+                needs: bookingState.needs,
+                notes: bookingState.notes,
+                clientName: bookingState.clientName,
+                clientPhone: bookingState.clientPhone,
+                clientEmail: bookingState.clientEmail,
+                totalPrice: service ? service.price : 0,
+                depositAmount: 5000,
+                balanceDue: service ? Math.max(0, service.price - 5000) : 0,
+                paymentMethod: 'Flow',
+                orderId: 'FLOW-' + Date.now()
+            };
+        }
+
+        const proof = document.getElementById('flow-proof-order')?.value.trim();
+        appointmentData.status = 'confirmada';
+        appointmentData.paymentStatus = 'pagado';
+        appointmentData.depositAmount = 5000;
+        appointmentData.flowProof = proof || 'Abono Flow Web';
 
         try {
             await StorageHelper.saveAppointment(appointmentData);
+            sessionStorage.removeItem('nicolett_pending_booking');
 
             // Enviar email con EmailJS (si está configurado)
             if (typeof emailjs !== 'undefined' && appointmentData.clientEmail) {
                 try {
-                    // Aquí usamos tu Service ID ("service_rmc9mu9")
-                    // NOTA: Reemplaza "TEMPLATE_ID_NUEVA_CITA" con el ID de la plantilla que crees
                     await emailjs.send("service_rmc9mu9", "template_2h2ya38", {
                         to_name: appointmentData.clientName,
                         to_email: appointmentData.clientEmail,
                         service: appointmentData.servicio,
                         date: appointmentData.date,
                         time: appointmentData.time,
-                        profesional: appointmentData.profesional
+                        profesional: appointmentData.profesional,
+                        deposit: "$5.000 (Vía Flow)",
+                        balance: "$" + (appointmentData.balanceDue || 0).toLocaleString('es-CL')
                     });
                 } catch (err) {
                     console.log("EmailJS no configurado o falló: ", err);
                 }
             }
 
-            document.getElementById('success-modal').style.display = 'flex';
-            setTimeout(() => {
-                document.getElementById('success-modal').style.display = 'none';
-                if (typeof AppRouter !== 'undefined') AppRouter.navigate('home');
-            }, 3000);
+            // Ocultar modal de checkout de Flow
+            const flowModal = document.getElementById('flow-checkout-modal');
+            if (flowModal) flowModal.style.display = 'none';
+
+            // Actualizar nota en el modal de éxito
+            const balanceNotice = document.getElementById('success-balance-notice');
+            if (balanceNotice) {
+                const bal = appointmentData.balanceDue || 0;
+                balanceNotice.innerHTML = `El saldo restante (<strong>$${bal.toLocaleString('es-CL')}</strong>) se cancela el día de tu atención en el estudio.`;
+            }
+
+            // Mostrar modal de éxito
+            const successModal = document.getElementById('success-modal');
+            if (successModal) {
+                successModal.style.display = 'flex';
+                if (window.lucide) lucide.createIcons();
+            }
         } catch (e) {
             console.error(e);
-            alert('Error al guardar la cita: ' + e.message);
-            btnConfirm.disabled = false;
-            btnConfirm.innerHTML = 'Confirmar Reserva';
+            alert('Error al confirmar la cita: ' + e.message);
+            btnFlowConfirmPaid.disabled = false;
+            btnFlowConfirmPaid.innerHTML = '<i data-lucide="check-circle"></i> ¡Ya pagué en Flow! Confirmar Cita';
+            if (window.lucide) lucide.createIcons();
         }
     });
 }
@@ -1052,6 +1175,46 @@ function initAdminEvents() {
             }
         });
     });
+
+    // --- Configuración de Pasarela Flow (Solo Admin) ---
+    const formFlowCfg = document.getElementById('form-flow-config');
+    if (formFlowCfg) {
+        const flowCfg = StorageHelper.getFlowConfig();
+        const urlInput = document.getElementById('flow-cfg-url');
+        const apiKeyInput = document.getElementById('flow-cfg-apikey');
+        const secretInput = document.getElementById('flow-cfg-secret');
+        const sandboxInput = document.getElementById('flow-cfg-sandbox');
+
+        if (urlInput) urlInput.value = flowCfg.flowUrl || '';
+        if (apiKeyInput) apiKeyInput.value = flowCfg.apiKey || '';
+        if (secretInput) secretInput.value = flowCfg.secretKey || '';
+        if (sandboxInput) sandboxInput.checked = !!flowCfg.isSandbox;
+
+        formFlowCfg.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btnSave = document.getElementById('btn-save-flow-cfg');
+            if (btnSave) {
+                btnSave.disabled = true;
+                btnSave.innerHTML = 'Guardando...';
+            }
+
+            const updatedCfg = {
+                flowUrl: urlInput?.value.trim() || 'https://www.flow.cl/btn.php?token=abono5000',
+                apiKey: apiKeyInput?.value.trim() || '',
+                secretKey: secretInput?.value.trim() || '',
+                isSandbox: sandboxInput ? sandboxInput.checked : false
+            };
+
+            await StorageHelper.saveFlowConfig(updatedCfg);
+            alert('¡Configuración de Flow guardada exitosamente!');
+
+            if (btnSave) {
+                btnSave.disabled = false;
+                btnSave.innerHTML = '<i data-lucide="save"></i> Guardar Configuración Flow';
+                if (window.lucide) lucide.createIcons();
+            }
+        });
+    }
 
     // --- Lógica de Galería (Solo Admin) ---
     const formGallery = document.getElementById('form-upload-gallery');

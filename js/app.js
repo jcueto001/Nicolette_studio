@@ -406,44 +406,145 @@ function renderAgendarView() {
                     </div>
                 </div>
 
-                <!-- Step 5: Summary -->
+                <!-- Step 5: Summary & Abono Flow -->
                 <div id="booking-step-5" class="booking-step" style="display: none;">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <div style="width: 60px; height: 60px; background: #4CAF50; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
-                            <i data-lucide="check" style="width: 30px; height: 30px;"></i>
+                    <div style="text-align: center; margin-bottom: 25px;">
+                        <div style="width: 58px; height: 58px; background: linear-gradient(135deg, #1b75bb, #0b4f82); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; box-shadow: 0 6px 16px rgba(27,117,187,0.3);">
+                            <i data-lucide="shield-check" style="width: 28px; height: 28px;"></i>
                         </div>
-                        <h3>Confirma tu cita</h3>
-                    </div>
-                    
-                    <div class="card" style="background: var(--clr-nude-light); border: none; margin-bottom: 30px;">
-                        <h4 style="margin-bottom: 15px; border-bottom: 1px solid var(--clr-nude); padding-bottom: 10px;">Resumen</h4>
-                        <p style="margin-bottom: 8px;"><strong>Cliente:</strong> <span id="summary-client">-</span></p>
-                        <p style="margin-bottom: 8px;"><strong>Servicio:</strong> <span id="summary-service">-</span></p>
-                        <p style="margin-bottom: 8px;"><strong>Profesional:</strong> <span id="summary-prof">-</span></p>
-                        <p style="margin-bottom: 8px;"><strong>Fecha:</strong> <span id="summary-date">-</span></p>
-                        <p style="margin-bottom: 8px;"><strong>Hora:</strong> <span id="summary-time">-</span></p>
-                        <p style="margin-bottom: 8px; font-size: 1.2rem; color: var(--clr-rose-gold-dark); margin-top: 15px;"><strong>Total:</strong> <span id="summary-price">-</span></p>
-                    </div>
-
-                    <div style="background: var(--clr-nude-light); padding: 18px 20px; border-radius: var(--radius-sm); margin-bottom: 25px; border-left: 4px solid var(--clr-rose-gold);">
-                        <p style="margin: 0; font-size: 0.95rem; color: var(--clr-neutral-dark);">
-                            <i data-lucide="info" style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 6px; color: var(--clr-rose-gold-dark);"></i>
-                            <strong>Sin pago previo:</strong> No necesitas realizar ningún abono por adelantado. Pagas directamente en el estudio el día de tu atención (efectivo, débito o transferencia).
+                        <h3 style="margin-bottom: 6px;">5. Abono y Confirmación</h3>
+                        <p style="color: var(--clr-neutral-gray); font-size: 0.9rem; margin: 0;">
+                            Para agendar tu hora se requiere un abono de <strong>$5.000</strong> mediante Flow.
                         </p>
                     </div>
+                    
+                    <div class="card" style="background: var(--clr-nude-light); border: none; margin-bottom: 20px; padding: 20px;">
+                        <h4 style="margin-bottom: 12px; border-bottom: 1px solid var(--clr-nude); padding-bottom: 8px; color: var(--clr-neutral-dark); display:flex; align-items:center; gap:8px;">
+                            <i data-lucide="calendar" style="width:16px; height:16px; color:var(--clr-rose-gold-dark);"></i> Resumen de la Cita
+                        </h4>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.95rem;">
+                            <p style="margin: 0;"><strong>Clienta:</strong> <span id="summary-client">-</span></p>
+                            <p style="margin: 0;"><strong>Servicio:</strong> <span id="summary-service">-</span></p>
+                            <p style="margin: 0;"><strong>Especialista:</strong> <span id="summary-prof">-</span></p>
+                            <p style="margin: 0;"><strong>Fecha y Hora:</strong> <span id="summary-date">-</span> a las <span id="summary-time">-</span></p>
+                        </div>
+                    </div>
 
-                    <div style="display: flex; justify-content: space-between;">
+                    <!-- Desglose Financiero -->
+                    <div class="card" style="background: white; border: 2px solid var(--clr-rose-gold); margin-bottom: 20px; padding: 20px; border-radius: var(--radius-md);">
+                        <h4 style="margin-bottom: 14px; color: var(--clr-neutral-dark); display:flex; align-items:center; justify-content:space-between;">
+                            <span><i data-lucide="receipt" style="width:18px; height:18px; display:inline; vertical-align:middle; color:var(--clr-rose-gold-dark); margin-right:6px;"></i> Detalle del Pago</span>
+                            <span style="font-size: 0.78rem; background: #e3f2fd; color: #1565c0; padding: 3px 10px; border-radius: 12px; font-weight: 600;">Pasarela Flow.cl</span>
+                        </h4>
+                        
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 8px; font-size: 0.95rem; color: var(--clr-neutral-gray);">
+                            <span>Valor Total del Servicio:</span>
+                            <span id="summary-price" style="font-weight:600; color:var(--clr-neutral-dark);">-</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 12px; padding: 10px 12px; background: #e8f5e9; border-radius: 6px; border: 1px solid #a5d6a7;">
+                            <span style="font-weight:700; color:#1b5e20; display:flex; align-items:center; gap:6px;">
+                                <i data-lucide="check-circle" style="width:16px; height:16px;"></i> Abono a Pagar Ahora (Flow):
+                            </span>
+                            <span style="font-weight:800; font-size:1.15rem; color:#1b5e20;">$5.000</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 10px; font-size: 0.95rem; color: var(--clr-neutral-dark);">
+                            <span>Saldo Restante a Pagar en el Estudio:</span>
+                            <span id="summary-balance" style="font-weight:700; color:var(--clr-rose-gold-dark);">-</span>
+                        </div>
+                        <small style="color: var(--clr-neutral-gray); font-size: 0.8rem; display:block; border-top: 1px dashed #ddd; padding-top: 8px;">
+                            * El saldo restante se cancela presencialmente el día de tu atención (efectivo, débito o transferencia).
+                        </small>
+                    </div>
+
+                    <!-- Flow Information Box -->
+                    <div style="background: linear-gradient(135deg, #f7faff, #eef5fc); border: 1px solid #c7ddf5; border-radius: var(--radius-sm); padding: 16px 20px; margin-bottom: 25px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; flex-wrap:wrap; gap:8px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="background: #1b75bb; color:white; font-weight:900; font-size:0.85rem; padding:3px 9px; border-radius:4px; letter-spacing:0.5px;">flow</span>
+                                <strong style="color:#0b4f82; font-size:0.95rem;">Pago Seguro en Línea</strong>
+                            </div>
+                            <span style="font-size:0.75rem; color:#1b75bb; font-weight:600;"><i data-lucide="lock" style="width:12px; height:12px; display:inline; vertical-align:middle;"></i> Encriptación SSL 256-bit</span>
+                        </div>
+                        <p style="margin: 0 0 10px; font-size: 0.85rem; color: #2c4b6f; line-height: 1.4;">
+                            Acepta <strong>Webpay (Crédito y Débito)</strong>, <strong>CuentaRUT BancoEstado</strong>, <strong>Mach</strong>, <strong>Servipag</strong> y transferencias bancarias.
+                        </p>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                            <span style="background:white; border:1px solid #d0e1f3; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600; color:#333;">Webpay</span>
+                            <span style="background:white; border:1px solid #d0e1f3; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600; color:#333;">Redcompra</span>
+                            <span style="background:white; border:1px solid #d0e1f3; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600; color:#333;">Visa / Mastercard</span>
+                            <span style="background:white; border:1px solid #d0e1f3; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600; color:#333;">CuentaRUT</span>
+                            <span style="background:white; border:1px solid #d0e1f3; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600; color:#333;">Mach</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
                         <button class="btn btn-outline" id="btn-prev-5"><i data-lucide="chevron-left"></i> Atrás</button>
-                        <button class="btn btn-primary" id="btn-confirm-booking">Confirmar Reserva</button>
+                        <button class="btn btn-primary" id="btn-confirm-booking" style="background: linear-gradient(135deg, #1b75bb, #0b4f82); border: none; padding: 13px 28px; font-size: 1rem; font-weight: 700; box-shadow: 0 4px 15px rgba(27,117,187,0.3); display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="credit-card" style="width:18px; height:18px;"></i> Pagar Abono $5.000 con Flow
+                        </button>
                     </div>
                 </div>
             </div>
             
-            <!-- Modal de Éxito Oculto -->
-            <div id="success-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 2000; align-items:center; justify-content:center;">
-                <div class="card text-center" style="max-width: 400px; width: 90%;">
-                    <i data-lucide="party-popper" style="color: var(--clr-rose-gold); width: 60px; height: 60px; margin-bottom: 20px;"></i>
-                    <h3 style="margin-bottom: 15px;">¡Cita Agendada!</h3>
+            <!-- Modal de Pasarela Flow para Confirmación -->
+            <div id="flow-checkout-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); z-index: 2500; align-items:center; justify-content:center; padding:15px;">
+                <div class="card" style="max-width: 480px; width: 100%; background:white; border-radius: var(--radius-md); padding: 30px 25px; position:relative; box-shadow: var(--shadow-medium); text-align:center;">
+                    <button id="close-flow-modal" style="position:absolute; top:15px; right:15px; background:none; border:none; cursor:pointer; color:var(--clr-neutral-gray);"><i data-lucide="x"></i></button>
+                    
+                    <div style="width: 56px; height: 56px; background: #e3f2fd; color: #1b75bb; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                        <i data-lucide="external-link" style="width: 28px; height: 28px;"></i>
+                    </div>
+                    
+                    <h3 style="margin-bottom: 8px; color: var(--clr-neutral-dark);">Abonar $5.000 en Flow</h3>
+                    <p style="color: var(--clr-neutral-gray); font-size: 0.9rem; margin-bottom: 20px;">
+                        Estás a un paso de asegurar tu cita. Realiza el abono seguro de <strong>$5.000</strong> a través de Flow:
+                    </p>
+
+                    <div style="background: var(--clr-nude-light); padding: 12px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 0.9rem; text-align: left;">
+                        <div style="margin-bottom: 4px;"><strong>Cita:</strong> <span id="flow-modal-service">-</span></div>
+                        <div style="margin-bottom: 4px;"><strong>Fecha:</strong> <span id="flow-modal-datetime">-</span></div>
+                        <div style="color: #1b5e20; font-weight: 700;"><strong>Monto Abono:</strong> $5.000 CLP</div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;">
+                        <a id="btn-flow-open-gateway" href="#" target="_blank" class="btn btn-primary" style="background: linear-gradient(135deg, #1b75bb, #0b4f82); border: none; padding: 13px; font-size: 1rem; font-weight: 700; display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none;">
+                            <i data-lucide="credit-card" style="width:18px; height:18px;"></i> Abrir Pasarela de Pago Flow ($5.000)
+                        </a>
+
+                        <div style="position:relative; margin: 10px 0; text-align:center;">
+                            <span style="background:white; padding: 0 10px; font-size:0.8rem; color:#999; position:relative; z-index:1;">O tras pagar en Flow</span>
+                            <div style="position:absolute; top:50%; left:0; width:100%; height:1px; background:#eee;"></div>
+                        </div>
+
+                        <div>
+                            <input type="text" id="flow-proof-order" placeholder="N° de Comprobante / Transacción Flow (opcional)" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.88rem; margin-bottom:8px; text-align:center;">
+                        </div>
+
+                        <button id="btn-flow-confirm-paid" class="btn" style="background: #2e7d32; color: white; border: none; padding: 13px; font-size: 0.98rem; font-weight: 700; display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <i data-lucide="check-circle" style="width:18px; height:18px;"></i> ¡Ya pagué en Flow! Confirmar Cita
+                        </button>
+                    </div>
+
+                    <small style="color: var(--clr-neutral-gray); font-size: 0.78rem; display:block;">
+                        <i data-lucide="shield" style="width:12px; height:12px; display:inline; vertical-align:middle;"></i> Tu cita se reservará de inmediato una vez confirmado el abono.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Modal de Éxito Actualizado -->
+            <div id="success-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); z-index: 3000; align-items:center; justify-content:center; padding:15px;">
+                <div class="card text-center" style="max-width: 440px; width: 100%; background:white; border-radius:var(--radius-md); padding:35px 25px; box-shadow:var(--shadow-medium);">
+                    <div style="width: 64px; height: 64px; background: #e8f5e9; color: #2e7d32; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                        <i data-lucide="party-popper" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h3 style="margin-bottom: 10px; color:var(--clr-neutral-dark);">¡Cita Agendada y Abono Confirmado!</h3>
+                    <div style="background:#e8f5e9; border:1px solid #c8e6c9; border-radius:6px; padding:12px; margin-bottom:15px; font-size:0.9rem; color:#1b5e20;">
+                        <strong>Abono recibido vía Flow:</strong> $5.000 CLP<br>
+                        <span id="success-balance-notice" style="font-size:0.85rem; color:#2e7d32;">El saldo restante se cancela el día de tu atención en el estudio.</span>
+                    </div>
+                    <p style="color: var(--clr-neutral-gray); font-size: 0.9rem; margin-bottom: 25px;">
+                        Te hemos enviado los detalles de tu cita y confirmación a tu correo electrónico.
+                    </p>
                     <button class="btn btn-primary btn-block" onclick="document.getElementById('success-modal').style.display='none'; AppRouter.navigate('home')">Volver al Inicio</button>
                 </div>
             </div>
@@ -687,6 +788,7 @@ function renderAdminView() {
                 <button class="admin-tab" data-target="tab-clientas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Directorio</button>
                 <button class="admin-tab" data-target="tab-inventario" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Inventario</button>
                 <button class="admin-tab" data-target="tab-profs" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Trabajadoras</button>
+                <button class="admin-tab" data-target="tab-flow" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Configuración Flow</button>
                 ` : ''}
             </div>
 
@@ -910,6 +1012,71 @@ function renderAdminView() {
                         </div>
                     `;}).join('')}
                     ${StorageHelper.getGallery().length === 0 ? '<p style="grid-column: 1/-1; text-align:center; padding:30px; color:var(--clr-neutral-gray);">No hay imágenes en la galería.</p>' : ''}
+                </div>
+            </div>
+            
+            <!-- Tab Configuración Flow -->
+            <div id="tab-flow" class="admin-tab-content" style="display:none;">
+                <div class="card" style="max-width: 750px; margin: 0 auto; padding: 25px;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                        <div style="background: linear-gradient(135deg, #1b75bb, #0b4f82); color:white; width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:1.1rem;">
+                            flow
+                        </div>
+                        <div>
+                            <h3 style="margin:0; font-size:1.3rem; color:var(--clr-neutral-dark);">Configuración de Pasarela Flow</h3>
+                            <p style="margin:4px 0 0; color:var(--clr-neutral-gray); font-size:0.88rem;">Gestiona el abono de $5.000 que pagan las clientas para agendar su hora.</p>
+                        </div>
+                    </div>
+
+                    <form id="form-flow-config" style="display:flex; flex-direction:column; gap:18px;">
+                        <div>
+                            <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.92rem; color:var(--clr-neutral-dark);">
+                                Link o Botón de Pago Flow ($5.000)
+                            </label>
+                            <input type="url" id="flow-cfg-url" placeholder="https://www.flow.cl/btn.php?token=... o https://flow.cl/p/..." style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                            <small style="color:var(--clr-neutral-gray); font-size:0.8rem; display:block; margin-top:5px;">
+                                Enlace directo creado desde tu portal de Flow.cl para cobrar los $5.000 de abono.
+                            </small>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                            <div>
+                                <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.92rem; color:var(--clr-neutral-dark);">
+                                    API Key de Flow (Opcional)
+                                </label>
+                                <input type="text" id="flow-cfg-apikey" placeholder="Ej: 54A0F9B..." style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                            </div>
+                            <div>
+                                <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.92rem; color:var(--clr-neutral-dark);">
+                                    Secret Key de Flow (Opcional)
+                                </label>
+                                <input type="password" id="flow-cfg-secret" placeholder="••••••••••••••••" style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                            </div>
+                        </div>
+
+                        <div style="padding:12px 15px; background:var(--clr-nude-light); border-radius:var(--radius-sm); display:flex; align-items:center; gap:10px;">
+                            <input type="checkbox" id="flow-cfg-sandbox" style="width:18px; height:18px; cursor:pointer;">
+                            <label for="flow-cfg-sandbox" style="cursor:pointer; font-size:0.9rem; font-weight:500; margin:0;">
+                                Usar entorno de pruebas Flow Sandbox (modo desarrollo)
+                            </label>
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                            <button type="submit" class="btn btn-primary" id="btn-save-flow-cfg" style="padding:12px 24px; font-weight:600; display:flex; align-items:center; gap:6px;">
+                                <i data-lucide="save"></i> Guardar Configuración Flow
+                            </button>
+                        </div>
+                    </form>
+
+                    <div style="margin-top:25px; padding:15px; border-radius:var(--radius-sm); background:#f8f9fa; border-left:4px solid #1b75bb; font-size:0.85rem; color:#444;">
+                        <strong><i data-lucide="info" style="width:14px; height:14px; display:inline; vertical-align:middle;"></i> ¿Cómo funciona el cobro de Flow?</strong>
+                        <ul style="margin: 6px 0 0 18px; padding: 0; line-height: 1.5;">
+                            <li>La clienta completa su servicio, profesional, fecha, hora y datos.</li>
+                            <li>En el último paso, el sistema le desglosa el valor del servicio y le solicita el <strong>abono de $5.000 vía Flow</strong>.</li>
+                            <li>La clienta paga a través de Webpay, CuentaRUT, tarjetas o transferencia con la seguridad de Flow.</li>
+                            <li>Al completarse el abono, la cita queda <strong>confirmada</strong> y el dashboard computa los $5.000. El saldo se paga presencialmente en el estudio.</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
             ` : ''}

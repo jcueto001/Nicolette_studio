@@ -94,6 +94,7 @@ const StorageHelper = {
     _fichasCache: [],
     _professionalsCache: [],
     _inventoryCache: [],
+    _flowConfigCache: null,
 
     init: async function () {
         if (!localStorage.getItem('nicolett_appointments')) {
@@ -243,6 +244,16 @@ const StorageHelper = {
             console.warn("Firestore Galeria (usando fallback local):", e);
         }
 
+        try {
+            const flowDoc = await db.collection("Configuracion").doc("flow").get();
+            if (flowDoc.exists) {
+                this._flowConfigCache = flowDoc.data();
+                localStorage.setItem('nicolett_flow_config', JSON.stringify(this._flowConfigCache));
+            }
+        } catch(e) {
+            console.warn("Firestore Configuracion Flow:", e);
+        }
+
         this._refreshAdminIfSafe();
     },
 
@@ -274,7 +285,8 @@ const StorageHelper = {
     },
 
     saveAppointment: async function (appointment) {
-        appointment.status = 'confirmada';
+        appointment.status = appointment.status || 'confirmada';
+        appointment.depositAmount = appointment.depositAmount || 5000;
         appointment.createdAt = new Date().toISOString(); // Fallback date
 
         if(typeof db !== 'undefined') {
@@ -532,6 +544,37 @@ const StorageHelper = {
         let clients = this.getClients();
         clients = clients.filter(c => c.id !== id);
         this.saveClients(clients);
+    },
+
+    // --- Configuración de Flow (Pasarela de Pago de Abonos) ---
+    getFlowConfig: function() {
+        if (this._flowConfigCache) return this._flowConfigCache;
+        const def = {
+            flowUrl: 'https://www.flow.cl/btn.php?token=abono5000',
+            apiKey: '',
+            secretKey: '',
+            isSandbox: false
+        };
+        try {
+            const stored = localStorage.getItem('nicolett_flow_config');
+            this._flowConfigCache = stored ? { ...def, ...JSON.parse(stored) } : def;
+        } catch(e) {
+            this._flowConfigCache = def;
+        }
+        return this._flowConfigCache;
+    },
+
+    saveFlowConfig: async function(cfg) {
+        this._flowConfigCache = cfg;
+        localStorage.setItem('nicolett_flow_config', JSON.stringify(cfg));
+        if (typeof db !== 'undefined') {
+            try {
+                await db.collection("Configuracion").doc("flow").set(cfg, { merge: true });
+            } catch(e) {
+                console.error("Error guardando configuración de Flow en Firestore:", e);
+            }
+        }
+        return cfg;
     }
 };
 
