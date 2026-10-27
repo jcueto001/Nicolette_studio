@@ -556,7 +556,7 @@ const StorageHelper = {
             apiKey: '',
             secretKey: '',
             backendUrl: defaultBackend,
-            isSandbox: true
+            isSandbox: isLocal
         };
         try {
             const stored = localStorage.getItem('nicolett_flow_config');

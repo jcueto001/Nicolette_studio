@@ -855,9 +855,11 @@ function initAgendarEvents() {
         const flowConfig = StorageHelper.getFlowConfig();
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
         const defaultBackend = isLocal ? 'http://localhost:3000' : window.location.origin;
-        const backendUrl = (flowConfig.backendUrl && (flowConfig.backendUrl !== 'http://localhost:3000' || isLocal)
+        let backendUrl = (flowConfig.backendUrl && (flowConfig.backendUrl !== 'http://localhost:3000' || isLocal)
             ? flowConfig.backendUrl
             : defaultBackend).replace(/\/+$/, '');
+        // Limpiar sufijos /api o /api/... si fueron ingresados por error
+        backendUrl = backendUrl.replace(/\/api(\/.*)?$/, '');
 
         try {
             console.log('[Flow] Solicitando orden de pago al backend:', `${backendUrl}/api/flow/create`);
@@ -866,7 +868,7 @@ function initAgendarEvents() {
                 clientName: appointmentData.clientName || 'Clienta',
                 orderId: appointmentData.orderId,
                 amount: 5000,
-                isSandbox: (flowConfig.isSandbox !== undefined) ? flowConfig.isSandbox : true,
+                isSandbox: (flowConfig.isSandbox !== undefined) ? flowConfig.isSandbox : isLocal,
                 returnUrl: window.location.href.split('?')[0]
             };
             if (flowConfig.apiKey) payload.apiKey = flowConfig.apiKey;
@@ -1312,12 +1314,14 @@ function initAdminEvents() {
         if (apiKeyInput) apiKeyInput.value = flowCfg.apiKey || '';
         if (secretInput) secretInput.value = flowCfg.secretKey || '';
         if (backendInput) backendInput.value = activeBackend || defaultBackend;
-        if (sandboxInput) sandboxInput.checked = (flowCfg.isSandbox !== undefined) ? flowCfg.isSandbox : true;
+        if (sandboxInput) sandboxInput.checked = (flowCfg.isSandbox !== undefined) ? flowCfg.isSandbox : isLocalHost;
 
         // Probar conexión con el servidor backend
         if (btnTest) {
             btnTest.addEventListener('click', async () => {
-                const url = (backendInput?.value.trim() || defaultBackend).replace(/\/+$/, '');
+                const rawUrl = (backendInput?.value.trim() || defaultBackend).replace(/\/+$/, '');
+                const url = rawUrl.replace(/\/api(\/.*)?$/, '');
+                if (backendInput && backendInput.value !== url) backendInput.value = url;
                 if (statusEl) {
                     statusEl.style.display = 'block';
                     statusEl.style.background = '#e3f2fd';
@@ -1368,11 +1372,14 @@ function initAdminEvents() {
                 btnSave.innerHTML = 'Guardando...';
             }
 
+            const cleanBackend = (backendInput?.value.trim() || defaultBackend).replace(/\/+$/, '').replace(/\/api(\/.*)?$/, '');
+            if (backendInput) backendInput.value = cleanBackend;
+
             const updatedCfg = {
                 flowUrl: urlInput?.value.trim() || '',
                 apiKey: apiKeyInput?.value.trim() || '',
                 secretKey: secretInput?.value.trim() || '',
-                backendUrl: backendInput?.value.trim() || defaultBackend,
+                backendUrl: cleanBackend,
                 isSandbox: sandboxInput ? sandboxInput.checked : true
             };
 

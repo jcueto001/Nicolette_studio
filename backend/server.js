@@ -26,7 +26,9 @@ app.use(express.static(path.join(__dirname, '..')));
 // --- Configuración Flow.cl ---
 const FLOW_API_KEY = process.env.FLOW_API_KEY || '';
 const FLOW_SECRET_KEY = process.env.FLOW_SECRET_KEY || '';
-const FLOW_IS_SANDBOX = process.env.FLOW_SANDBOX !== 'false'; // sandbox por defecto en desarrollo
+const isVercel = !!process.env.VERCEL;
+// En Vercel es producción por defecto (false), a menos que FLOW_SANDBOX esté explícitamente en 'true'. En local es sandbox por defecto.
+const FLOW_IS_SANDBOX = process.env.FLOW_SANDBOX ? process.env.FLOW_SANDBOX === 'true' : !isVercel;
 const FLOW_BASE_URL = FLOW_IS_SANDBOX ? 'https://sandbox.flow.cl/api' : 'https://www.flow.cl/api';
 const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${port}`;
 const FRONTEND_URL = process.env.FRONTEND_URL || `http://localhost:${port}/index.html`;
