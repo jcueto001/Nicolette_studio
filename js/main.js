@@ -891,7 +891,12 @@ function initAgendarEvents() {
                     window.location.href = flowConfig.flowUrl;
                     return;
                 }
-                const errorDetail = data.error || data.message || 'Error desconocido';
+                let errorDetail = data.error || data.message || 'Error desconocido';
+                if (typeof errorDetail === 'string' && errorDetail.includes('apiKey not found')) {
+                    errorDetail = 'La API Key no coincide con el entorno de Flow seleccionado.\n\n' +
+                        '• Si usas credenciales reales de Flow.cl: Ve al Panel de Administración > Configuración y DESMARCA "Usar entorno de pruebas Flow Sandbox".\n' +
+                        '• Si estás probando: Verifica que tu API Key haya sido generada en https://sandbox.flow.cl (no en la web principal).';
+                }
                 alert(`⚠️ Error de Flow: ${errorDetail}\n\nPor favor verifica tu conexión y configuración.`);
                 btnFlowProcess.disabled = false;
                 btnFlowProcess.innerHTML = '<i data-lucide="shield-check" style="width:20px; height:20px;"></i> Pagar Abono de $5.000 y Agendar';
@@ -1296,16 +1301,23 @@ function initAdminEvents() {
         const statusEl = document.getElementById('backend-conn-status');
         const btnTest = document.getElementById('btn-test-flow-conn');
 
+        const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+        const defaultBackend = isLocalHost ? 'http://localhost:3000' : window.location.origin;
+        let activeBackend = flowCfg.backendUrl;
+        if (!isLocalHost && (!activeBackend || activeBackend.includes('localhost') || activeBackend.includes('127.0.0.1'))) {
+            activeBackend = defaultBackend;
+        }
+
         if (urlInput) urlInput.value = flowCfg.flowUrl || '';
         if (apiKeyInput) apiKeyInput.value = flowCfg.apiKey || '';
         if (secretInput) secretInput.value = flowCfg.secretKey || '';
-        if (backendInput) backendInput.value = flowCfg.backendUrl || 'http://localhost:3000';
+        if (backendInput) backendInput.value = activeBackend || defaultBackend;
         if (sandboxInput) sandboxInput.checked = (flowCfg.isSandbox !== undefined) ? flowCfg.isSandbox : true;
 
         // Probar conexión con el servidor backend
         if (btnTest) {
             btnTest.addEventListener('click', async () => {
-                const url = (backendInput?.value.trim() || 'http://localhost:3000').replace(/\/+$/, '');
+                const url = (backendInput?.value.trim() || defaultBackend).replace(/\/+$/, '');
                 if (statusEl) {
                     statusEl.style.display = 'block';
                     statusEl.style.background = '#e3f2fd';
@@ -1320,7 +1332,7 @@ function initAdminEvents() {
                     if (resp.ok) {
                         const data = await resp.json();
                         const envMode = data.sandbox ? 'Sandbox (Pruebas)' : 'Producción';
-                        const keysStatus = data.configured ? 'Configuradas en el backend (.env)' : 'Se enviarán desde este formulario';
+                        const keysStatus = data.configured ? 'Configuradas en backend (.env / Vercel)' : 'Se enviarán desde este formulario';
                         statusEl.style.background = '#e8f5e9';
                         statusEl.style.color = '#1b5e20';
                         statusEl.style.border = '1px solid #c8e6c9';
@@ -1337,10 +1349,12 @@ function initAdminEvents() {
                     statusEl.style.background = '#ffebee';
                     statusEl.style.color = '#b71c1c';
                     statusEl.style.border = '1px solid #ffcdd2';
+                    const hintMsg = isLocalHost
+                        ? 'Asegúrate de que el backend esté ejecutándose con: <br><code>cd backend &amp;&amp; npm start</code> o ejecutando <code>iniciar_backend.bat</code>'
+                        : `En Vercel el backend funciona automáticamente en este mismo dominio (<code>${window.location.origin}</code>). Asegúrate de tener configurado el campo con <code>${window.location.origin}</code>.`;
                     statusEl.innerHTML = `
                         <strong>⚠️ Servidor Backend no responde en <code>${url}</code></strong><br>
-                        Asegúrate de que el backend esté ejecutándose con: <br>
-                        <code>cd backend &amp;&amp; npm start</code>
+                        ${hintMsg}
                     `;
                 }
             });
@@ -1358,7 +1372,7 @@ function initAdminEvents() {
                 flowUrl: urlInput?.value.trim() || '',
                 apiKey: apiKeyInput?.value.trim() || '',
                 secretKey: secretInput?.value.trim() || '',
-                backendUrl: backendInput?.value.trim() || 'http://localhost:3000',
+                backendUrl: backendInput?.value.trim() || defaultBackend,
                 isSandbox: sandboxInput ? sandboxInput.checked : true
             };
 

@@ -1095,11 +1095,11 @@ function renderAdminView() {
 
                         <div>
                             <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.92rem; color:var(--clr-neutral-dark);">
-                                URL Servidor Backend (Node.js)
+                                URL Servidor Backend (Vercel / Node.js)
                             </label>
-                            <input type="url" id="flow-cfg-backend" placeholder="http://localhost:3000" style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                            <input type="url" id="flow-cfg-backend" placeholder="https://nicolette-studio.vercel.app" style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
                             <small style="color:var(--clr-neutral-gray); font-size:0.8rem; display:block; margin-top:5px;">
-                                Dirección de tu servidor backend local o en la nube (por defecto: <code>http://localhost:3000</code>).
+                                En Vercel se autodetecta automáticamente tu dominio actual (<code>https://nicolette-studio.vercel.app</code>). En desarrollo local usa <code>http://localhost:3000</code>.
                             </small>
                         </div>
 

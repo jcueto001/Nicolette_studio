@@ -165,7 +165,14 @@ app.post('/api/flow/create', async (req, res) => {
             });
         } else {
             console.error("[Flow] Error respuesta:", flowData);
-            res.status(400).json({ error: flowData.message || 'Error en respuesta de Flow', details: flowData });
+            let errorMsg = flowData.message || 'Error en respuesta de Flow';
+            if (typeof errorMsg === 'string' && errorMsg.includes('apiKey not found')) {
+                errorMsg = `apiKey not found en ${useSandbox ? 'Flow Sandbox' : 'Flow Producción'}. ` +
+                    (useSandbox 
+                        ? 'Estás en modo Sandbox pero la API Key parece ser de tu cuenta real de flow.cl (desmarca la casilla Sandbox en la configuración).' 
+                        : 'Estás en modo Producción pero la API Key no fue encontrada en www.flow.cl.');
+            }
+            res.status(400).json({ error: errorMsg, details: flowData });
         }
     } catch (error) {
         console.error("[Flow] Error creando pago:", error);

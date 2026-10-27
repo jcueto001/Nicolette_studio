@@ -549,11 +549,13 @@ const StorageHelper = {
     // --- Configuración de Flow (Pasarela de Pago de Abonos) ---
     getFlowConfig: function() {
         if (this._flowConfigCache) return this._flowConfigCache;
+        const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:');
+        const defaultBackend = isLocal ? 'http://localhost:3000' : (typeof window !== 'undefined' ? window.location.origin : '');
         const def = {
             flowUrl: '',
             apiKey: '',
             secretKey: '',
-            backendUrl: 'http://localhost:3000',
+            backendUrl: defaultBackend,
             isSandbox: true
         };
         try {
@@ -562,6 +564,10 @@ const StorageHelper = {
                 const parsed = JSON.parse(stored);
                 if (parsed.flowUrl && parsed.flowUrl.includes('abono5000')) {
                     parsed.flowUrl = '';
+                }
+                // Si estamos en Vercel/producción y quedó guardado localhost:3000, usar el dominio actual
+                if (!isLocal && (!parsed.backendUrl || parsed.backendUrl.includes('localhost') || parsed.backendUrl.includes('127.0.0.1'))) {
+                    parsed.backendUrl = defaultBackend;
                 }
                 this._flowConfigCache = { ...def, ...parsed };
             } else {
