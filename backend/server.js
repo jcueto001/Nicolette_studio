@@ -72,10 +72,13 @@ setInterval(() => {
 
 // Endpoint para verificar si el backend está configurado
 app.get('/api/flow/config', (req, res) => {
+    const hostHeader = req.headers['x-forwarded-host'] || req.headers.host;
+    const protoHeader = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    const originUrl = hostHeader ? `${protoHeader}://${hostHeader}` : BACKEND_URL;
     res.json({
         configured: !!(FLOW_API_KEY && FLOW_SECRET_KEY),
         sandbox: FLOW_IS_SANDBOX,
-        backendUrl: BACKEND_URL,
+        backendUrl: originUrl,
         timestamp: new Date().toISOString()
     });
 });
@@ -98,11 +101,20 @@ app.post('/api/flow/create', async (req, res) => {
         const useSandbox = isSandbox !== undefined ? isSandbox : FLOW_IS_SANDBOX;
         const flowApiUrl = useSandbox ? 'https://sandbox.flow.cl/api' : 'https://www.flow.cl/api';
 
+        // Determinar dinámicamente el dominio actual (funciona automáticamente en Vercel o localhost)
+        const hostHeader = req.headers['x-forwarded-host'] || req.headers.host;
+        const protoHeader = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+        const currentOrigin = hostHeader ? `${protoHeader}://${hostHeader}` : BACKEND_URL;
+
         // URL base de frontend a la que retornará el cliente
-        let frontendReturn = returnUrl || req.headers.referer || FRONTEND_URL;
+        let frontendReturn = returnUrl || req.headers.referer || `${currentOrigin}/index.html`;
         if (!frontendReturn.startsWith('http://') && !frontendReturn.startsWith('https://')) {
-            frontendReturn = `http://localhost:${port}/index.html`;
+            frontendReturn = `${currentOrigin}/index.html`;
         }
+
+        // En Vercel o dominios públicos, usar el webhook real /api/flow/notify
+        const isPublicDomain = !currentOrigin.includes('localhost') && !currentOrigin.includes('127.0.0.1');
+        const confirmationEndpoint = isPublicDomain ? `${currentOrigin}/api/flow/notify` : CONFIRMATION_URL;
 
         const commerceOrder = orderId || `ABONO-${Date.now()}`;
         const params = {
@@ -112,8 +124,8 @@ app.post('/api/flow/create', async (req, res) => {
             currency: 'CLP',
             amount: abonoAmount,
             email: clientEmail || 'cliente@estudio.cl',
-            urlConfirmation: CONFIRMATION_URL,
-            urlReturn: `${BACKEND_URL}/api/flow/return`
+            urlConfirmation: confirmationEndpoint,
+            urlReturn: `${currentOrigin}/api/flow/return`
         };
 
         params.s = signFlowParams(params, secretKey);
