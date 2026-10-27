@@ -853,7 +853,11 @@ function initAgendarEvents() {
 
         // Intentar crear pago real a través del backend Flow
         const flowConfig = StorageHelper.getFlowConfig();
-        const backendUrl = (flowConfig.backendUrl || 'http://localhost:3000').replace(/\/+$/, '');
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+        const defaultBackend = isLocal ? 'http://localhost:3000' : window.location.origin;
+        const backendUrl = (flowConfig.backendUrl && (flowConfig.backendUrl !== 'http://localhost:3000' || isLocal)
+            ? flowConfig.backendUrl
+            : defaultBackend).replace(/\/+$/, '');
 
         try {
             console.log('[Flow] Solicitando orden de pago al backend:', `${backendUrl}/api/flow/create`);

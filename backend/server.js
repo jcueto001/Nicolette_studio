@@ -420,6 +420,10 @@ app.get('/api/webpay/commit', async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`Backend de pagos Flow y Webpay escuchando en http://localhost:${port}`);
-});
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`Backend de pagos Flow y Webpay escuchando en http://localhost:${port}`);
+    });
+}
+
+module.exports = app;

@@ -1,0 +1,15 @@
+{
+  "name": "nicolett-studio",
+  "version": "1.0.0",
+  "description": "Nicolett Studio Fantasy - Portal Web y Pagos Flow.cl",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node backend/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "transbank-sdk": "^6.1.1"
+  }
+}
