@@ -73,8 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- Manejo de Retorno de Pasarela Flow ---
 function checkFlowPaymentReturn() {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('action') === 'flow-success') {
-        const pendingStr = sessionStorage.getItem('nicolett_pending_booking');
+    const action = params.get('action');
+
+    if (action === 'flow-success') {
+        const pendingStr = sessionStorage.getItem('nicolett_pending_booking') || localStorage.getItem('nicolett_pending_booking');
         if (pendingStr) {
             try {
                 const app = JSON.parse(pendingStr);
@@ -82,18 +84,72 @@ function checkFlowPaymentReturn() {
                 app.paymentStatus = 'pagado';
                 app.depositAmount = 5000;
                 app.flowToken = params.get('token') || '';
-                app.paymentMethod = 'Flow';
+                app.flowOrder = params.get('order') || '';
+                app.paymentMethod = app.paymentMethod || 'Flow (Webpay Plus)';
+
                 StorageHelper.saveAppointment(app);
                 sessionStorage.removeItem('nicolett_pending_booking');
+                localStorage.removeItem('nicolett_pending_booking');
+
+                // Enviar confirmación por EmailJS si está configurado
+                if (typeof emailjs !== 'undefined' && app.clientEmail) {
+                    try {
+                        emailjs.send("service_rmc9mu9", "template_2h2ya38", {
+                            to_name: app.clientName,
+                            to_email: app.clientEmail,
+                            service: app.servicio,
+                            date: app.date,
+                            time: app.time,
+                            profesional: app.profesional,
+                            deposit: '$5.000 (Vía Flow)',
+                            balance: "$" + (app.balanceDue || 0).toLocaleString('es-CL')
+                        });
+                    } catch (err) {
+                        console.log("EmailJS error:", err);
+                    }
+                }
+
                 // Limpiar la URL sin recargar
                 window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+
+                // Mostrar modal de éxito
                 setTimeout(() => {
-                    alert('¡Excelente! Tu abono de $5.000 vía Flow ha sido recibido y tu cita está confirmada.');
-                }, 500);
+                    const balanceNotice = document.getElementById('success-balance-notice');
+                    if (balanceNotice) {
+                        const bal = app.balanceDue || 0;
+                        balanceNotice.innerHTML = `
+                            <div style="font-weight:700; color:#1b5e20; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                <i data-lucide="check-circle" style="width:18px; height:18px; color:#2e7d32;"></i>
+                                ¡Abono de $5.000 recibido exitosamente vía Flow!
+                            </div>
+                            <div style="font-size:0.88rem; color:#2e7d32; line-height:1.4;">
+                                Cita confirmada para <strong>${app.clientName}</strong> con <strong>${app.profesional}</strong> el <strong>${app.date}</strong> a las <strong>${app.time}</strong>.<br>
+                                Saldo restante en el estudio: <strong>$${bal.toLocaleString('es-CL')}</strong>.
+                            </div>
+                        `;
+                    }
+                    const successModal = document.getElementById('success-modal');
+                    if (successModal) {
+                        successModal.style.display = 'flex';
+                        if (window.lucide) lucide.createIcons();
+                    } else {
+                        alert(`✨ ¡Excelente! Tu abono de $5.000 vía Flow fue recibido con éxito.\nTu cita de ${app.servicio} para el ${app.date} a las ${app.time} ha quedado confirmada.`);
+                    }
+                }, 400);
             } catch (e) {
                 console.error("Error confirmando retorno Flow:", e);
             }
         }
+    } else if (action === 'flow-failed') {
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+        setTimeout(() => {
+            alert('⚠️ El pago en Flow no fue completado o fue rechazado.\nPuedes volver a intentar reservar tu cita cuando lo desees.');
+        }, 400);
+    } else if (action === 'flow-cancelled') {
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+        setTimeout(() => {
+            alert('ℹ️ Se canceló el proceso de pago en Flow.');
+        }, 400);
     }
 }
 
@@ -759,11 +815,8 @@ function initAgendarEvents() {
     const btnFlowProcess = document.getElementById('btn-flow-process-pay');
     btnFlowProcess?.addEventListener('click', async () => {
         btnFlowProcess.disabled = true;
-        btnFlowProcess.innerHTML = '<i data-lucide="loader" class="lucide-spin" style="width:18px; height:18px;"></i> Conectando y procesando abono en Flow...';
+        btnFlowProcess.innerHTML = '<i data-lucide="loader" class="lucide-spin" style="width:18px; height:18px;"></i> Conectando con Flow...';
         if (window.lucide) lucide.createIcons();
-
-        // Pequeño retardo para simular procesamiento seguro de pasarela
-        await new Promise(r => setTimeout(r, 1200));
 
         const pendingStr = sessionStorage.getItem('nicolett_pending_booking');
         let appointmentData = pendingStr ? JSON.parse(pendingStr) : null;
@@ -790,72 +843,68 @@ function initAgendarEvents() {
                 paymentMethod: 'Flow',
                 orderId: 'FLOW-' + Date.now()
             };
+            sessionStorage.setItem('nicolett_pending_booking', JSON.stringify(appointmentData));
         }
 
         const selectedMethod = document.querySelector('input[name="flow-method"]:checked')?.value || 'Webpay Plus';
-        const txCode = 'FLOW-' + Math.floor(100000 + Math.random() * 900000);
-
-        appointmentData.status = 'confirmada';
-        appointmentData.paymentStatus = 'pagado';
-        appointmentData.depositAmount = 5000;
         appointmentData.paymentMethod = `Flow (${selectedMethod})`;
-        appointmentData.flowOrder = txCode;
+        sessionStorage.setItem('nicolett_pending_booking', JSON.stringify(appointmentData));
+        localStorage.setItem('nicolett_pending_booking', JSON.stringify(appointmentData));
+
+        // Intentar crear pago real a través del backend Flow
+        const flowConfig = StorageHelper.getFlowConfig();
+        const backendUrl = (flowConfig.backendUrl || 'http://localhost:3000').replace(/\/+$/, '');
 
         try {
-            await StorageHelper.saveAppointment(appointmentData);
-            sessionStorage.removeItem('nicolett_pending_booking');
+            console.log('[Flow] Solicitando orden de pago al backend:', `${backendUrl}/api/flow/create`);
+            const payload = {
+                clientEmail: appointmentData.clientEmail || 'cliente@estudio.cl',
+                clientName: appointmentData.clientName || 'Clienta',
+                orderId: appointmentData.orderId,
+                amount: 5000,
+                isSandbox: (flowConfig.isSandbox !== undefined) ? flowConfig.isSandbox : true,
+                returnUrl: window.location.href.split('?')[0]
+            };
+            if (flowConfig.apiKey) payload.apiKey = flowConfig.apiKey;
+            if (flowConfig.secretKey) payload.secretKey = flowConfig.secretKey;
 
-            // Enviar email con EmailJS (si está configurado)
-            if (typeof emailjs !== 'undefined' && appointmentData.clientEmail) {
-                try {
-                    await emailjs.send("service_rmc9mu9", "template_2h2ya38", {
-                        to_name: appointmentData.clientName,
-                        to_email: appointmentData.clientEmail,
-                        service: appointmentData.servicio,
-                        date: appointmentData.date,
-                        time: appointmentData.time,
-                        profesional: appointmentData.profesional,
-                        deposit: `$5.000 (Vía Flow - ${selectedMethod})`,
-                        balance: "$" + (appointmentData.balanceDue || 0).toLocaleString('es-CL')
-                    });
-                } catch (err) {
-                    console.log("EmailJS no configurado o falló: ", err);
+            const response = await fetch(`${backendUrl}/api/flow/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.redirectUrl) {
+                // Redirigir inmediatamente a la pasarela oficial de Flow
+                console.log('[Flow] ¡Orden creada exitosamente! Redirigiendo a:', data.redirectUrl);
+                window.location.href = data.redirectUrl;
+                return; // Detiene la ejecución aquí; el usuario paga en Flow
+            } else {
+                console.error('[Flow] Error al crear pago en Flow:', data);
+                if (flowConfig.flowUrl) {
+                    window.location.href = flowConfig.flowUrl;
+                    return;
                 }
-            }
-
-            // Ocultar modal de checkout de Flow
-            const flowModal = document.getElementById('flow-checkout-modal');
-            if (flowModal) flowModal.style.display = 'none';
-
-            // Actualizar nota en el modal de éxito
-            const balanceNotice = document.getElementById('success-balance-notice');
-            if (balanceNotice) {
-                const bal = appointmentData.balanceDue || 0;
-                balanceNotice.innerHTML = `
-                    <div style="font-weight:700; color:#1b5e20; margin-bottom:4px;">
-                        Abono de $5.000 recibido exitosamente vía Flow (${selectedMethod}).
-                    </div>
-                    <div style="font-size:0.85rem; color:#2e7d32;">
-                        Saldo restante en el estudio: <strong>$${bal.toLocaleString('es-CL')}</strong> (presencial).
-                    </div>
-                `;
-            }
-
-            // Mostrar modal de éxito
-            const successModal = document.getElementById('success-modal');
-            if (successModal) {
-                successModal.style.display = 'flex';
+                const errorDetail = data.error || data.message || 'Error desconocido';
+                alert(`⚠️ Error de Flow: ${errorDetail}\n\nPor favor verifica tu conexión y configuración.`);
+                btnFlowProcess.disabled = false;
+                btnFlowProcess.innerHTML = '<i data-lucide="shield-check" style="width:20px; height:20px;"></i> Pagar Abono de $5.000 y Agendar';
                 if (window.lucide) lucide.createIcons();
+                return;
             }
-
-            btnFlowProcess.disabled = false;
-            btnFlowProcess.innerHTML = '<i data-lucide="shield-check" style="width:20px; height:20px;"></i> Pagar Abono de $5.000 y Agendar';
-        } catch (e) {
-            console.error(e);
-            alert('Error al confirmar la cita: ' + e.message);
+        } catch (fetchError) {
+            console.warn('[Flow] Servidor backend no alcanzable:', fetchError.message);
+            if (flowConfig.flowUrl) {
+                window.location.href = flowConfig.flowUrl;
+                return;
+            }
+            alert(`⚠️ No se pudo conectar con el servidor de pagos en ${backendUrl}.\n\nAsegúrate de tener iniciado el backend ejecutando "iniciar_backend.bat".`);
             btnFlowProcess.disabled = false;
             btnFlowProcess.innerHTML = '<i data-lucide="shield-check" style="width:20px; height:20px;"></i> Pagar Abono de $5.000 y Agendar';
             if (window.lucide) lucide.createIcons();
+            return;
         }
     });
 }
@@ -1238,12 +1287,60 @@ function initAdminEvents() {
         const urlInput = document.getElementById('flow-cfg-url');
         const apiKeyInput = document.getElementById('flow-cfg-apikey');
         const secretInput = document.getElementById('flow-cfg-secret');
+        const backendInput = document.getElementById('flow-cfg-backend');
         const sandboxInput = document.getElementById('flow-cfg-sandbox');
+        const statusEl = document.getElementById('backend-conn-status');
+        const btnTest = document.getElementById('btn-test-flow-conn');
 
         if (urlInput) urlInput.value = flowCfg.flowUrl || '';
         if (apiKeyInput) apiKeyInput.value = flowCfg.apiKey || '';
         if (secretInput) secretInput.value = flowCfg.secretKey || '';
-        if (sandboxInput) sandboxInput.checked = !!flowCfg.isSandbox;
+        if (backendInput) backendInput.value = flowCfg.backendUrl || 'http://localhost:3000';
+        if (sandboxInput) sandboxInput.checked = (flowCfg.isSandbox !== undefined) ? flowCfg.isSandbox : true;
+
+        // Probar conexión con el servidor backend
+        if (btnTest) {
+            btnTest.addEventListener('click', async () => {
+                const url = (backendInput?.value.trim() || 'http://localhost:3000').replace(/\/+$/, '');
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#e3f2fd';
+                    statusEl.style.color = '#0d47a1';
+                    statusEl.style.border = '1px solid #bbdefb';
+                    statusEl.innerHTML = '<i data-lucide="loader" style="width:16px; height:16px; display:inline-block; vertical-align:middle;"></i> Conectando con ' + url + '...';
+                    if (window.lucide) lucide.createIcons();
+                }
+
+                try {
+                    const resp = await fetch(`${url}/api/flow/config`, { signal: AbortSignal.timeout(4000) });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const envMode = data.sandbox ? 'Sandbox (Pruebas)' : 'Producción';
+                        const keysStatus = data.configured ? 'Configuradas en el backend (.env)' : 'Se enviarán desde este formulario';
+                        statusEl.style.background = '#e8f5e9';
+                        statusEl.style.color = '#1b5e20';
+                        statusEl.style.border = '1px solid #c8e6c9';
+                        statusEl.innerHTML = `
+                            <strong>✅ Backend Conectado Exitosamente</strong><br>
+                            • Servidor: <code>${url}</code><br>
+                            • Modo Flow: <strong>${envMode}</strong><br>
+                            • Credenciales: ${keysStatus}
+                        `;
+                    } else {
+                        throw new Error(`HTTP ${resp.status}`);
+                    }
+                } catch (err) {
+                    statusEl.style.background = '#ffebee';
+                    statusEl.style.color = '#b71c1c';
+                    statusEl.style.border = '1px solid #ffcdd2';
+                    statusEl.innerHTML = `
+                        <strong>⚠️ Servidor Backend no responde en <code>${url}</code></strong><br>
+                        Asegúrate de que el backend esté ejecutándose con: <br>
+                        <code>cd backend &amp;&amp; npm start</code>
+                    `;
+                }
+            });
+        }
 
         formFlowCfg.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1257,7 +1354,8 @@ function initAdminEvents() {
                 flowUrl: urlInput?.value.trim() || '',
                 apiKey: apiKeyInput?.value.trim() || '',
                 secretKey: secretInput?.value.trim() || '',
-                isSandbox: sandboxInput ? sandboxInput.checked : false
+                backendUrl: backendInput?.value.trim() || 'http://localhost:3000',
+                isSandbox: sandboxInput ? sandboxInput.checked : true
             };
 
             await StorageHelper.saveFlowConfig(updatedCfg);

@@ -1081,16 +1081,26 @@ function renderAdminView() {
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
                             <div>
                                 <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.92rem; color:var(--clr-neutral-dark);">
-                                    API Key de Flow (Opcional)
+                                    API Key de Flow
                                 </label>
-                                <input type="text" id="flow-cfg-apikey" placeholder="Ej: 54A0F9B..." style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                                <input type="text" id="flow-cfg-apikey" placeholder="Ej: 54A0F9B-TEST..." style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
                             </div>
                             <div>
                                 <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.92rem; color:var(--clr-neutral-dark);">
-                                    Secret Key de Flow (Opcional)
+                                    Secret Key de Flow
                                 </label>
                                 <input type="password" id="flow-cfg-secret" placeholder="••••••••••••••••" style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
                             </div>
+                        </div>
+
+                        <div>
+                            <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.92rem; color:var(--clr-neutral-dark);">
+                                URL Servidor Backend (Node.js)
+                            </label>
+                            <input type="url" id="flow-cfg-backend" placeholder="http://localhost:3000" style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                            <small style="color:var(--clr-neutral-gray); font-size:0.8rem; display:block; margin-top:5px;">
+                                Dirección de tu servidor backend local o en la nube (por defecto: <code>http://localhost:3000</code>).
+                            </small>
                         </div>
 
                         <div style="padding:12px 15px; background:var(--clr-nude-light); border-radius:var(--radius-sm); display:flex; align-items:center; gap:10px;">
@@ -1100,7 +1110,12 @@ function renderAdminView() {
                             </label>
                         </div>
 
-                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                        <div id="backend-conn-status" style="display:none; padding:10px 14px; border-radius:var(--radius-sm); font-size:0.88rem;"></div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-outline" id="btn-test-flow-conn" style="padding:10px 18px; font-weight:600; display:flex; align-items:center; gap:6px;">
+                                <i data-lucide="activity"></i> Probar Conexión Backend
+                            </button>
                             <button type="submit" class="btn btn-primary" id="btn-save-flow-cfg" style="padding:12px 24px; font-weight:600; display:flex; align-items:center; gap:6px;">
                                 <i data-lucide="save"></i> Guardar Configuración Flow
                             </button>

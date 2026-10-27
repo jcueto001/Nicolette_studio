@@ -1,4 +1,9 @@
 node_modules/
+backend/node_modules/
+.env
+*.env
+backend/.env
 presentacion.html
 test.html
 fix_app.js
+
