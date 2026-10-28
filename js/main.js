@@ -1647,17 +1647,48 @@ function initAdminEvents() {
         });
     });
 
-    // Eliminar imagen de galería
+    // Aprobar foto de clienta para Galería Pública (Solo Admin)
+    document.querySelectorAll('.btn-approve-gallery').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const imgId = btn.getAttribute('data-id');
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader" style="width:13px; height:13px; animation:spin 1s linear infinite;"></i> Aprobando...';
+            if (window.lucide) lucide.createIcons();
+
+            await StorageHelper.setGalleryImageApproval(imgId, true);
+            alert("✓ ¡Foto aprobada con éxito! Ahora es visible públicamente en la Galería de Trabajos.");
+            if (typeof AppRouter !== 'undefined') AppRouter.refresh();
+        });
+    });
+
+    // Ocultar foto de Galería Pública (Solo Admin)
+    document.querySelectorAll('.btn-unapprove-gallery').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const imgId = btn.getAttribute('data-id');
+            btn.disabled = true;
+            await StorageHelper.setGalleryImageApproval(imgId, false);
+            alert("La foto ha sido retirada de la Galería de Trabajos pública (permanece guardada en la ficha de la clienta).");
+            if (typeof AppRouter !== 'undefined') AppRouter.refresh();
+        });
+    });
+
+    // Eliminar / Rechazar imagen de galería
     document.querySelectorAll('.btn-del-gallery').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            if (confirm('¿Estás segura de eliminar esta imagen de la galería pública?')) {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (confirm('¿Estás segura de eliminar permanentemente esta foto?')) {
                 await StorageHelper.deleteGalleryImage(btn.getAttribute('data-id'));
-                AppRouter.refresh();
+                if (typeof AppRouter !== 'undefined') AppRouter.refresh();
             }
         });
     });
 
-    // Filtros de Galería en Panel Admin
+    // Filtros de Galería en Panel Admin (Todas, Por Aprobar, En Galería Pública, Clientas, Estudio)
     const filterChips = document.querySelectorAll('#gallery-filter-chips .gallery-filter-chip');
     filterChips.forEach(chip => {
         chip.addEventListener('click', () => {
@@ -1667,14 +1698,19 @@ function initAdminEvents() {
             const items = document.querySelectorAll('#admin-gallery-grid .admin-gallery-item');
             items.forEach(item => {
                 const source = item.getAttribute('data-source');
+                const status = item.getAttribute('data-status');
                 if (filter === 'all') {
                     item.style.display = 'block';
-                } else if (filter === 'client' && source === 'client') {
-                    item.style.display = 'block';
-                } else if (filter === 'admin' && source !== 'client') {
-                    item.style.display = 'block';
+                } else if (filter === 'pending') {
+                    item.style.display = (status === 'pending') ? 'block' : 'none';
+                } else if (filter === 'public') {
+                    item.style.display = (status === 'approved' || status === 'studio') ? 'block' : 'none';
+                } else if (filter === 'client') {
+                    item.style.display = (source === 'client') ? 'block' : 'none';
+                } else if (filter === 'admin') {
+                    item.style.display = (source !== 'client') ? 'block' : 'none';
                 } else {
-                    item.style.display = 'none';
+                    item.style.display = 'block';
                 }
             });
         });
@@ -2978,6 +3014,8 @@ function setupClientPhotoModal() {
                 clientName: pers.name,
                 clientEmail: pers.email,
                 source: 'client',
+                approved: false,
+                status: 'pending',
                 date: new Date().toLocaleDateString('es-CL'),
                 timestamp: Date.now()
             };
@@ -2985,7 +3023,7 @@ function setupClientPhotoModal() {
             try {
                 await StorageHelper.addGalleryImage(newPhoto);
 
-                alert("¡Excelente! Tu foto ha sido guardada en tu perfil y enviada a la galería del salón. ¡Gracias por compartir tu resultado!");
+                alert("¡Excelente! Tu foto ha sido guardada en tu perfil y enviada a la administradora para su revisión. Una vez aprobada, aparecerá publicada en la Galería de Trabajos. ¡Gracias por compartir tu resultado!");
                 closeModal();
 
                 // Recargar vista para ver los cambios

@@ -245,7 +245,7 @@ function renderHomeView() {
 }
 
 function renderGaleriaView() {
-    const images = StorageHelper.getGallery();
+    const images = StorageHelper.getPublicGallery();
 
     return `
         <div class="container section">
@@ -255,10 +255,10 @@ function renderGaleriaView() {
             </div>
             
             <div class="gallery-container" style="display: flex; overflow-x: auto; gap: 30px; padding: 20px 0 40px; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--clr-rose-gold) var(--clr-nude-light);">
-                ${images.length === 0 ? '<p style="text-align:center; width:100%;">Aún no hay fotos en la galería.</p>' : ''}
+                ${images.length === 0 ? '<p style="text-align:center; width:100%; padding:40px; color:var(--clr-neutral-gray);">Aún no hay fotos públicas en la galería.</p>' : ''}
                 ${images.map(img => `
                     <div class="gallery-item" style="width: 85vw; max-width: 600px; flex: 0 0 auto; scroll-snap-align: center; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; aspect-ratio: 1/1;">
-                        <img src="${img.src}" alt="${img.title}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                        <img src="${img.src}" alt="${img.title || 'Trabajo'}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
                     </div>
                 `).join('')}
             </div>
@@ -1034,64 +1034,120 @@ function renderAdminView() {
                     <p id="upload-status" style="margin-top:10px; color:var(--clr-neutral-gray); font-size:0.9rem; display:none;">Comprimiendo imagen...</p>
                 </div>
 
-                <!-- Filtros de Galería -->
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;" id="gallery-filter-chips">
-                        <button type="button" class="gallery-filter-chip active" data-filter="all">
-                            Todas (${StorageHelper.getGallery().length})
-                        </button>
-                        <button type="button" class="gallery-filter-chip" data-filter="client">
-                            <i data-lucide="camera" style="width:14px; height:14px;"></i> Subidas por Clientas (${StorageHelper.getGallery().filter(g => g.source === 'client').length})
-                        </button>
-                        <button type="button" class="gallery-filter-chip" data-filter="admin">
-                            Estudio (${StorageHelper.getGallery().filter(g => g.source !== 'client').length})
-                        </button>
-                    </div>
-                    <span style="font-size:0.85rem; color:var(--clr-neutral-gray);">
-                        <i data-lucide="info" style="width:14px; display:inline; vertical-align:middle;"></i> Las fotos subidas por clientas se integran automáticamente
-                    </span>
-                </div>
-                
-                <div id="admin-gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
-                    ${StorageHelper.getGallery().map(img => {
-                        const isClient = img.source === 'client';
-                        return `
-                        <div class="admin-gallery-item" data-source="${isClient ? 'client' : 'admin'}" style="border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; height: 230px; background:#222;">
-                            <img src="${img.src}" alt="${img.title || 'Trabajo'}" style="width:100%; height:100%; object-fit:cover; display:block;">
-                            
-                            ${isClient ? `
-                                <div style="position:absolute; top:10px; left:10px; z-index:2;">
-                                    <span class="badge-client-photo">
-                                        <i data-lucide="sparkles" style="width:12px; height:12px;"></i> Clienta: ${img.clientName || 'Clienta'}
-                                    </span>
-                                </div>
-                            ` : ''}
+                ${(() => {
+                    const allGal = StorageHelper.getGallery();
+                    const pendingList = allGal.filter(g => g.source === 'client' && !g.approved && g.status !== 'approved');
+                    const approvedClientList = allGal.filter(g => g.source === 'client' && (g.approved === true || g.status === 'approved'));
+                    const studioList = allGal.filter(g => g.source !== 'client');
+                    const publicTotal = studioList.length + approvedClientList.length;
 
-                            <div style="position:absolute; bottom:0; left:0; width:100%; padding:10px 12px; background:linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 75%, transparent 100%); color:white; display:flex; justify-content:space-between; align-items:flex-end;">
-                                <div style="overflow:hidden; padding-right:8px;">
-                                    <div style="font-size:0.88rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                        ${img.serviceName || img.title || 'Servicio'}
-                                    </div>
-                                    ${img.title && img.title !== img.serviceName ? `
-                                        <div style="font-size:0.75rem; color:#f0d0c0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"${img.title}"</div>
-                                    ` : ''}
-                                    <div style="font-size:0.72rem; color:#ccc; margin-top:2px;">
-                                        ${img.date ? img.date : ''} ${isClient && img.clientEmail ? '• ' + img.clientEmail : ''}
-                                    </div>
+                    return `
+                    <!-- Barra de Moderación y Filtros de Galería -->
+                    <div style="background:#fff; border:1px solid #e7ded4; border-radius:var(--radius-md); padding:16px 20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;" id="gallery-filter-chips">
+                            <button type="button" class="gallery-filter-chip active" data-filter="all">
+                                Todas (${allGal.length})
+                            </button>
+                            <button type="button" class="gallery-filter-chip" data-filter="pending" style="${pendingList.length > 0 ? 'background:#fffbeb; color:#b45309; border-color:#fcd34d; font-weight:700;' : ''}">
+                                <i data-lucide="clock" style="width:14px; height:14px;"></i> Por Aprobar (${pendingList.length})
+                            </button>
+                            <button type="button" class="gallery-filter-chip" data-filter="public">
+                                <i data-lucide="eye" style="width:14px; height:14px;"></i> En Galería Pública (${publicTotal})
+                            </button>
+                            <button type="button" class="gallery-filter-chip" data-filter="client">
+                                <i data-lucide="camera" style="width:14px; height:14px;"></i> Clientas (${pendingList.length + approvedClientList.length})
+                            </button>
+                            <button type="button" class="gallery-filter-chip" data-filter="admin">
+                                Estudio (${studioList.length})
+                            </button>
+                        </div>
+
+                        <div style="font-size:0.85rem; color:var(--clr-neutral-gray); display:flex; align-items:center; gap:6px;">
+                            <i data-lucide="shield-check" style="width:16px; height:16px; color:var(--clr-rose-gold);"></i>
+                            <span>Las fotos de clientas <strong>requieren tu aprobación</strong> antes de ser visibles al público.</span>
+                        </div>
+                    </div>
+
+                    <div id="admin-gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px;">
+                        ${allGal.map(img => {
+                            const isClient = img.source === 'client';
+                            const isApproved = !isClient || img.approved === true || img.status === 'approved';
+                            const statusKey = isClient ? (isApproved ? 'approved' : 'pending') : 'studio';
+
+                            return `
+                            <div class="admin-gallery-item" data-source="${isClient ? 'client' : 'admin'}" data-status="${statusKey}" style="border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; height: 260px; background:#1c1917; border: 2px solid ${!isApproved ? '#f59e0b' : 'transparent'};">
+                                <img src="${img.src}" alt="${img.title || 'Trabajo'}" style="width:100%; height:100%; object-fit:cover; display:block;">
+                                
+                                <!-- Badges Superiores -->
+                                <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; z-index:2; pointer-events:none;">
+                                    ${isClient ? `
+                                        <span class="badge-client-photo" style="box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+                                            <i data-lucide="user" style="width:11px; height:11px;"></i> ${img.clientName || 'Clienta'}
+                                        </span>
+                                        ${!isApproved ? `
+                                            <span style="background:#f59e0b; color:white; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+                                                <i data-lucide="clock" style="width:11px; height:11px;"></i> Por Aprobar
+                                            </span>
+                                        ` : `
+                                            <span style="background:#10b981; color:white; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+                                                <i data-lucide="check" style="width:11px; height:11px;"></i> En Galería
+                                            </span>
+                                        `}
+                                    ` : `
+                                        <span style="background:rgba(0,0,0,0.65); color:#f5ebe0; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:600; backdrop-filter:blur(4px);">
+                                            Estudio
+                                        </span>
+                                    `}
                                 </div>
-                                <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                                    <button type="button" class="btn-download-gallery" data-src="${img.src}" data-title="${(img.serviceName || img.title || 'trabajo').replace(/[^a-zA-Z0-9_-]/g, '_')}" title="Descargar foto" style="background:rgba(255,255,255,0.25); border:none; color:white; cursor:pointer; padding:6px; border-radius:50%; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); transition:all 0.2s ease;">
-                                        <i data-lucide="download" style="width:16px; height:16px;"></i>
-                                    </button>
-                                    <button type="button" class="btn-del-gallery" data-id="${img.id}" title="Eliminar foto de la galería" style="background:rgba(0,0,0,0.4); border:none; color:var(--clr-rose-gold); cursor:pointer; padding:6px; border-radius:50%; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;">
-                                        <i data-lucide="trash-2" style="width:18px; height:18px;"></i>
-                                    </button>
+
+                                <!-- Barra Inferior de Información y Acciones -->
+                                <div style="position:absolute; bottom:0; left:0; width:100%; padding:12px 14px; background:linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.7) 70%, transparent 100%); color:white;">
+                                    <div style="margin-bottom:8px;">
+                                        <div style="font-size:0.9rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                            ${img.serviceName || img.title || 'Servicio'}
+                                        </div>
+                                        ${img.title && img.title !== img.serviceName ? `
+                                            <div style="font-size:0.78rem; color:#f0d0c0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"${img.title}"</div>
+                                        ` : ''}
+                                        <div style="font-size:0.72rem; color:#d6d3d1; margin-top:2px;">
+                                            ${img.date || ''} ${isClient && img.clientEmail ? '• ' + img.clientEmail : ''}
+                                        </div>
+                                    </div>
+
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                        <!-- Botón de Moderación para Fotos de Clientas -->
+                                        <div>
+                                            ${isClient ? `
+                                                ${!isApproved ? `
+                                                    <button type="button" class="btn-approve-gallery" data-id="${img.id}" style="background:#10b981; color:white; border:none; padding:5px 12px; border-radius:16px; font-size:0.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s; box-shadow:0 2px 6px rgba(0,0,0,0.2);" title="Aprobar para que aparezca en la galería pública de trabajos">
+                                                        <i data-lucide="check" style="width:13px; height:13px;"></i> Aprobar para Galería
+                                                    </button>
+                                                ` : `
+                                                    <button type="button" class="btn-unapprove-gallery" data-id="${img.id}" style="background:rgba(255,255,255,0.22); color:#fecaca; border:1px solid rgba(255,255,255,0.3); padding:4px 10px; border-radius:16px; font-size:0.75rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s;" title="Ocultar de la galería de trabajos pública">
+                                                        <i data-lucide="eye-off" style="width:12px; height:12px;"></i> Ocultar de Galería
+                                                    </button>
+                                                `}
+                                            ` : ''}
+                                        </div>
+
+                                        <!-- Acciones secundarias (descargar y eliminar) -->
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <button type="button" class="btn-download-gallery" data-src="${img.src}" data-title="${(img.serviceName || img.title || 'trabajo').replace(/[^a-zA-Z0-9_-]/g, '_')}" title="Descargar foto" style="background:rgba(255,255,255,0.22); border:none; color:white; cursor:pointer; padding:6px; border-radius:50%; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+                                                <i data-lucide="download" style="width:15px; height:15px;"></i>
+                                            </button>
+                                            <button type="button" class="btn-del-gallery" data-id="${img.id}" title="${isClient && !isApproved ? 'Rechazar y eliminar foto' : 'Eliminar foto'}" style="background:rgba(220,38,38,0.7); border:none; color:white; cursor:pointer; padding:6px; border-radius:50%; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center;">
+                                                <i data-lucide="trash-2" style="width:15px; height:15px;"></i>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    `;}).join('')}
-                    ${StorageHelper.getGallery().length === 0 ? '<p style="grid-column: 1/-1; text-align:center; padding:30px; color:var(--clr-neutral-gray);">No hay imágenes en la galería.</p>' : ''}
-                </div>
+                            `;
+                        }).join('')}
+                        ${allGal.length === 0 ? '<p style="grid-column: 1/-1; text-align:center; padding:30px; color:var(--clr-neutral-gray);">No hay imágenes en la galería.</p>' : ''}
+                    </div>
+                    `;
+                })()}
             </div>
             
             <!-- Tab Configuración Flow -->
@@ -1714,9 +1770,15 @@ function renderPerfilView() {
                                     </button>
                                 </div>
                             </div>
-                            <span style="position:absolute; top:8px; right:8px; background:rgba(40,167,69,0.92); color:white; padding:2px 8px; border-radius:12px; font-size:0.7rem; font-weight:600; backdrop-filter:blur(3px);">
-                                ✓ En Galería
-                            </span>
+                            ${photo.approved === true || photo.status === 'approved' ? `
+                                <span style="position:absolute; top:8px; right:8px; background:rgba(16,185,129,0.95); color:white; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:700; backdrop-filter:blur(3px); display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+                                    <i data-lucide="check" style="width:12px; height:12px;"></i> Publicada en Galería
+                                </span>
+                            ` : `
+                                <span style="position:absolute; top:8px; right:8px; background:rgba(217,119,6,0.95); color:white; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:700; backdrop-filter:blur(3px); display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+                                    <i data-lucide="clock" style="width:12px; height:12px;"></i> En revisión por admin
+                                </span>
+                            `}
                         </div>
                     `).join('')}
                 </div>

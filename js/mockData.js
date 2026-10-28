@@ -469,11 +469,34 @@ const StorageHelper = {
     // --- Gallery ---
     getGallery: function() {
         const stored = localStorage.getItem('nicolett_gallery_v2');
-        if (stored) return JSON.parse(stored);
+        if (stored) {
+            try {
+                return JSON.parse(stored);
+            } catch(e) {}
+        }
         
-        // Inicializar
-        localStorage.setItem('nicolett_gallery_v2', JSON.stringify(mockData.gallery));
-        return mockData.gallery;
+        // Inicializar con fotos aprobadas por defecto del estudio
+        const initial = mockData.gallery.map(g => ({
+            ...g,
+            source: 'admin',
+            approved: true,
+            status: 'approved'
+        }));
+        localStorage.setItem('nicolett_gallery_v2', JSON.stringify(initial));
+        return initial;
+    },
+
+    // Galería pública (solo fotos del estudio o fotos de clientas APROBADAS por la administradora)
+    getPublicGallery: function() {
+        const gallery = this.getGallery();
+        return gallery.filter(img => {
+            // Si es de clienta, solo si está aprobada
+            if (img.source === 'client') {
+                return img.approved === true || img.status === 'approved';
+            }
+            // Si es de estudio/admin, visible por defecto a menos que se oculte explícitamente
+            return img.approved !== false && img.status !== 'hidden';
+        });
     },
 
     getClientGallery: function(email) {
@@ -488,6 +511,12 @@ const StorageHelper = {
         imageObj.id = imageObj.id || ('g' + Date.now());
         imageObj.timestamp = imageObj.timestamp || Date.now();
         imageObj.date = imageObj.date || new Date().toLocaleDateString('es-CL');
+
+        // Si la foto es subida por una clienta, queda PENDIENTE de aprobación por la administradora
+        const isClient = imageObj.source === 'client';
+        imageObj.approved = isClient ? (imageObj.approved === true) : true;
+        imageObj.status = isClient ? (imageObj.status || (imageObj.approved ? 'approved' : 'pending')) : 'approved';
+
         gallery.unshift(imageObj); // Agregar al principio
         localStorage.setItem('nicolett_gallery_v2', JSON.stringify(gallery));
 
@@ -501,6 +530,8 @@ const StorageHelper = {
                     clientName: imageObj.clientName || '',
                     clientEmail: imageObj.clientEmail || '',
                     source: imageObj.source || 'admin',
+                    approved: imageObj.approved,
+                    status: imageObj.status,
                     date: imageObj.date,
                     createdAt: (typeof firebase !== 'undefined' && firebase.firestore) 
                         ? firebase.firestore.FieldValue.serverTimestamp() 
@@ -514,6 +545,32 @@ const StorageHelper = {
         }
 
         return imageObj;
+    },
+
+    // Aprobar o Desaprobar/Ocultar foto en Galería Pública (Solo Administradora)
+    setGalleryImageApproval: async function(id, approved) {
+        const gallery = this.getGallery();
+        const img = gallery.find(item => item.id === id || item.fbId === id);
+        if (!img) return null;
+
+        img.approved = !!approved;
+        img.status = approved ? 'approved' : 'pending';
+        localStorage.setItem('nicolett_gallery_v2', JSON.stringify(gallery));
+
+        if (typeof db !== 'undefined') {
+            try {
+                const docId = img.fbId || (img.id && !img.id.startsWith('g') ? img.id : null);
+                if (docId) {
+                    await db.collection("Galeria").doc(docId).set({
+                        approved: img.approved,
+                        status: img.status
+                    }, { merge: true });
+                }
+            } catch(e) {
+                console.warn("Firestore Galeria update approval error:", e);
+            }
+        }
+        return img;
     },
 
     deleteGalleryImage: async function(id) {
