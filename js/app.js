@@ -1419,6 +1419,17 @@ function renderAdminView() {
                                     <i data-lucide="eye" style="width:16px; height:16px;"></i>
                                 </button>
                             </div>
+                            <div class="strength-meter-wrap" style="margin-top:6px;">
+                                <div class="strength-bars">
+                                    <div class="strength-bar" id="my-bar-1"></div>
+                                    <div class="strength-bar" id="my-bar-2"></div>
+                                    <div class="strength-bar" id="my-bar-3"></div>
+                                </div>
+                                <div class="strength-label">
+                                    <span>Seguridad: <strong id="my-strength-text" style="color:var(--clr-neutral-gray);">Mín. 6 caracteres</strong></span>
+                                    <span>Nicolett Studio</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div style="margin-bottom: 16px;">
@@ -1429,6 +1440,7 @@ function renderAdminView() {
                                     <i data-lucide="eye" style="width:16px; height:16px;"></i>
                                 </button>
                             </div>
+                            <div id="my-pass-match-hint" class="pass-match-hint" style="font-size:0.78rem; margin-top:4px; display:none; align-items:center; gap:4px;"></div>
                         </div>
 
                         <div id="change-my-password-error" class="auth-error-box" style="display:none; margin-bottom:12px;"></div>

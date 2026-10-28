@@ -332,6 +332,43 @@
         </div>
     </div>
 
+    <!-- Modal Recuperar Contraseña Personalizado (Nicolett Studio) -->
+    <div id="modal-forgot-password"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(3px); z-index: 3100; align-items:center; justify-content:center;">
+        <div class="card" style="max-width: 440px; width: 90%; background: white; border-top: 4px solid var(--clr-rose-gold); box-shadow: 0 15px 35px rgba(0,0,0,0.15); border-radius: var(--radius-md); padding: 24px;">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px; color: var(--clr-neutral-dark); font-family: var(--font-heading);">
+                    <i data-lucide="key-round" style="width: 20px; height: 20px; color: var(--clr-rose-gold);"></i>
+                    Recuperar Contraseña
+                </h3>
+                <button type="button" id="close-forgot-modal"
+                    style="background:none; border:none; cursor:pointer; color: var(--clr-neutral-gray); padding: 4px;">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <p style="margin-bottom: 18px; color: var(--clr-neutral-gray); font-size: 0.88rem; line-height: 1.45;">
+                Ingresa el correo asociado a tu cuenta. Te enviaremos un enlace personalizado y seguro para crear tu nueva contraseña.
+            </p>
+            <form id="form-forgot-password" style="display: flex; flex-direction: column; gap: 14px;">
+                <div>
+                    <label for="forgot-email" style="display:block; margin-bottom:6px; font-weight:600; font-size: 0.9rem;">Correo Electrónico</label>
+                    <input type="email" id="forgot-email" required placeholder="tu-correo@estudio.cl" autocomplete="email"
+                        style="width:100%; padding:10px 12px; border:1.5px solid #dcd3c9; border-radius:var(--radius-sm); font-size: 0.95rem;">
+                </div>
+                <div id="forgot-password-error" class="auth-error-box" style="display: none;"></div>
+                <div id="forgot-password-success" class="auth-success-box" style="display: none;"></div>
+                <button type="submit" class="btn btn-primary" id="btn-submit-forgot" style="margin-top: 4px; padding: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i data-lucide="send" style="width: 16px; height: 16px;"></i> Enviar Enlace de Recuperación
+                </button>
+            </form>
+            <div style="text-align: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid #f0eae1;">
+                <button type="button" id="btn-back-to-login" style="background: none; border: none; color: var(--clr-rose-gold-dark); font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                    <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Volver a Iniciar Sesión
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- WhatsApp Floating Button -->
     <a href="https://wa.me/56940322551?text=Hola!%20Quisiera%20consultar%20por%20una%20cita%20en%20Nicolett%20Studio" 
        target="_blank" 

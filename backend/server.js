@@ -23,6 +23,11 @@ app.use(express.urlencoded({ extended: true }));
 // Permite acceder a la web en http://localhost:3000 sin problemas de protocolo file://
 app.use(express.static(path.join(__dirname, '..')));
 
+// Ruta limpia para restablecer contraseña personalizada de Nicolett Studio
+app.get(['/reset-password', '/restablecer-contrasena'], (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'reset-password.html'));
+});
+
 // --- Configuración Flow.cl ---
 const FLOW_API_KEY = (process.env.FLOW_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
 const FLOW_SECRET_KEY = (process.env.FLOW_SECRET_KEY || '').trim().replace(/^['"]|['"]$/g, '');

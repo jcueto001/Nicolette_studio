@@ -60,6 +60,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Revisar retorno de pago de Flow
     checkFlowPaymentReturn();
 
+    // Abrir modal de acceso si viene con ?openAuth=1 (por ejemplo tras restablecer contraseña)
+    const urlSearch = new URLSearchParams(window.location.search);
+    if (urlSearch.get('openAuth') === '1') {
+        setTimeout(() => {
+            if (typeof window.openAuthModal === 'function') window.openAuthModal();
+        }, 350);
+    }
+
     // Botón de salir del portal (Navbar)
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
@@ -172,6 +180,38 @@ window.closeAuthModal = function() {
         authModal.style.display = 'none';
         const errorEl = document.getElementById('auth-error');
         if (errorEl) errorEl.style.display = 'none';
+    }
+};
+
+// --- Modal Personalizado Recuperar Contraseña ---
+window.openForgotPasswordModal = function(prefillEmail = '') {
+    const authModal = document.getElementById('auth-modal');
+    if (authModal) authModal.style.display = 'none';
+
+    const forgotModal = document.getElementById('modal-forgot-password');
+    if (forgotModal) {
+        forgotModal.style.display = 'flex';
+        const emailInput = document.getElementById('forgot-email');
+        if (emailInput) {
+            if (prefillEmail) emailInput.value = prefillEmail;
+            setTimeout(() => emailInput.focus(), 100);
+        }
+        const errBox = document.getElementById('forgot-password-error');
+        const succBox = document.getElementById('forgot-password-success');
+        if (errBox) errBox.style.display = 'none';
+        if (succBox) succBox.style.display = 'none';
+        if (window.lucide) lucide.createIcons();
+    }
+};
+
+window.closeForgotPasswordModal = function() {
+    const forgotModal = document.getElementById('modal-forgot-password');
+    if (forgotModal) {
+        forgotModal.style.display = 'none';
+        const errBox = document.getElementById('forgot-password-error');
+        const succBox = document.getElementById('forgot-password-success');
+        if (errBox) errBox.style.display = 'none';
+        if (succBox) succBox.style.display = 'none';
     }
 };
 
@@ -498,22 +538,88 @@ function setupPersonalization() {
             }
         });
 
-        // Enlace olvidé mi contraseña
+        // Enlace olvidé mi contraseña (abre modal personalizado Nicolett Studio)
         const linkForgot = document.getElementById('link-forgot-auth-modal');
         if (linkForgot) {
-            linkForgot.addEventListener('click', async (e) => {
+            linkForgot.addEventListener('click', (e) => {
                 e.preventDefault();
-                const targetEmail = (emailInput ? emailInput.value.trim() : '') || prompt("Ingresa tu correo electrónico para enviarte las instrucciones de restablecimiento de contraseña:");
-                if (!targetEmail) return;
+                const targetEmail = emailInput ? emailInput.value.trim() : '';
+                window.openForgotPasswordModal(targetEmail);
+            });
+        }
+
+        // Manejo del Modal de Recuperación Personalizado
+        const closeForgotModal = document.getElementById('close-forgot-modal');
+        if (closeForgotModal) {
+            closeForgotModal.addEventListener('click', () => {
+                window.closeForgotPasswordModal();
+            });
+        }
+
+        const btnBackToLogin = document.getElementById('btn-back-to-login');
+        if (btnBackToLogin) {
+            btnBackToLogin.addEventListener('click', () => {
+                window.closeForgotPasswordModal();
+                window.openAuthModal();
+            });
+        }
+
+        const formForgotPass = document.getElementById('form-forgot-password');
+        if (formForgotPass) {
+            formForgotPass.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const emailInp = document.getElementById('forgot-email');
+                const email = (emailInp ? emailInp.value.trim() : '');
+                const errBox = document.getElementById('forgot-password-error');
+                const succBox = document.getElementById('forgot-password-success');
+                const btnSubmit = document.getElementById('btn-submit-forgot');
+
+                if (errBox) errBox.style.display = 'none';
+                if (succBox) succBox.style.display = 'none';
+
+                if (!email) return;
+
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<span style="display:inline-block; width:15px; height:15px; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite;"></span> Enviando...';
+
+                const actionCodeSettings = {
+                    url: window.location.origin + '/reset-password.html',
+                    handleCodeInApp: true
+                };
+
                 try {
                     if (typeof firebase !== 'undefined' && firebase.auth) {
-                        await firebase.auth().sendPasswordResetEmail(targetEmail);
-                        alert(`Se ha enviado un enlace para restablecer o crear tu contraseña a ${targetEmail}. Por favor revisa tu bandeja de entrada o spam.`);
-                    } else {
-                        alert(`En modo local o sin conexión a Firebase. Tu contraseña actual de acceso es admin123 o Nicolett123!`);
+                        await firebase.auth().sendPasswordResetEmail(email, actionCodeSettings);
                     }
+                    if (succBox) {
+                        succBox.innerHTML = `
+                            <i data-lucide="check-circle" style="width:18px;height:18px;flex-shrink:0;"></i>
+                            <div>
+                                <strong style="display:block;">¡Enlace enviado a ${email}!</strong>
+                                <span style="font-size:0.83rem;">Revisa tu bandeja de entrada o spam para crear tu nueva contraseña personalizada.</span>
+                            </div>
+                        `;
+                        succBox.style.display = 'flex';
+                        if (window.lucide) lucide.createIcons();
+                    }
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '<i data-lucide="send" style="width:16px;height:16px;"></i> Reenviar Enlace';
                 } catch(err) {
-                    alert("No pudimos procesar la solicitud: " + (err.message || 'Verifica el correo ingresado.'));
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '<i data-lucide="send" style="width:16px;height:16px;"></i> Enviar Enlace de Recuperación';
+
+                    let errorMsg = 'No pudimos procesar la solicitud: ' + (err.message || 'Verifica el correo ingresado.');
+                    if (err.code === 'auth/user-not-found') {
+                        errorMsg = 'No existe una cuenta registrada con este correo electrónico.';
+                    } else if (err.code === 'auth/invalid-email') {
+                        errorMsg = 'El formato del correo electrónico ingresado no es válido.';
+                    }
+
+                    if (errBox) {
+                        errBox.innerHTML = `<i data-lucide="alert-circle" style="width:16px;height:16px;flex-shrink:0;"></i><span>${errorMsg}</span>`;
+                        errBox.style.display = 'flex';
+                        if (window.lucide) lucide.createIcons();
+                    }
                 }
             });
         }
@@ -1044,23 +1150,13 @@ function initAdminEvents() {
                 }
             });
 
-            // Enlace de recuperación de contraseña
+            // Enlace de recuperación de contraseña (abre modal personalizado Nicolett Studio)
             const linkForgot = document.getElementById('link-forgot-admin-page');
             if (linkForgot) {
-                linkForgot.addEventListener('click', async (e) => {
+                linkForgot.addEventListener('click', (e) => {
                     e.preventDefault();
-                    const targetEmail = (emailInput ? emailInput.value.trim() : '') || prompt("Ingresa tu correo para enviarte las instrucciones de restablecimiento de contraseña:");
-                    if (!targetEmail) return;
-                    try {
-                        if (typeof firebase !== 'undefined' && firebase.auth) {
-                            await firebase.auth().sendPasswordResetEmail(targetEmail);
-                            alert(`Se ha enviado un enlace para restablecer o crear tu contraseña a ${targetEmail}. Revisa tu correo.`);
-                        } else {
-                            alert(`En modo local o sin conexión. Tu contraseña actual de acceso es admin123 o Nicolett123!`);
-                        }
-                    } catch(err) {
-                        alert("No pudimos procesar la solicitud: " + (err.message || 'Verifica el correo ingresado.'));
-                    }
+                    const targetEmail = emailInput ? emailInput.value.trim() : '';
+                    window.openForgotPasswordModal(targetEmail);
                 });
             }
 
@@ -2134,6 +2230,70 @@ function initAdminEvents() {
             if (window.lucide) lucide.createIcons();
         });
     }
+
+    // Medidor de fuerza en tiempo real en modal propio
+    const myBar1 = document.getElementById('my-bar-1');
+    const myBar2 = document.getElementById('my-bar-2');
+    const myBar3 = document.getElementById('my-bar-3');
+    const myStrengthText = document.getElementById('my-strength-text');
+    const myMatchHint = document.getElementById('my-pass-match-hint');
+
+    function updateMyPassEvaluation() {
+        const val = inputNewPass ? inputNewPass.value : '';
+        if (!myBar1 || !myBar2 || !myBar3 || !myStrengthText) return;
+
+        if (!val) {
+            myBar1.className = 'strength-bar';
+            myBar2.className = 'strength-bar';
+            myBar3.className = 'strength-bar';
+            myStrengthText.innerText = 'Mín. 6 caracteres';
+            myStrengthText.style.color = 'var(--clr-neutral-gray)';
+        } else {
+            let score = 0;
+            if (val.length >= 6) score++;
+            if (val.length >= 8 && /[0-9]/.test(val) && /[a-zA-Z]/.test(val)) score++;
+            if (val.length >= 10 && /[^a-zA-Z0-9]/.test(val)) score++;
+
+            if (score === 1) {
+                myBar1.className = 'strength-bar weak';
+                myBar2.className = 'strength-bar';
+                myBar3.className = 'strength-bar';
+                myStrengthText.innerText = 'Básica';
+                myStrengthText.style.color = '#ef4444';
+            } else if (score === 2) {
+                myBar1.className = 'strength-bar medium';
+                myBar2.className = 'strength-bar medium';
+                myBar3.className = 'strength-bar';
+                myStrengthText.innerText = 'Segura';
+                myStrengthText.style.color = '#f59e0b';
+            } else {
+                myBar1.className = 'strength-bar strong';
+                myBar2.className = 'strength-bar strong';
+                myBar3.className = 'strength-bar strong';
+                myStrengthText.innerText = 'Muy Segura';
+                myStrengthText.style.color = '#10b981';
+            }
+        }
+
+        const confVal = inputConfPass ? inputConfPass.value : '';
+        if (!myMatchHint) return;
+        if (!confVal) {
+            myMatchHint.style.display = 'none';
+        } else if (val === confVal) {
+            myMatchHint.style.display = 'flex';
+            myMatchHint.style.color = '#059669';
+            myMatchHint.innerHTML = '<i data-lucide="check" style="width:14px; height:14px;"></i> Las contraseñas coinciden';
+            if (window.lucide) lucide.createIcons();
+        } else {
+            myMatchHint.style.display = 'flex';
+            myMatchHint.style.color = '#dc2626';
+            myMatchHint.innerHTML = '<i data-lucide="x" style="width:14px; height:14px;"></i> No coinciden';
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+
+    if (inputNewPass) inputNewPass.addEventListener('input', updateMyPassEvaluation);
+    if (inputConfPass) inputConfPass.addEventListener('input', updateMyPassEvaluation);
 
     if (formChangeMyPass) {
         formChangeMyPass.addEventListener('submit', async (e) => {
