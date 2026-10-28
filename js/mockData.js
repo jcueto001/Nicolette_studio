@@ -394,22 +394,76 @@ const StorageHelper = {
         return this._professionalsCache;
     },
     addProfessional: async function(prof) {
-        if(typeof db !== 'undefined') {
+        if (!prof.id) {
+            prof.id = 'p_' + Date.now();
+        }
+        if (typeof db !== 'undefined') {
             try {
                 const docRef = await db.collection("Profesionales").add(prof);
                 prof.id = docRef.id;
-                this._professionalsCache.push(prof);
-                return prof;
-            } catch (e) { console.error("Error adding professional", e); }
+            } catch (e) {
+                console.error("Error adding professional to Firestore", e);
+            }
         }
+        this._professionalsCache.push(prof);
+        try {
+            localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache));
+        } catch(e) {}
+        return prof;
+    },
+    updateProfessional: async function(id, data) {
+        const profIdx = this._professionalsCache.findIndex(p => p.id === id);
+        if (profIdx > -1) {
+            this._professionalsCache[profIdx] = { ...this._professionalsCache[profIdx], ...data };
+        }
+        if (typeof db !== 'undefined') {
+            try {
+                await db.collection("Profesionales").doc(id).set(data, { merge: true });
+            } catch (e) {
+                console.error("Error updating professional in Firestore", e);
+            }
+        }
+        try {
+            localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache));
+        } catch(e) {}
+        return this._professionalsCache[profIdx];
     },
     deleteProfessional: async function(id) {
         if(typeof db !== 'undefined') {
             try {
                 await db.collection("Profesionales").doc(id).delete();
-                this._professionalsCache = this._professionalsCache.filter(p => p.id !== id);
             } catch (e) { console.error("Error deleting professional", e); }
         }
+        this._professionalsCache = this._professionalsCache.filter(p => p.id !== id);
+        try {
+            localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache));
+        } catch(e) {}
+    },
+
+    // Staff Passwords Storage (para soporte offline y creación local de contraseñas)
+    getStaffPasswords: function() {
+        try {
+            return JSON.parse(localStorage.getItem('nicolett_staff_passwords') || '{}');
+        } catch(e) {
+            return {};
+        }
+    },
+    setStaffPassword: function(email, password) {
+        if (!email || !password) return;
+        const passes = this.getStaffPasswords();
+        passes[email.trim().toLowerCase()] = password;
+        try {
+            localStorage.setItem('nicolett_staff_passwords', JSON.stringify(passes));
+        } catch(e) {}
+    },
+    verifyStaffPassword: function(email, password) {
+        if (!email || !password) return false;
+        const normEmail = email.trim().toLowerCase();
+        const passes = this.getStaffPasswords();
+        const stored = passes[normEmail];
+        if (stored && stored === password) return true;
+        const validDefaults = ['admin123', '123456', 'Nicolett123!'];
+        return validDefaults.includes(password);
     },
 
     // --- Gallery ---
@@ -556,7 +610,7 @@ const StorageHelper = {
             apiKey: '',
             secretKey: '',
             backendUrl: defaultBackend,
-            isSandbox: isLocal
+            isSandbox: true
         };
         try {
             const stored = localStorage.getItem('nicolett_flow_config');

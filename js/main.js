@@ -314,15 +314,56 @@ function setupPersonalization() {
         });
     }
 
+    // --- Traductor amigable de errores de autenticación ---
+    window.getFriendlyAuthErrorMessage = function(error) {
+        if (!error) return "El correo electrónico o la contraseña ingresados son incorrectos. Por favor, verifica tus datos.";
+        const code = error.code || '';
+        const msg = (error.message || '').toLowerCase();
+        
+        // Error de credenciales incorrectas (correo o clave erróneos)
+        if (code === 'auth/invalid-credential' || 
+            code === 'auth/wrong-password' || 
+            code === 'auth/user-not-found' || 
+            msg.includes('invalid-credential') || 
+            msg.includes('wrong-password') || 
+            msg.includes('user-not-found') ||
+            msg.includes('invalid credential') ||
+            msg.includes('credenciales')) {
+            return "El correo electrónico o la contraseña ingresados son incorrectos. Por favor, verifica tus datos e inténtalo nuevamente.";
+        }
+        if (code === 'auth/invalid-email' || msg.includes('invalid-email')) {
+            return "El correo electrónico ingresado no tiene un formato válido.";
+        }
+        if (code === 'auth/too-many-requests' || msg.includes('too-many-requests')) {
+            return "Demasiados intentos fallidos. Por seguridad, el acceso se ha bloqueado temporalmente. Intenta nuevamente en unos minutos.";
+        }
+        if (code === 'auth/user-disabled' || msg.includes('user-disabled')) {
+            return "Esta cuenta de acceso ha sido desactivada. Por favor, contacta a la administración.";
+        }
+        if (code === 'auth/network-request-failed' || msg.includes('network') || msg.includes('conexion')) {
+            return "Error de conexión con el servidor. Por favor, revisa tu conexión a internet.";
+        }
+        if (error.message && !error.message.startsWith('Firebase:') && !error.message.includes('auth/')) {
+            return error.message;
+        }
+        return "El correo electrónico o la contraseña ingresados son incorrectos. Por favor, verifica tus datos.";
+    };
+
     // --- Autenticación Compartida para Administradora y Trabajadoras ---
     window.authenticateStaffUser = async function(email, password) {
         let prof = null;
+        const cleanEmail = (email || '').trim().toLowerCase();
+        const cleanPass = (password || '').trim();
+
+        if (!cleanEmail || !cleanPass) {
+            throw new Error("Por favor, ingresa tu correo y contraseña.");
+        }
 
         if (typeof firebase !== 'undefined' && firebase.auth) {
             try {
-                const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+                const userCredential = await firebase.auth().signInWithEmailAndPassword(cleanEmail, cleanPass);
                 const uid = userCredential.user.uid;
-                const userEmail = userCredential.user.email || email;
+                const userEmail = userCredential.user.email || cleanEmail;
 
                 let role = 'profesional';
                 let userName = 'Colaboradora';
@@ -357,40 +398,40 @@ function setupPersonalization() {
                     role: role
                 };
             } catch (fbAuthErr) {
-                console.warn("Firebase Auth falló, verificando credenciales locales:", fbAuthErr);
+                console.warn("Firebase Auth falló, verificando si es usuario con clave guardada o local:", fbAuthErr);
+                const isLocalValid = StorageHelper.verifyStaffPassword(cleanEmail, cleanPass);
                 const profs = StorageHelper.getProfessionals();
-                const localFound = profs.find(p => p.email && p.email.toLowerCase() === email.toLowerCase());
-                const validPasswords = ['admin123', '123456', 'Nicolett123!'];
-                if (localFound && validPasswords.includes(password)) {
+                const localFound = profs.find(p => p.email && p.email.toLowerCase() === cleanEmail) ||
+                                   (cleanEmail === 'nicolette@gmail.com' ? { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin' } : null);
+
+                if (isLocalValid && localFound) {
                     prof = {
                         id: localFound.id || 'p_local',
                         name: localFound.name,
                         email: localFound.email,
-                        role: localFound.role || 'profesional'
-                    };
-                } else if (email.toLowerCase() === 'nicolette@gmail.com' && validPasswords.includes(password)) {
-                    prof = {
-                        id: 'p1',
-                        name: 'Nicolett',
-                        email: 'nicolette@gmail.com',
-                        role: 'admin'
+                        role: localFound.role || (cleanEmail.includes('nicolette') || cleanEmail.includes('admin') ? 'admin' : 'profesional')
                     };
                 } else {
-                    throw fbAuthErr;
+                    const friendlyMsg = window.getFriendlyAuthErrorMessage(fbAuthErr);
+                    const customErr = new Error(friendlyMsg);
+                    customErr.code = fbAuthErr.code;
+                    throw customErr;
                 }
             }
         } else {
+            const isLocalValid = StorageHelper.verifyStaffPassword(cleanEmail, cleanPass);
             const profs = StorageHelper.getProfessionals();
-            const localFound = profs.find(p => p.email && p.email.toLowerCase() === email.toLowerCase());
-            if (localFound) {
+            const localFound = profs.find(p => p.email && p.email.toLowerCase() === cleanEmail) ||
+                               (cleanEmail === 'nicolette@gmail.com' ? { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin' } : null);
+            if (isLocalValid && localFound) {
                 prof = {
                     id: localFound.id || 'p_local',
                     name: localFound.name,
                     email: localFound.email,
-                    role: localFound.role || 'profesional'
+                    role: localFound.role || (cleanEmail.includes('nicolette') || cleanEmail.includes('admin') ? 'admin' : 'profesional')
                 };
             } else {
-                throw new Error("Credenciales inválidas.");
+                throw new Error("El correo electrónico o la contraseña ingresados son incorrectos. Por favor, verifica tus datos e inténtalo de nuevo.");
             }
         }
 
@@ -430,17 +471,60 @@ function setupPersonalization() {
         }
     });
 
-    // Formulario modal opcional si se invoca
+    // Formulario modal de inicio de sesión
     const authForm = document.getElementById('auth-form');
     if (authForm) {
+        // Toggle ver/ocultar contraseña
+        const btnTogglePass = document.getElementById('btn-toggle-auth-password');
+        const passInput = document.getElementById('auth-password');
+        if (btnTogglePass && passInput) {
+            btnTogglePass.addEventListener('click', (e) => {
+                e.preventDefault();
+                const isPass = passInput.type === 'password';
+                passInput.type = isPass ? 'text' : 'password';
+                btnTogglePass.innerHTML = isPass ? '<i data-lucide="eye-off" style="width:16px; height:16px;"></i>' : '<i data-lucide="eye" style="width:16px; height:16px;"></i>';
+                if (window.lucide) lucide.createIcons();
+            });
+        }
+
+        // Limpiar error al tipear
+        const emailInput = document.getElementById('auth-email');
+        const errorEl = document.getElementById('auth-error');
+        [emailInput, passInput].forEach(inp => {
+            if (inp) {
+                inp.addEventListener('input', () => {
+                    if (errorEl) errorEl.style.display = 'none';
+                });
+            }
+        });
+
+        // Enlace olvidé mi contraseña
+        const linkForgot = document.getElementById('link-forgot-auth-modal');
+        if (linkForgot) {
+            linkForgot.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const targetEmail = (emailInput ? emailInput.value.trim() : '') || prompt("Ingresa tu correo electrónico para enviarte las instrucciones de restablecimiento de contraseña:");
+                if (!targetEmail) return;
+                try {
+                    if (typeof firebase !== 'undefined' && firebase.auth) {
+                        await firebase.auth().sendPasswordResetEmail(targetEmail);
+                        alert(`Se ha enviado un enlace para restablecer o crear tu contraseña a ${targetEmail}. Por favor revisa tu bandeja de entrada o spam.`);
+                    } else {
+                        alert(`En modo local o sin conexión a Firebase. Tu contraseña actual de acceso es admin123 o Nicolett123!`);
+                    }
+                } catch(err) {
+                    alert("No pudimos procesar la solicitud: " + (err.message || 'Verifica el correo ingresado.'));
+                }
+            });
+        }
+
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value.trim();
-            const errorEl = document.getElementById('auth-error');
             const btnLogin = document.getElementById('btn-login');
 
-            errorEl.style.display = 'none';
+            if (errorEl) errorEl.style.display = 'none';
             btnLogin.disabled = true;
             btnLogin.innerHTML = 'Ingresando...';
 
@@ -455,12 +539,17 @@ function setupPersonalization() {
                     }
                 }
             } catch (error) {
-                console.error("Error Auth:", error);
-                errorEl.innerText = error.message || 'Credenciales inválidas o error de conexión.';
-                errorEl.style.display = 'block';
+                console.error("Error Auth Modal:", error);
+                const friendlyMsg = window.getFriendlyAuthErrorMessage(error);
+                if (errorEl) {
+                    errorEl.innerHTML = `<i data-lucide="alert-circle" style="width:18px; height:18px; flex-shrink:0;"></i> <span>${friendlyMsg}</span>`;
+                    errorEl.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                }
             } finally {
                 btnLogin.disabled = false;
-                btnLogin.innerHTML = 'Ingresar al Portal';
+                btnLogin.innerHTML = '<i data-lucide="log-in" style="width: 16px; height: 16px;"></i> Ingresar al Portal';
+                if (window.lucide) lucide.createIcons();
             }
         });
     }
@@ -868,7 +957,7 @@ function initAgendarEvents() {
                 clientName: appointmentData.clientName || 'Clienta',
                 orderId: appointmentData.orderId,
                 amount: 5000,
-                isSandbox: (flowConfig.isSandbox !== undefined) ? flowConfig.isSandbox : isLocal,
+                isSandbox: (flowConfig.isSandbox !== undefined) ? flowConfig.isSandbox : true,
                 returnUrl: window.location.href.split('?')[0]
             };
             if (flowConfig.apiKey) payload.apiKey = flowConfig.apiKey;
@@ -931,14 +1020,57 @@ function initAdminEvents() {
         // Enlazar formulario de login integrado directamente en la página (sin popups)
         const loginForm = document.getElementById('admin-login-form');
         if (loginForm) {
+            // Toggle ver/ocultar contraseña
+            const btnTogglePass = document.getElementById('btn-toggle-admin-password');
+            const passInput = document.getElementById('admin-login-password');
+            if (btnTogglePass && passInput) {
+                btnTogglePass.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const isPass = passInput.type === 'password';
+                    passInput.type = isPass ? 'text' : 'password';
+                    btnTogglePass.innerHTML = isPass ? '<i data-lucide="eye-off" style="width:18px; height:18px;"></i>' : '<i data-lucide="eye" style="width:18px; height:18px;"></i>';
+                    if (window.lucide) lucide.createIcons();
+                });
+            }
+
+            // Limpiar error al escribir
+            const emailInput = document.getElementById('admin-login-email');
+            const errorEl = document.getElementById('admin-login-error');
+            [emailInput, passInput].forEach(inp => {
+                if (inp) {
+                    inp.addEventListener('input', () => {
+                        if (errorEl) errorEl.style.display = 'none';
+                    });
+                }
+            });
+
+            // Enlace de recuperación de contraseña
+            const linkForgot = document.getElementById('link-forgot-admin-page');
+            if (linkForgot) {
+                linkForgot.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const targetEmail = (emailInput ? emailInput.value.trim() : '') || prompt("Ingresa tu correo para enviarte las instrucciones de restablecimiento de contraseña:");
+                    if (!targetEmail) return;
+                    try {
+                        if (typeof firebase !== 'undefined' && firebase.auth) {
+                            await firebase.auth().sendPasswordResetEmail(targetEmail);
+                            alert(`Se ha enviado un enlace para restablecer o crear tu contraseña a ${targetEmail}. Revisa tu correo.`);
+                        } else {
+                            alert(`En modo local o sin conexión. Tu contraseña actual de acceso es admin123 o Nicolett123!`);
+                        }
+                    } catch(err) {
+                        alert("No pudimos procesar la solicitud: " + (err.message || 'Verifica el correo ingresado.'));
+                    }
+                });
+            }
+
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const email = document.getElementById('admin-login-email').value.trim();
                 const password = document.getElementById('admin-login-password').value.trim();
-                const errorEl = document.getElementById('admin-login-error');
                 const btnSubmit = document.getElementById('btn-admin-submit-login');
 
-                errorEl.style.display = 'none';
+                if (errorEl) errorEl.style.display = 'none';
                 btnSubmit.disabled = true;
                 btnSubmit.innerHTML = 'Ingresando...';
 
@@ -950,9 +1082,13 @@ function initAdminEvents() {
                         AppRouter.navigate('admin');
                     }
                 } catch (err) {
-                    console.error("Error Auth:", err);
-                    errorEl.innerText = err.message || 'Credenciales inválidas o error de conexión.';
-                    errorEl.style.display = 'block';
+                    console.error("Error Auth Admin Page:", err);
+                    const friendlyMsg = window.getFriendlyAuthErrorMessage(err);
+                    if (errorEl) {
+                        errorEl.innerHTML = `<i data-lucide="alert-circle" style="width:18px; height:18px; flex-shrink:0;"></i> <span>${friendlyMsg}</span>`;
+                        errorEl.style.display = 'flex';
+                        if (window.lucide) lucide.createIcons();
+                    }
                 } finally {
                     btnSubmit.disabled = false;
                     btnSubmit.innerHTML = '<i data-lucide="log-in" style="width:18px; height:18px;"></i> Ingresar al Portal';
@@ -1314,7 +1450,7 @@ function initAdminEvents() {
         if (apiKeyInput) apiKeyInput.value = flowCfg.apiKey || '';
         if (secretInput) secretInput.value = flowCfg.secretKey || '';
         if (backendInput) backendInput.value = activeBackend || defaultBackend;
-        if (sandboxInput) sandboxInput.checked = (flowCfg.isSandbox !== undefined) ? flowCfg.isSandbox : isLocalHost;
+        if (sandboxInput) sandboxInput.checked = (flowCfg.isSandbox !== undefined) ? flowCfg.isSandbox : true;
 
         // Probar conexión con el servidor backend
         if (btnTest) {
@@ -1564,7 +1700,249 @@ function initAdminEvents() {
         });
     });
 
-    // --- Lógica de Nueva Trabajadora ---
+    // --- Motor de Recorte / Cuadre Interactivo de Imagen (Cropper) ---
+    function initCropperInstance({
+        viewportEl,
+        imageEl,
+        sliderEl,
+        btnZoomIn,
+        btnZoomOut,
+        btnReset,
+        previewCanvas,
+        viewportSize = 220,
+        outputSize = 400
+    }) {
+        let currentImage = null;
+        let baseScale = 1;
+        let zoom = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let startOffsetX = 0;
+        let startOffsetY = 0;
+
+        function updateTransform() {
+            if (!currentImage || !viewportEl || !imageEl) return;
+            const renderW = currentImage.naturalWidth * baseScale * zoom;
+            const renderH = currentImage.naturalHeight * baseScale * zoom;
+
+            // Mantener la imagen cubriendo completamente el viewport
+            const minX = viewportSize - renderW;
+            const minY = viewportSize - renderH;
+            offsetX = Math.min(0, Math.max(minX, offsetX));
+            offsetY = Math.min(0, Math.max(minY, offsetY));
+
+            imageEl.style.width = renderW + 'px';
+            imageEl.style.height = renderH + 'px';
+            imageEl.style.left = offsetX + 'px';
+            imageEl.style.top = offsetY + 'px';
+
+            drawPreview();
+        }
+
+        function drawPreview() {
+            if (!currentImage || !previewCanvas) return;
+            const pCtx = previewCanvas.getContext('2d');
+            pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            pCtx.imageSmoothingEnabled = true;
+            pCtx.imageSmoothingQuality = 'high';
+
+            const scaleTotal = baseScale * zoom;
+            const sourceX = Math.max(0, -offsetX / scaleTotal);
+            const sourceY = Math.max(0, -offsetY / scaleTotal);
+            const sourceW = Math.min(currentImage.naturalWidth - sourceX, viewportSize / scaleTotal);
+            const sourceH = Math.min(currentImage.naturalHeight - sourceY, viewportSize / scaleTotal);
+
+            pCtx.drawImage(
+                currentImage,
+                sourceX, sourceY, sourceW, sourceH,
+                0, 0, previewCanvas.width, previewCanvas.height
+            );
+        }
+
+        function resetCenter() {
+            if (!currentImage) return;
+            zoom = 1;
+            if (sliderEl) sliderEl.value = 1;
+            const renderW = currentImage.naturalWidth * baseScale;
+            const renderH = currentImage.naturalHeight * baseScale;
+            offsetX = (viewportSize - renderW) / 2;
+            offsetY = (viewportSize - renderH) / 2;
+            updateTransform();
+        }
+
+        function loadImage(src, callback) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                currentImage = img;
+                imageEl.src = src;
+                baseScale = Math.max(viewportSize / img.naturalWidth, viewportSize / img.naturalHeight);
+                resetCenter();
+                if (callback) callback();
+            };
+            img.src = src;
+        }
+
+        // Eventos táctiles y ratón (Pointer Events universales)
+        if (viewportEl) {
+            viewportEl.addEventListener('pointerdown', (e) => {
+                if (!currentImage) return;
+                isDragging = true;
+                viewportEl.classList.add('grabbing');
+                try { viewportEl.setPointerCapture(e.pointerId); } catch(err) {}
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                startOffsetX = offsetX;
+                startOffsetY = offsetY;
+            });
+
+            viewportEl.addEventListener('pointermove', (e) => {
+                if (!isDragging || !currentImage) return;
+                const dx = e.clientX - dragStartX;
+                const dy = e.clientY - dragStartY;
+                offsetX = startOffsetX + dx;
+                offsetY = startOffsetY + dy;
+                updateTransform();
+            });
+
+            const endDrag = (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                viewportEl.classList.remove('grabbing');
+                try { viewportEl.releasePointerCapture(e.pointerId); } catch(err) {}
+            };
+
+            viewportEl.addEventListener('pointerup', endDrag);
+            viewportEl.addEventListener('pointercancel', endDrag);
+        }
+
+        if (sliderEl) {
+            sliderEl.addEventListener('input', (e) => {
+                if (!currentImage) return;
+                const newZoom = parseFloat(e.target.value);
+                const oldScale = baseScale * zoom;
+                const newScale = baseScale * newZoom;
+                const centerRelX = (viewportSize / 2 - offsetX) / oldScale;
+                const centerRelY = (viewportSize / 2 - offsetY) / oldScale;
+                zoom = newZoom;
+                offsetX = viewportSize / 2 - centerRelX * newScale;
+                offsetY = viewportSize / 2 - centerRelY * newScale;
+                updateTransform();
+            });
+        }
+
+        if (btnZoomIn) {
+            btnZoomIn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!sliderEl) return;
+                sliderEl.value = Math.min(parseFloat(sliderEl.max), parseFloat(sliderEl.value) + 0.2);
+                sliderEl.dispatchEvent(new Event('input'));
+            });
+        }
+
+        if (btnZoomOut) {
+            btnZoomOut.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!sliderEl) return;
+                sliderEl.value = Math.max(parseFloat(sliderEl.min), parseFloat(sliderEl.value) - 0.2);
+                sliderEl.dispatchEvent(new Event('input'));
+            });
+        }
+
+        if (btnReset) {
+            btnReset.addEventListener('click', (e) => {
+                e.preventDefault();
+                resetCenter();
+            });
+        }
+
+        function getCroppedDataUrl() {
+            if (!currentImage) return null;
+            const canvas = document.createElement('canvas');
+            canvas.width = outputSize;
+            canvas.height = outputSize;
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
+            const scaleTotal = baseScale * zoom;
+            const sourceX = Math.max(0, -offsetX / scaleTotal);
+            const sourceY = Math.max(0, -offsetY / scaleTotal);
+            const sourceW = Math.min(currentImage.naturalWidth - sourceX, viewportSize / scaleTotal);
+            const sourceH = Math.min(currentImage.naturalHeight - sourceY, viewportSize / scaleTotal);
+
+            ctx.drawImage(
+                currentImage,
+                sourceX, sourceY, sourceW, sourceH,
+                0, 0, outputSize, outputSize
+            );
+            return canvas.toDataURL('image/jpeg', 0.88);
+        }
+
+        return {
+            loadImage,
+            resetCenter,
+            getCroppedDataUrl,
+            hasImage: () => !!currentImage
+        };
+    }
+
+    // Instancia de Cropper para Nueva Trabajadora
+    let newWorkerCropper = null;
+    const workerCropperContainer = document.getElementById('worker-cropper-container');
+    if (workerCropperContainer) {
+        newWorkerCropper = initCropperInstance({
+            viewportEl: document.getElementById('crop-viewport'),
+            imageEl: document.getElementById('crop-image'),
+            sliderEl: document.getElementById('crop-zoom-slider'),
+            btnZoomIn: document.getElementById('btn-crop-zoom-in'),
+            btnZoomOut: document.getElementById('btn-crop-zoom-out'),
+            btnReset: document.getElementById('btn-crop-reset'),
+            previewCanvas: document.getElementById('crop-preview-canvas'),
+            viewportSize: 220,
+            outputSize: 400
+        });
+    }
+
+    // Toggle contraseña en formulario de nueva trabajadora
+    const btnToggleWorkerPass = document.getElementById('btn-toggle-worker-password');
+    const workerPassInput = document.getElementById('worker-password');
+    if (btnToggleWorkerPass && workerPassInput) {
+        btnToggleWorkerPass.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isPass = workerPassInput.type === 'password';
+            workerPassInput.type = isPass ? 'text' : 'password';
+            btnToggleWorkerPass.innerHTML = isPass ? '<i data-lucide="eye-off" style="width:16px; height:16px;"></i>' : '<i data-lucide="eye" style="width:16px; height:16px;"></i>';
+            if (window.lucide) lucide.createIcons();
+        });
+    }
+
+    // Selección de imagen para Nueva Trabajadora
+    const photoInput = document.getElementById('worker-photo');
+    const photoNameSpan = document.getElementById('worker-photo-name');
+    if (photoInput) {
+        photoInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                if (photoNameSpan) photoNameSpan.innerText = file.name;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    if (workerCropperContainer) workerCropperContainer.style.display = 'block';
+                    if (newWorkerCropper) {
+                        newWorkerCropper.loadImage(event.target.result, () => {
+                            if (window.lucide) lucide.createIcons();
+                        });
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // --- Modal y Formulario de Nueva Trabajadora ---
     const btnAddWorker = document.getElementById('btn-add-worker');
     const workerModal = document.getElementById('worker-modal');
     const closeWorker = document.getElementById('close-worker');
@@ -1573,73 +1951,427 @@ function initAdminEvents() {
     if (btnAddWorker) {
         btnAddWorker.addEventListener('click', () => {
             if (workerModal) workerModal.style.display = 'flex';
+            if (window.lucide) lucide.createIcons();
         });
     }
 
     if (closeWorker) {
         closeWorker.addEventListener('click', () => {
-            workerModal.style.display = 'none';
+            if (workerModal) workerModal.style.display = 'none';
         });
     }
 
     if (formWorker) {
-        formWorker.addEventListener('submit', (e) => {
+        formWorker.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('worker-name').value.trim();
             const email = document.getElementById('worker-email').value.trim();
-            const photoInput = document.getElementById('worker-photo');
+            const role = document.getElementById('worker-role').value;
+            const password = document.getElementById('worker-password').value.trim();
             const btnSave = document.getElementById('btn-save-worker');
             const status = document.getElementById('worker-upload-status');
+            const errorBox = document.getElementById('worker-error');
+
+            if (errorBox) errorBox.style.display = 'none';
+
+            if (!password || password.length < 6) {
+                if (errorBox) {
+                    errorBox.innerHTML = '<i data-lucide="alert-circle" style="width:16px; height:16px; flex-shrink:0;"></i><span>La contraseña debe tener al menos 6 caracteres.</span>';
+                    errorBox.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                }
+                return;
+            }
+
+            if (!newWorkerCropper || !newWorkerCropper.hasImage()) {
+                if (errorBox) {
+                    errorBox.innerHTML = '<i data-lucide="alert-circle" style="width:16px; height:16px; flex-shrink:0;"></i><span>Por favor selecciona una foto de perfil y cuádrala.</span>';
+                    errorBox.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                }
+                return;
+            }
 
             btnSave.disabled = true;
-            status.style.display = 'block';
+            if (status) status.style.display = 'block';
 
-            let reader = new FileReader();
-            reader.onload = function (event) {
-                const img = new Image();
-                img.onload = async function () {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    const MAX = 400; // Avatar pequeño
-                    if (width > MAX) { height = Math.round(height * (MAX / width)); width = MAX; }
-                    canvas.width = width; canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
+            // Obtener foto perfectamente cuadrada
+            const finalAvatarUrl = newWorkerCropper.getCroppedDataUrl(400);
 
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            // 1. Guardar la clave elegida localmente
+            StorageHelper.setStaffPassword(email, password);
 
-                    if (typeof firebase !== 'undefined' && firebase.auth) {
-                        try {
-                            const secondaryAppName = "SecondaryApp" + Date.now();
-                            const secondaryApp = firebase.initializeApp(firebase.app().options, secondaryAppName);
-                            await secondaryApp.auth().createUserWithEmailAndPassword(email, "Nicolett123!");
-                            await secondaryApp.auth().signOut();
-                            secondaryApp.delete();
-                        } catch (err) {
-                            console.error("No se pudo crear el usuario en Auth (puede que ya exista):", err);
-                        }
+            // 2. Crear cuenta en Firebase Auth y Firestore si está activo
+            let fbUid = null;
+            if (typeof firebase !== 'undefined' && firebase.auth) {
+                try {
+                    const secondaryAppName = "SecondaryApp" + Date.now();
+                    const secondaryApp = firebase.initializeApp(firebase.app().options, secondaryAppName);
+                    const userCred = await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
+                    fbUid = userCred.user.uid;
+
+                    // Crear perfil en colección Usuarios con su rol elegido
+                    try {
+                        await firebase.firestore().collection('Usuarios').doc(fbUid).set({
+                            nombre: name,
+                            email: email,
+                            rol: role === 'admin' ? 'Admin' : 'profesional',
+                            creadoEl: new Date().toISOString()
+                        });
+                    } catch(uErr) {
+                        console.warn("No se pudo crear en Usuarios de Firestore:", uErr);
                     }
 
-                    await StorageHelper.addProfessional({
-                        name: name,
-                        email: email,
-                        role: 'profesional',
-                        avatar: dataUrl
-                    });
-
-                    workerModal.style.display = 'none';
-                    btnSave.disabled = false;
-                    status.style.display = 'none';
-                    formWorker.reset();
-                    if (typeof AppRouter !== 'undefined') AppRouter.refresh();
-                };
-                img.src = event.target.result;
-            };
-
-            if (photoInput.files && photoInput.files[0]) {
-                reader.readAsDataURL(photoInput.files[0]);
+                    await secondaryApp.auth().signOut();
+                    secondaryApp.delete();
+                } catch (err) {
+                    console.warn("Aviso Firebase Auth (puede que ya exista o esté offline):", err);
+                }
             }
+
+            // 3. Guardar en colección Profesionales
+            await StorageHelper.addProfessional({
+                id: fbUid || ('p_' + Date.now()),
+                name: name,
+                email: email,
+                role: role,
+                avatar: finalAvatarUrl
+            });
+
+            if (workerModal) workerModal.style.display = 'none';
+            btnSave.disabled = false;
+            if (status) status.style.display = 'none';
+            formWorker.reset();
+            if (workerCropperContainer) workerCropperContainer.style.display = 'none';
+            if (photoNameSpan) photoNameSpan.innerText = 'Ningún archivo seleccionado';
+            if (typeof AppRouter !== 'undefined') AppRouter.refresh();
+        });
+    }
+
+    // --- Modal Cambiar / Crear Mi Contraseña (Usuaria activa) ---
+    const btnOpenChangeMyPass = document.getElementById('btn-open-change-password');
+    const modalChangeMyPass = document.getElementById('modal-change-my-password');
+    const closeChangeMyPass = document.getElementById('close-modal-change-my-password');
+    const formChangeMyPass = document.getElementById('form-change-my-password');
+
+    if (btnOpenChangeMyPass && modalChangeMyPass) {
+        btnOpenChangeMyPass.addEventListener('click', (e) => {
+            e.preventDefault();
+            modalChangeMyPass.style.display = 'flex';
+            const emailLabel = document.getElementById('label-change-pass-email');
+            if (emailLabel) emailLabel.innerText = auth.user.email || 'tu-cuenta';
+            const errBox = document.getElementById('change-my-password-error');
+            const succBox = document.getElementById('change-my-password-success');
+            if (errBox) errBox.style.display = 'none';
+            if (succBox) succBox.style.display = 'none';
+            if (window.lucide) lucide.createIcons();
+        });
+    }
+
+    if (closeChangeMyPass && modalChangeMyPass) {
+        closeChangeMyPass.addEventListener('click', () => {
+            modalChangeMyPass.style.display = 'none';
+        });
+    }
+
+    // Toggles de contraseña en modal propio
+    const btnToggleNewPass = document.getElementById('btn-toggle-my-new-password');
+    const inputNewPass = document.getElementById('my-new-password');
+    if (btnToggleNewPass && inputNewPass) {
+        btnToggleNewPass.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isPass = inputNewPass.type === 'password';
+            inputNewPass.type = isPass ? 'text' : 'password';
+            btnToggleNewPass.innerHTML = isPass ? '<i data-lucide="eye-off" style="width:16px; height:16px;"></i>' : '<i data-lucide="eye" style="width:16px; height:16px;"></i>';
+            if (window.lucide) lucide.createIcons();
+        });
+    }
+
+    const btnToggleConfPass = document.getElementById('btn-toggle-my-confirm-password');
+    const inputConfPass = document.getElementById('my-confirm-password');
+    if (btnToggleConfPass && inputConfPass) {
+        btnToggleConfPass.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isPass = inputConfPass.type === 'password';
+            inputConfPass.type = isPass ? 'text' : 'password';
+            btnToggleConfPass.innerHTML = isPass ? '<i data-lucide="eye-off" style="width:16px; height:16px;"></i>' : '<i data-lucide="eye" style="width:16px; height:16px;"></i>';
+            if (window.lucide) lucide.createIcons();
+        });
+    }
+
+    if (formChangeMyPass) {
+        formChangeMyPass.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newPass = document.getElementById('my-new-password').value.trim();
+            const confirmPass = document.getElementById('my-confirm-password').value.trim();
+            const errBox = document.getElementById('change-my-password-error');
+            const succBox = document.getElementById('change-my-password-success');
+            const btnSubmit = document.getElementById('btn-submit-change-my-pass');
+
+            if (errBox) errBox.style.display = 'none';
+            if (succBox) succBox.style.display = 'none';
+
+            if (!newPass || newPass.length < 6) {
+                if (errBox) {
+                    errBox.innerHTML = '<i data-lucide="alert-circle" style="width:16px; height:16px; flex-shrink:0;"></i><span>La contraseña debe tener al menos 6 caracteres.</span>';
+                    errBox.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                }
+                return;
+            }
+
+            if (newPass !== confirmPass) {
+                if (errBox) {
+                    errBox.innerHTML = '<i data-lucide="alert-circle" style="width:16px; height:16px; flex-shrink:0;"></i><span>Las contraseñas ingresadas no coinciden.</span>';
+                    errBox.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                }
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = 'Guardando...';
+
+            try {
+                // Actualizar en Firebase si está autenticado
+                if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+                    try {
+                        await firebase.auth().currentUser.updatePassword(newPass);
+                    } catch(fbErr) {
+                        if (fbErr.code === 'auth/requires-recent-login') {
+                            throw new Error("Por seguridad, debes cerrar sesión y volver a entrar antes de actualizar tu contraseña.");
+                        }
+                        console.warn("Aviso updatePassword en Firebase Auth:", fbErr);
+                    }
+                }
+
+                // Guardar en almacenamiento de claves
+                StorageHelper.setStaffPassword(auth.user.email, newPass);
+
+                if (succBox) {
+                    succBox.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                }
+
+                setTimeout(() => {
+                    if (modalChangeMyPass) modalChangeMyPass.style.display = 'none';
+                    formChangeMyPass.reset();
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '<i data-lucide="lock" style="width:18px; height:18px;"></i> Guardar Nueva Contraseña';
+                    if (window.lucide) lucide.createIcons();
+                }, 1400);
+            } catch(err) {
+                if (errBox) {
+                    errBox.innerHTML = `<i data-lucide="alert-circle" style="width:16px; height:16px; flex-shrink:0;"></i><span>${err.message || 'Error al actualizar contraseña.'}</span>`;
+                    errBox.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                }
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i data-lucide="lock" style="width:18px; height:18px;"></i> Guardar Nueva Contraseña';
+                if (window.lucide) lucide.createIcons();
+            }
+        });
+    }
+
+    // --- Modal Asignar Contraseña a Trabajadora (Admin) ---
+    const modalSetWorkerPass = document.getElementById('modal-set-worker-password');
+    const closeSetWorkerPass = document.getElementById('close-modal-set-worker-password');
+    const formSetWorkerPass = document.getElementById('form-set-worker-password');
+
+    document.querySelectorAll('.btn-worker-change-pass').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const profId = btn.getAttribute('data-profid');
+            const profName = btn.getAttribute('data-profname');
+            const profEmail = btn.getAttribute('data-profemail');
+
+            if (modalSetWorkerPass) {
+                document.getElementById('target-worker-id').value = profId;
+                document.getElementById('target-worker-email').value = profEmail;
+                const labelTarget = document.getElementById('label-set-worker-target');
+                if (labelTarget) labelTarget.innerText = `${profName} (${profEmail || 'Sin correo'})`;
+                const errBox = document.getElementById('set-worker-password-error');
+                const succBox = document.getElementById('set-worker-password-success');
+                if (errBox) errBox.style.display = 'none';
+                if (succBox) succBox.style.display = 'none';
+                modalSetWorkerPass.style.display = 'flex';
+                if (window.lucide) lucide.createIcons();
+            }
+        });
+    });
+
+    if (closeSetWorkerPass && modalSetWorkerPass) {
+        closeSetWorkerPass.addEventListener('click', () => {
+            modalSetWorkerPass.style.display = 'none';
+        });
+    }
+
+    // Toggle ojito en modal de asignar contraseña
+    const btnToggleTargetPass = document.getElementById('btn-toggle-target-worker-pass');
+    const inputTargetPass = document.getElementById('target-worker-password');
+    if (btnToggleTargetPass && inputTargetPass) {
+        btnToggleTargetPass.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isPass = inputTargetPass.type === 'password';
+            inputTargetPass.type = isPass ? 'text' : 'password';
+            btnToggleTargetPass.innerHTML = isPass ? '<i data-lucide="eye-off" style="width:16px; height:16px;"></i>' : '<i data-lucide="eye" style="width:16px; height:16px;"></i>';
+            if (window.lucide) lucide.createIcons();
+        });
+    }
+
+    if (formSetWorkerPass) {
+        formSetWorkerPass.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const targetEmail = document.getElementById('target-worker-email').value.trim();
+            const newPassword = document.getElementById('target-worker-password').value.trim();
+            const errBox = document.getElementById('set-worker-password-error');
+            const succBox = document.getElementById('set-worker-password-success');
+            const btnSubmit = document.getElementById('btn-submit-set-worker-pass');
+
+            if (errBox) errBox.style.display = 'none';
+            if (succBox) succBox.style.display = 'none';
+
+            if (!newPassword || newPassword.length < 6) {
+                if (errBox) {
+                    errBox.innerHTML = '<i data-lucide="alert-circle" style="width:16px; height:16px; flex-shrink:0;"></i><span>La contraseña debe tener al menos 6 caracteres.</span>';
+                    errBox.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                }
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = 'Asignando...';
+
+            StorageHelper.setStaffPassword(targetEmail, newPassword);
+
+            if (succBox) {
+                succBox.style.display = 'flex';
+                if (window.lucide) lucide.createIcons();
+            }
+
+            setTimeout(() => {
+                if (modalSetWorkerPass) modalSetWorkerPass.style.display = 'none';
+                formSetWorkerPass.reset();
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i data-lucide="save" style="width:18px; height:18px;"></i> Guardar Contraseña';
+                if (window.lucide) lucide.createIcons();
+            }, 1400);
+        });
+    }
+
+    // --- Modal y Cropper para Editar y Cuadrar Foto de Trabajadora Existente ---
+    let editWorkerCropper = null;
+    const modalEditPhoto = document.getElementById('modal-edit-worker-photo');
+    const closeEditPhoto = document.getElementById('close-modal-edit-worker-photo');
+    const formEditPhoto = document.getElementById('form-edit-worker-photo');
+    const editPhotoFileInput = document.getElementById('edit-photo-file-input');
+    const editPhotoFilename = document.getElementById('edit-photo-filename');
+
+    if (modalEditPhoto) {
+        editWorkerCropper = initCropperInstance({
+            viewportEl: document.getElementById('edit-crop-viewport'),
+            imageEl: document.getElementById('edit-crop-image'),
+            sliderEl: document.getElementById('edit-crop-zoom-slider'),
+            btnZoomIn: document.getElementById('btn-edit-zoom-in'),
+            btnZoomOut: document.getElementById('btn-edit-zoom-out'),
+            btnReset: document.getElementById('btn-edit-crop-reset'),
+            previewCanvas: document.getElementById('edit-crop-preview-canvas'),
+            viewportSize: 220,
+            outputSize: 400
+        });
+    }
+
+    document.querySelectorAll('.btn-worker-edit-photo').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const profId = btn.getAttribute('data-profid');
+            const profName = btn.getAttribute('data-profname');
+            const profs = StorageHelper.getProfessionals();
+            const prof = profs.find(p => p.id === profId);
+
+            if (modalEditPhoto && prof) {
+                document.getElementById('edit-photo-worker-id').value = profId;
+                const labelTarget = document.getElementById('label-edit-photo-target');
+                if (labelTarget) labelTarget.innerText = `${profName} • Cuadra o cambia su foto de perfil`;
+                const errBox = document.getElementById('edit-photo-error');
+                const succBox = document.getElementById('edit-photo-success');
+                if (errBox) errBox.style.display = 'none';
+                if (succBox) succBox.style.display = 'none';
+                if (editPhotoFilename) editPhotoFilename.innerText = 'Foto actual cargada';
+
+                modalEditPhoto.style.display = 'flex';
+                if (editWorkerCropper && prof.avatar) {
+                    editWorkerCropper.loadImage(prof.avatar, () => {
+                        if (window.lucide) lucide.createIcons();
+                    });
+                }
+                if (window.lucide) lucide.createIcons();
+            }
+        });
+    });
+
+    if (closeEditPhoto && modalEditPhoto) {
+        closeEditPhoto.addEventListener('click', () => {
+            modalEditPhoto.style.display = 'none';
+        });
+    }
+
+    if (editPhotoFileInput) {
+        editPhotoFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                if (editPhotoFilename) editPhotoFilename.innerText = file.name;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    if (editWorkerCropper) {
+                        editWorkerCropper.loadImage(event.target.result, () => {
+                            if (window.lucide) lucide.createIcons();
+                        });
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    if (formEditPhoto) {
+        formEditPhoto.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const profId = document.getElementById('edit-photo-worker-id').value;
+            const errBox = document.getElementById('edit-photo-error');
+            const succBox = document.getElementById('edit-photo-success');
+            const btnSubmit = document.getElementById('btn-submit-edit-photo');
+
+            if (errBox) errBox.style.display = 'none';
+            if (succBox) succBox.style.display = 'none';
+
+            if (!editWorkerCropper || !editWorkerCropper.hasImage()) {
+                if (errBox) {
+                    errBox.innerHTML = '<i data-lucide="alert-circle" style="width:16px; height:16px; flex-shrink:0;"></i><span>No hay ninguna foto para encuadrar.</span>';
+                    errBox.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                }
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = 'Procesando encuadre...';
+
+            const croppedDataUrl = editWorkerCropper.getCroppedDataUrl(400);
+            await StorageHelper.updateProfessional(profId, { avatar: croppedDataUrl });
+
+            if (succBox) {
+                succBox.style.display = 'flex';
+                if (window.lucide) lucide.createIcons();
+            }
+
+            setTimeout(() => {
+                if (modalEditPhoto) modalEditPhoto.style.display = 'none';
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i data-lucide="save" style="width:18px; height:18px;"></i> Guardar Foto Cuadrada';
+                if (typeof AppRouter !== 'undefined') AppRouter.refresh();
+            }, 1200);
         });
     }
 

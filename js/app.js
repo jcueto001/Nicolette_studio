@@ -609,12 +609,20 @@ function renderAdminView() {
                                 style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
                         </div>
                         <div>
-                            <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem; color:var(--clr-neutral-dark);">Contraseña</label>
-                            <input type="password" id="admin-login-password" required placeholder="••••••••" autocomplete="current-password"
-                                style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="font-weight:600; font-size:0.9rem; color:var(--clr-neutral-dark); margin:0;">Contraseña</label>
+                                <a href="#" id="link-forgot-admin-page" style="font-size:0.8rem; color:var(--clr-rose-gold-dark); text-decoration:underline;">¿Olvidaste tu contraseña?</a>
+                            </div>
+                            <div class="input-password-wrapper">
+                                <input type="password" id="admin-login-password" required placeholder="••••••••" autocomplete="current-password"
+                                    style="width:100%; padding:11px 13px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                                <button type="button" class="btn-toggle-pass" id="btn-toggle-admin-password" title="Mostrar/Ocultar contraseña" tabindex="-1">
+                                    <i data-lucide="eye" style="width:18px; height:18px;"></i>
+                                </button>
+                            </div>
                         </div>
                         
-                        <p id="admin-login-error" style="color:#c62828; background:#ffebee; padding:9px 12px; border-radius:4px; font-size:0.85rem; display:none; margin:0;"></p>
+                        <div id="admin-login-error" class="auth-error-box" style="display:none;"></div>
                         
                         <button type="submit" class="btn btn-primary btn-block" id="btn-admin-submit-login" style="padding:13px; font-weight:600; font-size:1rem; display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px;">
                             <i data-lucide="log-in" style="width:18px; height:18px;"></i> Ingresar al Portal
@@ -767,15 +775,44 @@ function renderAdminView() {
     // Tabla Trabajadoras
     let profRows = '';
     professionals.forEach(p => {
+        const isSelf = p.id === auth.user.id || (p.email && auth.user.email && p.email.toLowerCase() === auth.user.email.toLowerCase());
         profRows += `
             <tr style="border-bottom: 1px solid var(--clr-nude);">
-                <td style="padding: 15px; display:flex; align-items:center; gap:10px;">
-                    <img src="${p.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80'}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">
-                    ${p.name || 'Sin Nombre'}
+                <td style="padding: 15px; display:flex; align-items:center; gap:12px;">
+                    <div style="position:relative;">
+                        <img src="${p.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80'}" style="width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid var(--clr-rose-gold); box-shadow:0 2px 6px rgba(0,0,0,0.1); display:block;">
+                        ${isAdmin ? `
+                        <button type="button" class="btn-worker-edit-photo" data-profid="${p.id}" data-profname="${p.name || ''}" title="Cambiar y cuadrar foto" style="position:absolute; bottom:-3px; right:-3px; background:var(--clr-rose-gold); color:white; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; border:1px solid white; cursor:pointer; font-size:10px;">
+                            <i data-lucide="camera" style="width:10px; height:10px;"></i>
+                        </button>
+                        ` : ''}
+                    </div>
+                    <div>
+                        <div style="font-weight:600; color:var(--clr-neutral-dark);">${p.name || 'Sin Nombre'}</div>
+                        <div style="font-size:0.8rem; color:var(--clr-neutral-gray);">${p.email || 'Sin correo'}</div>
+                    </div>
                 </td>
-                <td style="padding: 15px;">${(p.role || 'profesional').toUpperCase()}</td>
                 <td style="padding: 15px;">
-                    ${isAdmin && p.id !== auth.user.id ? `<button class="btn btn-outline btn-sm btn-del-prof" style="color:red; border-color:red;" data-profid="${p.id}"><i data-lucide="trash-2"></i></button>` : ''}
+                    <span style="display:inline-block; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:700; letter-spacing:0.3px; background:${(p.role === 'admin' ? '#fef3c7; color:#92400e;' : '#eff6ff; color:#1e40af;')}">
+                        ${(p.role || 'profesional').toUpperCase()}
+                    </span>
+                </td>
+                <td style="padding: 15px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        ${isAdmin ? `
+                        <button type="button" class="btn btn-outline btn-sm btn-worker-change-pass" data-profid="${p.id}" data-profname="${p.name || ''}" data-profemail="${p.email || ''}" title="Crear / Asignar contraseña a esta trabajadora" style="padding:6px 10px; font-size:0.8rem; border-color:#d4b692; color:var(--clr-neutral-dark); display:inline-flex; align-items:center; gap:4px; border-radius:14px;">
+                            <i data-lucide="key" style="width:13px; height:13px;"></i> Contraseña
+                        </button>
+                        <button type="button" class="btn btn-outline btn-sm btn-worker-edit-photo" data-profid="${p.id}" data-profname="${p.name || ''}" title="Cambiar y cuadrar foto de perfil" style="padding:6px 10px; font-size:0.8rem; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); display:inline-flex; align-items:center; gap:4px; border-radius:14px;">
+                            <i data-lucide="crop" style="width:13px; height:13px;"></i> Cuadrar Foto
+                        </button>
+                        ` : ''}
+                        ${isAdmin && !isSelf ? `
+                        <button type="button" class="btn btn-outline btn-sm btn-del-prof" title="Eliminar del equipo" style="color:#dc2626; border-color:#fca5a5; padding:6px 10px; border-radius:14px;" data-profid="${p.id}">
+                            <i data-lucide="trash-2" style="width:13px; height:13px;"></i>
+                        </button>
+                        ` : ''}
+                    </div>
                 </td>
             </tr>
         `;
@@ -812,6 +849,9 @@ function renderAdminView() {
                         <i data-lucide="user" style="width:14px; height:14px;"></i>
                         ${auth.user.name || (isAdmin ? 'Administradora' : 'Trabajadora')}
                     </div>
+                    <button type="button" id="btn-open-change-password" class="btn btn-outline" style="border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); padding:7px 16px; font-size:0.88rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:white; font-weight:600; border-radius:20px; transition:all 0.2s;" title="Crear o cambiar la contraseña de tu cuenta">
+                        <i data-lucide="key-round" style="width:15px; height:15px;"></i> Cambiar Mi Contraseña
+                    </button>
                     <button type="button" onclick="window.logoutStaff()" id="btn-admin-logout" class="btn btn-outline" style="border-color:#d32f2f; color:#d32f2f; padding:7px 16px; font-size:0.88rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:white; font-weight:600; border-radius:20px; transition:all 0.2s;">
                         <i data-lucide="log-out" style="width:15px; height:15px;"></i> Salir del Panel
                     </button>
@@ -1189,30 +1229,279 @@ function renderAdminView() {
                 </div>
             </div>
 
-            <!-- Modal Trabajadora -->
-            <div id="worker-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 2000; align-items:center; justify-content:center; padding:20px;">
-                <div class="card" style="max-width: 400px; width: 100%; position:relative; background:white;">
-                    <button id="close-worker" style="position:absolute; top:15px; right:15px; background:none; border:none; cursor:pointer;"><i data-lucide="x"></i></button>
-                    <h3 style="margin-bottom: 20px;">Añadir Trabajadora</h3>
+            <!-- Modal Añadir Trabajadora / Administradora -->
+            <div id="worker-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px); z-index: 2000; align-items:center; justify-content:center; padding:15px; overflow-y:auto;">
+                <div class="card" style="max-width: 480px; width: 100%; position:relative; background:white; max-height:92vh; overflow-y:auto; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.2); padding:24px;">
+                    <button id="close-worker" type="button" style="position:absolute; top:16px; right:16px; background:none; border:none; cursor:pointer; color:var(--clr-neutral-gray); padding:4px;"><i data-lucide="x"></i></button>
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:18px;">
+                        <div style="width:38px; height:38px; border-radius:50%; background:var(--clr-nude-light); color:var(--clr-rose-gold-dark); display:flex; align-items:center; justify-content:center;">
+                            <i data-lucide="user-plus" style="width:20px; height:20px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin:0; font-size:1.3rem;">Añadir Miembro del Equipo</h3>
+                            <p style="margin:0; font-size:0.82rem; color:var(--clr-neutral-gray);">Crea su acceso y define su foto de perfil</p>
+                        </div>
+                    </div>
+
                     <form id="form-worker">
-                        <div style="margin-bottom: 15px;">
-                            <label style="display:block; margin-bottom:5px; font-weight:bold;">Nombre Completo:</label>
-                            <input type="text" id="worker-name" required style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; margin-bottom:5px; font-weight:600; font-size:0.88rem;">Nombre Completo:</label>
+                            <input type="text" id="worker-name" required placeholder="Ej: Sofía Herrera" style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
                         </div>
-                        <div style="margin-bottom: 15px;">
-                            <label style="display:block; margin-bottom:5px; font-weight:bold;">Correo Electrónico:</label>
-                            <input type="email" id="worker-email" required style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; margin-bottom:5px; font-weight:600; font-size:0.88rem;">Correo Electrónico (Usuario de acceso):</label>
+                            <input type="email" id="worker-email" required placeholder="sofia@estudio.cl" autocomplete="username" style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
                         </div>
-                        <div style="margin-bottom: 15px;">
-                            <label style="display:block; margin-bottom:5px; font-weight:bold;">Foto de Perfil:</label>
-                            <input type="file" id="worker-photo" accept="image/*" required style="width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; background:white;">
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom: 14px;">
+                            <div>
+                                <label style="display:block; margin-bottom:5px; font-weight:600; font-size:0.88rem;">Rol de Acceso:</label>
+                                <select id="worker-role" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.9rem; background:white;">
+                                    <option value="profesional" selected>Trabajadora</option>
+                                    <option value="admin">Administradora</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display:block; margin-bottom:5px; font-weight:600; font-size:0.88rem;">Contraseña:</label>
+                                <div class="input-password-wrapper">
+                                    <input type="password" id="worker-password" required minlength="6" placeholder="Mín. 6 caracteres" autocomplete="new-password" style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                                    <button type="button" class="btn-toggle-pass" id="btn-toggle-worker-password" title="Mostrar/Ocultar" tabindex="-1">
+                                        <i data-lucide="eye" style="width:16px; height:16px;"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <p style="margin-bottom: 15px; color: var(--clr-neutral-gray); font-size: 0.85rem; border-left: 3px solid var(--clr-rose-gold); padding-left: 10px;">
-                            La contraseña de acceso será: <strong>Nicolett123!</strong>
-                        </p>
-                        <button type="submit" class="btn btn-primary btn-block" id="btn-save-worker">Guardar Trabajadora</button>
+
+                        <!-- Sección de Foto con Cuadrador Interactivo -->
+                        <div style="margin-bottom: 16px; border-top:1px solid #eee; padding-top:14px;">
+                            <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.88rem;">Foto de Perfil:</label>
+                            
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                                <label for="worker-photo" class="btn btn-outline" style="cursor:pointer; padding:7px 14px; font-size:0.85rem; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); display:inline-flex; align-items:center; gap:6px; border-radius:6px; font-weight:600;">
+                                    <i data-lucide="upload" style="width:14px; height:14px;"></i> Elegir Foto
+                                </label>
+                                <input type="file" id="worker-photo" accept="image/*" required style="display:none;">
+                                <span id="worker-photo-name" style="font-size:0.82rem; color:var(--clr-neutral-gray); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:240px;">Ningún archivo seleccionado</span>
+                            </div>
+
+                            <!-- Contenedor del Cuadrador / Cropper -->
+                            <div id="worker-cropper-container" class="cropper-container" style="display:none;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <span style="font-size:0.82rem; font-weight:700; color:var(--clr-neutral-dark); display:flex; align-items:center; gap:5px;">
+                                        <i data-lucide="crop" style="width:14px; height:14px; color:var(--clr-rose-gold);"></i> Cuadra el rostro o posición:
+                                    </span>
+                                    <button type="button" id="btn-crop-reset" class="btn btn-sm" style="font-size:0.75rem; padding:3px 10px; background:white; border:1px solid #ccc; border-radius:4px; color:var(--clr-neutral-dark);">
+                                        <i data-lucide="rotate-ccw" style="width:11px; height:11px; display:inline;"></i> Centrar
+                                    </button>
+                                </div>
+
+                                <div style="display:flex; gap:16px; align-items:center; justify-content:center; flex-wrap:wrap; margin-bottom:12px;">
+                                    <!-- Viewport interactivo -->
+                                    <div id="crop-viewport" class="crop-viewport-box">
+                                        <img id="crop-image" src="" alt="Encuadre foto" style="position:absolute; top:0; left:0; pointer-events:none; max-width:none; max-height:none; transform-origin:0 0;">
+                                        <div class="crop-mask-circle"></div>
+                                    </div>
+
+                                    <!-- Miniatura circular en vivo -->
+                                    <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+                                        <span style="font-size:0.75rem; color:var(--clr-neutral-gray); font-weight:600;">Vista Final:</span>
+                                        <div class="crop-preview-bubble">
+                                            <canvas id="crop-preview-canvas" width="64" height="64" style="width:100%; height:100%; display:block;"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Controles de Zoom -->
+                                <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                                    <button type="button" id="btn-crop-zoom-out" style="width:28px; height:28px; border-radius:50%; border:1px solid #ccc; background:white; display:flex; align-items:center; justify-content:center; cursor:pointer;" title="Alejar">
+                                        <i data-lucide="minus" style="width:14px; height:14px;"></i>
+                                    </button>
+                                    <input type="range" id="crop-zoom-slider" min="1" max="3" step="0.02" value="1" style="width:150px; accent-color:var(--clr-rose-gold); cursor:pointer;">
+                                    <button type="button" id="btn-crop-zoom-in" style="width:28px; height:28px; border-radius:50%; border:1px solid #ccc; background:white; display:flex; align-items:center; justify-content:center; cursor:pointer;" title="Acercar">
+                                        <i data-lucide="plus" style="width:14px; height:14px;"></i>
+                                    </button>
+                                </div>
+                                <p style="text-align:center; font-size:0.75rem; color:var(--clr-neutral-gray); margin:8px 0 0 0;">
+                                    Arrastra la foto con el mouse o dedo para centrarla en el círculo.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div id="worker-error" class="auth-error-box" style="display:none; margin-bottom:12px;"></div>
+
+                        <button type="submit" class="btn btn-primary btn-block" id="btn-save-worker" style="padding:12px; font-weight:600; font-size:0.95rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <i data-lucide="check-circle" style="width:18px; height:18px;"></i> Guardar Trabajadora
+                        </button>
                     </form>
-                    <p id="worker-upload-status" style="margin-top:10px; color:var(--clr-neutral-gray); font-size:0.9rem; display:none;">Procesando...</p>
+                    <p id="worker-upload-status" style="margin-top:10px; color:var(--clr-rose-gold-dark); font-weight:600; font-size:0.9rem; text-align:center; display:none;">
+                        Guardando y procesando imagen cuadrada...
+                    </p>
+                </div>
+            </div>
+
+            <!-- Modal Cambiar / Crear Mi Contraseña (Para la usuaria activa: Trabajadora o Admin) -->
+            <div id="modal-change-my-password" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px); z-index: 2000; align-items:center; justify-content:center; padding:15px;">
+                <div class="card" style="max-width: 420px; width: 100%; position:relative; background:white; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.2); padding:24px;">
+                    <button id="close-modal-change-my-password" type="button" style="position:absolute; top:16px; right:16px; background:none; border:none; cursor:pointer; color:var(--clr-neutral-gray); padding:4px;"><i data-lucide="x"></i></button>
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+                        <div style="width:38px; height:38px; border-radius:50%; background:var(--clr-nude-light); color:var(--clr-rose-gold-dark); display:flex; align-items:center; justify-content:center;">
+                            <i data-lucide="key-round" style="width:20px; height:20px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin:0; font-size:1.25rem;">Seguridad de la Cuenta</h3>
+                            <p style="margin:0; font-size:0.82rem; color:var(--clr-neutral-gray);" id="label-change-pass-email">${auth.user.email || 'tu-cuenta'}</p>
+                        </div>
+                    </div>
+
+                    <form id="form-change-my-password">
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; margin-bottom:5px; font-weight:600; font-size:0.88rem;">Nueva Contraseña:</label>
+                            <div class="input-password-wrapper">
+                                <input type="password" id="my-new-password" required minlength="6" placeholder="Mínimo 6 caracteres" autocomplete="new-password" style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                                <button type="button" class="btn-toggle-pass" id="btn-toggle-my-new-password" title="Mostrar/Ocultar" tabindex="-1">
+                                    <i data-lucide="eye" style="width:16px; height:16px;"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <label style="display:block; margin-bottom:5px; font-weight:600; font-size:0.88rem;">Confirmar Nueva Contraseña:</label>
+                            <div class="input-password-wrapper">
+                                <input type="password" id="my-confirm-password" required minlength="6" placeholder="Repite la contraseña" autocomplete="new-password" style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                                <button type="button" class="btn-toggle-pass" id="btn-toggle-my-confirm-password" title="Mostrar/Ocultar" tabindex="-1">
+                                    <i data-lucide="eye" style="width:16px; height:16px;"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="change-my-password-error" class="auth-error-box" style="display:none; margin-bottom:12px;"></div>
+                        <div id="change-my-password-success" style="display:none; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:10px 14px; border-radius:var(--radius-sm); font-size:0.88rem; margin-bottom:12px; align-items:center; gap:8px;">
+                            <i data-lucide="check-circle" style="width:18px; height:18px; flex-shrink:0;"></i>
+                            <span>¡Contraseña actualizada exitosamente!</span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block" id="btn-submit-change-my-pass" style="padding:12px; font-weight:600; font-size:0.95rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <i data-lucide="lock" style="width:18px; height:18px;"></i> Guardar Nueva Contraseña
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal Asignar Contraseña a Trabajadora (Solo Administradora) -->
+            <div id="modal-set-worker-password" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px); z-index: 2000; align-items:center; justify-content:center; padding:15px;">
+                <div class="card" style="max-width: 420px; width: 100%; position:relative; background:white; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.2); padding:24px;">
+                    <button id="close-modal-set-worker-password" type="button" style="position:absolute; top:16px; right:16px; background:none; border:none; cursor:pointer; color:var(--clr-neutral-gray); padding:4px;"><i data-lucide="x"></i></button>
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+                        <div style="width:38px; height:38px; border-radius:50%; background:var(--clr-nude-light); color:var(--clr-rose-gold-dark); display:flex; align-items:center; justify-content:center;">
+                            <i data-lucide="key" style="width:20px; height:20px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin:0; font-size:1.25rem;">Asignar Contraseña</h3>
+                            <p style="margin:0; font-size:0.82rem; color:var(--clr-neutral-gray);" id="label-set-worker-target">Trabajadora</p>
+                        </div>
+                    </div>
+
+                    <form id="form-set-worker-password">
+                        <input type="hidden" id="target-worker-id" value="">
+                        <input type="hidden" id="target-worker-email" value="">
+
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; margin-bottom:5px; font-weight:600; font-size:0.88rem;">Nueva Contraseña para la Trabajadora:</label>
+                            <div class="input-password-wrapper">
+                                <input type="password" id="target-worker-password" required minlength="6" placeholder="Mínimo 6 caracteres" autocomplete="new-password" style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                                <button type="button" class="btn-toggle-pass" id="btn-toggle-target-worker-pass" title="Mostrar/Ocultar" tabindex="-1">
+                                    <i data-lucide="eye" style="width:16px; height:16px;"></i>
+                                </button>
+                            </div>
+                            <small style="color:var(--clr-neutral-gray); display:block; margin-top:4px; font-size:0.78rem;">
+                                Con esta clave la trabajadora podrá iniciar sesión directamente.
+                            </small>
+                        </div>
+
+                        <div id="set-worker-password-error" class="auth-error-box" style="display:none; margin-bottom:12px;"></div>
+                        <div id="set-worker-password-success" style="display:none; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:10px 14px; border-radius:var(--radius-sm); font-size:0.88rem; margin-bottom:12px; align-items:center; gap:8px;">
+                            <i data-lucide="check-circle" style="width:18px; height:18px; flex-shrink:0;"></i>
+                            <span>¡Contraseña asignada exitosamente!</span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block" id="btn-submit-set-worker-pass" style="padding:12px; font-weight:600; font-size:0.95rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <i data-lucide="save" style="width:18px; height:18px;"></i> Guardar Contraseña
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal Editar y Cuadrar Foto de Trabajadora Existente -->
+            <div id="modal-edit-worker-photo" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px); z-index: 2000; align-items:center; justify-content:center; padding:15px; overflow-y:auto;">
+                <div class="card" style="max-width: 480px; width: 100%; position:relative; background:white; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.2); padding:24px; max-height:92vh; overflow-y:auto;">
+                    <button id="close-modal-edit-worker-photo" type="button" style="position:absolute; top:16px; right:16px; background:none; border:none; cursor:pointer; color:var(--clr-neutral-gray); padding:4px;"><i data-lucide="x"></i></button>
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+                        <div style="width:38px; height:38px; border-radius:50%; background:var(--clr-nude-light); color:var(--clr-rose-gold-dark); display:flex; align-items:center; justify-content:center;">
+                            <i data-lucide="camera" style="width:20px; height:20px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin:0; font-size:1.25rem;">Cuadrar Foto de Perfil</h3>
+                            <p style="margin:0; font-size:0.82rem; color:var(--clr-neutral-gray);" id="label-edit-photo-target">Trabajadora</p>
+                        </div>
+                    </div>
+
+                    <form id="form-edit-worker-photo">
+                        <input type="hidden" id="edit-photo-worker-id" value="">
+
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                            <label for="edit-photo-file-input" class="btn btn-outline" style="cursor:pointer; padding:7px 14px; font-size:0.85rem; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); display:inline-flex; align-items:center; gap:6px; border-radius:6px; font-weight:600;">
+                                <i data-lucide="upload" style="width:14px; height:14px;"></i> Seleccionar Nueva Foto
+                            </label>
+                            <input type="file" id="edit-photo-file-input" accept="image/*" style="display:none;">
+                            <span id="edit-photo-filename" style="font-size:0.82rem; color:var(--clr-neutral-gray); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:230px;">O ajusta la actual</span>
+                        </div>
+
+                        <!-- Cuadrador interactivo para la foto en edición -->
+                        <div id="edit-photo-cropper-container" class="cropper-container">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                <span style="font-size:0.82rem; font-weight:700; color:var(--clr-neutral-dark); display:flex; align-items:center; gap:5px;">
+                                    <i data-lucide="crop" style="width:14px; height:14px; color:var(--clr-rose-gold);"></i> Arrastra y cuadra la foto:
+                                </span>
+                                <button type="button" id="btn-edit-crop-reset" class="btn btn-sm" style="font-size:0.75rem; padding:3px 10px; background:white; border:1px solid #ccc; border-radius:4px; color:var(--clr-neutral-dark);">
+                                    <i data-lucide="rotate-ccw" style="width:11px; height:11px; display:inline;"></i> Centrar
+                                </button>
+                            </div>
+
+                            <div style="display:flex; gap:16px; align-items:center; justify-content:center; flex-wrap:wrap; margin-bottom:12px;">
+                                <div id="edit-crop-viewport" class="crop-viewport-box">
+                                    <img id="edit-crop-image" src="" alt="Encuadre" style="position:absolute; top:0; left:0; pointer-events:none; max-width:none; max-height:none; transform-origin:0 0;">
+                                    <div class="crop-mask-circle"></div>
+                                </div>
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+                                    <span style="font-size:0.75rem; color:var(--clr-neutral-gray); font-weight:600;">Resultado:</span>
+                                    <div class="crop-preview-bubble">
+                                        <canvas id="edit-crop-preview-canvas" width="64" height="64" style="width:100%; height:100%; display:block;"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                                <button type="button" id="btn-edit-zoom-out" style="width:28px; height:28px; border-radius:50%; border:1px solid #ccc; background:white; display:flex; align-items:center; justify-content:center; cursor:pointer;" title="Alejar">
+                                    <i data-lucide="minus" style="width:14px; height:14px;"></i>
+                                </button>
+                                <input type="range" id="edit-crop-zoom-slider" min="1" max="3" step="0.02" value="1" style="width:150px; accent-color:var(--clr-rose-gold); cursor:pointer;">
+                                <button type="button" id="btn-edit-zoom-in" style="width:28px; height:28px; border-radius:50%; border:1px solid #ccc; background:white; display:flex; align-items:center; justify-content:center; cursor:pointer;" title="Acercar">
+                                    <i data-lucide="plus" style="width:14px; height:14px;"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="edit-photo-error" class="auth-error-box" style="display:none; margin:12px 0;"></div>
+                        <div id="edit-photo-success" style="display:none; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:10px 14px; border-radius:var(--radius-sm); font-size:0.88rem; margin:12px 0; align-items:center; gap:8px;">
+                            <i data-lucide="check-circle" style="width:18px; height:18px; flex-shrink:0;"></i>
+                            <span>¡Foto cuadrada y guardada exitosamente!</span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block" id="btn-submit-edit-photo" style="margin-top:14px; padding:12px; font-weight:600; font-size:0.95rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <i data-lucide="save" style="width:18px; height:18px;"></i> Guardar Foto Cuadrada
+                        </button>
+                    </form>
                 </div>
             </div>
 

@@ -841,4 +841,106 @@ button {
     background: rgba(255, 255, 255, 0.45) !important;
     transform: scale(1.08);
 }
+
+/* --- Auth Error Messages --- */
+.auth-error-box {
+    color: #991b1b !important;
+    background-color: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
+    padding: 10px 14px !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 0.88rem !important;
+    line-height: 1.45 !important;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    animation: authShake 0.35s ease;
+}
+
+@keyframes authShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+}
+
+/* --- Password Toggle Input Wrapper --- */
+.input-password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-password-wrapper input {
+    width: 100%;
+    padding-right: 42px !important;
+}
+
+.btn-toggle-pass {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--clr-neutral-gray);
+    cursor: pointer;
+    padding: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: color 0.2s;
+}
+
+.btn-toggle-pass:hover {
+    color: var(--clr-rose-gold-dark);
+}
+
+/* --- Image Cropper Styles --- */
+.cropper-container {
+    background: #faf7f5;
+    border: 1px solid #e7ded4;
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-top: 12px;
+}
+
+.crop-viewport-box {
+    width: 220px;
+    height: 220px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #1a1614;
+    cursor: grab;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+    touch-action: none;
+    user-select: none;
+    margin: 0 auto;
+}
+
+.crop-viewport-box.grabbing {
+    cursor: grabbing;
+}
+
+.crop-mask-circle {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(35, 27, 22, 0.6);
+    border-radius: 50%;
+    border: 2px dashed rgba(255, 255, 255, 0.9);
+}
+
+.crop-preview-bubble {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--clr-rose-gold);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    background: #ffffff;
+    flex-shrink: 0;
+}
+
 

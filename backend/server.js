@@ -24,11 +24,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..')));
 
 // --- Configuración Flow.cl ---
-const FLOW_API_KEY = process.env.FLOW_API_KEY || '';
-const FLOW_SECRET_KEY = process.env.FLOW_SECRET_KEY || '';
-const isVercel = !!process.env.VERCEL;
-// En Vercel es producción por defecto (false), a menos que FLOW_SANDBOX esté explícitamente en 'true'. En local es sandbox por defecto.
-const FLOW_IS_SANDBOX = process.env.FLOW_SANDBOX ? process.env.FLOW_SANDBOX === 'true' : !isVercel;
+const FLOW_API_KEY = (process.env.FLOW_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
+const FLOW_SECRET_KEY = (process.env.FLOW_SECRET_KEY || '').trim().replace(/^['"]|['"]$/g, '');
+const FLOW_IS_SANDBOX = process.env.FLOW_SANDBOX !== 'false';
 const FLOW_BASE_URL = FLOW_IS_SANDBOX ? 'https://sandbox.flow.cl/api' : 'https://www.flow.cl/api';
 const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${port}`;
 const FRONTEND_URL = process.env.FRONTEND_URL || `http://localhost:${port}/index.html`;
@@ -90,8 +88,10 @@ app.post('/api/flow/create', async (req, res) => {
     try {
         const { clientEmail, clientName, orderId, amount, isSandbox, returnUrl } = req.body;
         const abonoAmount = amount || 5000;
-        const apiKey = req.body.apiKey || FLOW_API_KEY;
-        const secretKey = req.body.secretKey || FLOW_SECRET_KEY;
+        const rawApiKey = req.body.apiKey || FLOW_API_KEY || '';
+        const rawSecretKey = req.body.secretKey || FLOW_SECRET_KEY || '';
+        const apiKey = rawApiKey.trim().replace(/^['"]|['"]$/g, '');
+        const secretKey = rawSecretKey.trim().replace(/^['"]|['"]$/g, '');
 
         if (!apiKey || !secretKey) {
             return res.status(400).json({
