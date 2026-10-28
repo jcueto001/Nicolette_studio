@@ -33,8 +33,28 @@ const FLOW_API_KEY = (process.env.FLOW_API_KEY || '').trim().replace(/^['"]|['"]
 const FLOW_SECRET_KEY = (process.env.FLOW_SECRET_KEY || '').trim().replace(/^['"]|['"]$/g, '');
 const FLOW_IS_SANDBOX = process.env.FLOW_SANDBOX !== 'false';
 const FLOW_BASE_URL = FLOW_IS_SANDBOX ? 'https://sandbox.flow.cl/api' : 'https://www.flow.cl/api';
-const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${port}`;
-const FRONTEND_URL = process.env.FRONTEND_URL || `http://localhost:${port}/index.html`;
+
+// Función para obtener la URL base dinámicamente de la solicitud o del entorno Vercel
+function getBaseUrl(req) {
+    if (req) {
+        const host = req.headers['x-forwarded-host'] || req.headers.host;
+        const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+        if (host) {
+            return `${proto}://${host}`;
+        }
+    }
+    if (process.env.BACKEND_URL) return process.env.BACKEND_URL;
+    if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+    return 'https://nicolette-studio.vercel.app';
+}
+
+function getFrontendUrl(req) {
+    if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL;
+    return `${getBaseUrl(req)}/index.html`;
+}
+
+const BACKEND_URL = process.env.BACKEND_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://nicolette-studio.vercel.app');
+const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/index.html` : 'https://nicolette-studio.vercel.app/index.html');
 
 // En desarrollo local (localhost), los servidores de Flow en la nube no pueden conectarse a localhost.
 // Para evitar el error 999 en el webhook de notificación durante desarrollo, usamos una URL pública de respuesta inmediata 200.
@@ -109,13 +129,15 @@ app.post('/api/flow/create', async (req, res) => {
         const flowApiUrl = useSandbox ? 'https://sandbox.flow.cl/api' : 'https://www.flow.cl/api';
 
         // Determinar dinámicamente el dominio actual (funciona automáticamente en Vercel o localhost)
-        const hostHeader = req.headers['x-forwarded-host'] || req.headers.host;
-        const protoHeader = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
-        const currentOrigin = hostHeader ? `${protoHeader}://${hostHeader}` : BACKEND_URL;
+        const currentOrigin = getBaseUrl(req);
 
         // URL base de frontend a la que retornará el cliente
         let frontendReturn = returnUrl || req.headers.referer || `${currentOrigin}/index.html`;
         if (!frontendReturn.startsWith('http://') && !frontendReturn.startsWith('https://')) {
+            frontendReturn = `${currentOrigin}/index.html`;
+        }
+        // En Vercel o producción, asegurarse de que no quede localhost si la petición vino desde un host público
+        if (!currentOrigin.includes('localhost') && (frontendReturn.includes('localhost') || frontendReturn.includes('127.0.0.1'))) {
             frontendReturn = `${currentOrigin}/index.html`;
         }
 
@@ -124,6 +146,19 @@ app.post('/api/flow/create', async (req, res) => {
         const confirmationEndpoint = isPublicDomain ? `${currentOrigin}/api/flow/notify` : CONFIRMATION_URL;
 
         const commerceOrder = orderId || `ABONO-${Date.now()}`;
+
+        // Empaquetar datos de retorno en urlReturn para garantizar persistencia en serverless (Vercel)
+        const returnQueryParams = new URLSearchParams({
+            frontend: frontendReturn.split('?')[0],
+            sb: useSandbox ? '1' : '0'
+        });
+        if (apiKey && secretKey) {
+            try {
+                const creds = Buffer.from(JSON.stringify({ k: apiKey, s: secretKey })).toString('base64url');
+                returnQueryParams.set('auth', creds);
+            } catch(e) {}
+        }
+
         const params = {
             apiKey: apiKey,
             commerceOrder: commerceOrder,
@@ -132,7 +167,7 @@ app.post('/api/flow/create', async (req, res) => {
             amount: abonoAmount,
             email: clientEmail || 'cliente@estudio.cl',
             urlConfirmation: confirmationEndpoint,
-            urlReturn: `${currentOrigin}/api/flow/return`
+            urlReturn: `${currentOrigin}/api/flow/return?${returnQueryParams.toString()}`
         };
 
         params.s = signFlowParams(params, secretKey);
@@ -293,9 +328,18 @@ const handleFlowReturn = async (req, res) => {
         const token = (req.query && req.query.token) || (req.body && req.body.token);
         const tx = token ? flowTransactions.get(token) : null;
 
-        let targetFrontend = (tx && tx.frontendReturn) ? tx.frontendReturn.split('?')[0] : FRONTEND_URL.split('?')[0];
+        // Determinar URL de retorno al frontend sin depender de memoria serverless ni localhost
+        let targetFrontend = (req.query && req.query.frontend) || (tx && tx.frontendReturn) || getFrontendUrl(req);
+        targetFrontend = targetFrontend.split('?')[0];
         if (!targetFrontend.startsWith('http://') && !targetFrontend.startsWith('https://')) {
-            targetFrontend = `http://localhost:${port}/index.html`;
+            targetFrontend = `${getBaseUrl(req)}/index.html`;
+        }
+        // Si estamos en un dominio público (Vercel), forzar que no use localhost
+        const currentBase = getBaseUrl(req);
+        if (!currentBase.includes('localhost') && !currentBase.includes('127.0.0.1')) {
+            if (targetFrontend.includes('localhost') || targetFrontend.includes('127.0.0.1')) {
+                targetFrontend = `${currentBase}/index.html`;
+            }
         }
 
         if (!token) {
@@ -303,12 +347,27 @@ const handleFlowReturn = async (req, res) => {
             return res.send(renderReturnHtml('Pago Cancelado', 'Has cancelado el proceso de pago en Flow.', false, redirectUrl));
         }
 
-        // Consultar estado en Flow
+        // Consultar estado en Flow con soporte serverless (credenciales recuperadas)
         let isPaid = false;
         let flowOrder = '';
-        const apiKey = (tx && tx.apiKey) || FLOW_API_KEY;
-        const secretKey = (tx && tx.secretKey) || FLOW_SECRET_KEY;
-        const useSandbox = tx ? tx.useSandbox : FLOW_IS_SANDBOX;
+        let apiKey = (tx && tx.apiKey) || FLOW_API_KEY;
+        let secretKey = (tx && tx.secretKey) || FLOW_SECRET_KEY;
+        let useSandbox = (tx && tx.useSandbox !== undefined) ? tx.useSandbox : FLOW_IS_SANDBOX;
+
+        if (req.query && req.query.sb !== undefined) {
+            useSandbox = req.query.sb === '1';
+        }
+
+        if (req.query && req.query.auth && (!apiKey || !secretKey)) {
+            try {
+                const creds = JSON.parse(Buffer.from(req.query.auth, 'base64url').toString('utf8'));
+                if (creds.k && creds.s) {
+                    apiKey = creds.k;
+                    secretKey = creds.s;
+                }
+            } catch(e) {}
+        }
+
         const flowApiUrl = useSandbox ? 'https://sandbox.flow.cl/api' : 'https://www.flow.cl/api';
 
         if (apiKey && secretKey) {
@@ -344,7 +403,7 @@ const handleFlowReturn = async (req, res) => {
         }
     } catch (error) {
         console.error("[Flow Return] Error:", error);
-        const fallbackUrl = `http://localhost:${port}/index.html?action=flow-error&msg=${encodeURIComponent(error.message)}`;
+        const fallbackUrl = `${getFrontendUrl(req)}?action=flow-error&msg=${encodeURIComponent(error.message)}`;
         res.send(renderReturnHtml('Error de Retorno', error.message, false, fallbackUrl));
     }
 };
