@@ -863,6 +863,31 @@ function renderAdminView() {
         });
     }
 
+    // Persistencia de pestaña activa en panel admin/trabajadora
+    let activeTab = 'tab-agenda';
+    try {
+        const savedTab = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('nicolett_active_admin_tab') : null;
+        const allowedTabs = isAdmin 
+            ? ['tab-agenda', 'tab-fichas', 'tab-galeria', 'tab-finanzas', 'tab-clientas', 'tab-inventario', 'tab-profs', 'tab-flow']
+            : ['tab-agenda', 'tab-fichas', 'tab-galeria'];
+        if (savedTab && allowedTabs.includes(savedTab)) {
+            activeTab = savedTab;
+        } else if (savedTab && !allowedTabs.includes(savedTab)) {
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.setItem('nicolett_active_admin_tab', 'tab-agenda');
+            }
+        }
+    } catch (e) {
+        console.warn('Error reading active admin tab:', e);
+    }
+
+    const getTabBtnStyle = (tabId) => {
+        const isActive = (activeTab === tabId);
+        return `background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid ${isActive ? 'var(--clr-rose-gold)' : 'transparent'}; font-weight:${isActive ? 'bold' : 'normal'}; color:${isActive ? 'var(--clr-neutral-dark)' : 'var(--clr-neutral-gray)'}; flex-shrink: 0;`;
+    };
+    const getTabBtnClass = (tabId) => `admin-tab ${activeTab === tabId ? 'active' : ''}`;
+    const getTabPaneStyle = (tabId) => `display: ${activeTab === tabId ? 'block' : 'none'};`;
+
     return `
         <div class="container section">
             <div class="section-header" style="margin-bottom: 30px; display:flex; justify-content: space-between; align-items:center; flex-wrap:wrap; gap:12px;">
@@ -882,21 +907,21 @@ function renderAdminView() {
             </div>
             
             <div class="tabs-container" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid #ddd; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; -webkit-overflow-scrolling: touch;">
-                <button class="admin-tab active" data-target="tab-agenda" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid var(--clr-rose-gold); font-weight:bold; color:var(--clr-neutral-dark); flex-shrink: 0;">Agenda</button>
-                <button class="admin-tab" data-target="tab-fichas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Fichas Clientas</button>
-                <button class="admin-tab" data-target="tab-galeria" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Galería</button>
+                <button class="${getTabBtnClass('tab-agenda')}" data-target="tab-agenda" style="${getTabBtnStyle('tab-agenda')}">Agenda</button>
+                <button class="${getTabBtnClass('tab-fichas')}" data-target="tab-fichas" style="${getTabBtnStyle('tab-fichas')}">Fichas Clientas</button>
+                <button class="${getTabBtnClass('tab-galeria')}" data-target="tab-galeria" style="${getTabBtnStyle('tab-galeria')}">Galería</button>
                 ${isAdmin ? `
-                <button class="admin-tab" data-target="tab-finanzas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Dashboard & Finanzas</button>
-                <button class="admin-tab" data-target="tab-clientas" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Directorio</button>
-                <button class="admin-tab" data-target="tab-inventario" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Inventario</button>
-                <button class="admin-tab" data-target="tab-profs" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Trabajadoras</button>
-                <button class="admin-tab" data-target="tab-flow" style="background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; color:var(--clr-neutral-gray); flex-shrink: 0;">Configuración Flow</button>
+                <button class="${getTabBtnClass('tab-finanzas')}" data-target="tab-finanzas" style="${getTabBtnStyle('tab-finanzas')}">Dashboard & Finanzas</button>
+                <button class="${getTabBtnClass('tab-clientas')}" data-target="tab-clientas" style="${getTabBtnStyle('tab-clientas')}">Directorio</button>
+                <button class="${getTabBtnClass('tab-inventario')}" data-target="tab-inventario" style="${getTabBtnStyle('tab-inventario')}">Inventario</button>
+                <button class="${getTabBtnClass('tab-profs')}" data-target="tab-profs" style="${getTabBtnStyle('tab-profs')}">Trabajadoras</button>
+                <button class="${getTabBtnClass('tab-flow')}" data-target="tab-flow" style="${getTabBtnStyle('tab-flow')}">Configuración Flow</button>
                 ` : ''}
             </div>
 
             <!-- Tab Finanzas -->
             ${isAdmin ? `
-            <div id="tab-finanzas" class="admin-tab-content" style="display:none;">
+            <div id="tab-finanzas" class="admin-tab-content" style="${getTabPaneStyle('tab-finanzas')}">
                 <div style="display:flex; justify-content:flex-end; margin-bottom: 15px;">
                     <button class="btn btn-outline" id="btn-descargar-excel" style="display:flex; align-items:center; gap:5px; border-color: #2e7d32; color: #2e7d32;"><i data-lucide="download"></i> Descargar Excel</button>
                 </div>
@@ -928,7 +953,7 @@ function renderAdminView() {
             ` : ''}
 
             <!-- Tab Agenda -->
-            <div id="tab-agenda" class="admin-tab-content">
+            <div id="tab-agenda" class="admin-tab-content" style="${getTabPaneStyle('tab-agenda')}">
                 <div style="display:flex; justify-content:flex-end; margin-bottom: 15px;">
                     <button class="btn btn-outline" id="btn-bloquear-hora" style="display:flex; align-items:center; gap:5px;"><i data-lucide="clock"></i> Bloquear Horario</button>
                 </div>
@@ -951,7 +976,7 @@ function renderAdminView() {
             </div>
 
             <!-- Tab Fichas Clientas -->
-            <div id="tab-fichas" class="admin-tab-content" style="display:none;">
+            <div id="tab-fichas" class="admin-tab-content" style="${getTabPaneStyle('tab-fichas')}">
                 <div style="display:flex; justify-content:flex-end; margin-bottom: 15px;">
                     <button class="btn btn-primary" id="btn-crear-ficha-manual"><i data-lucide="plus"></i> Crear Ficha Clienta</button>
                 </div>
@@ -974,7 +999,7 @@ function renderAdminView() {
 
             ${isAdmin ? `
             <!-- Tab Inventario -->
-            <div id="tab-inventario" class="admin-tab-content" style="display:none;">
+            <div id="tab-inventario" class="admin-tab-content" style="${getTabPaneStyle('tab-inventario')}">
                 <div style="display:flex; justify-content:flex-end; margin-bottom: 15px;">
                     <button class="btn btn-primary" id="btn-add-product"><i data-lucide="plus"></i> Añadir Producto</button>
                 </div>
@@ -995,7 +1020,7 @@ function renderAdminView() {
             </div>
 
             <!-- Tab Clientas -->
-            <div id="tab-clientas" class="admin-tab-content" style="display:none;">
+            <div id="tab-clientas" class="admin-tab-content" style="${getTabPaneStyle('tab-clientas')}">
                 <div style="display:flex; justify-content:flex-end; margin-bottom: 15px;">
                     <button class="btn btn-primary" id="btn-add-client"><i data-lucide="plus"></i> Añadir Clienta</button>
                 </div>
@@ -1017,7 +1042,7 @@ function renderAdminView() {
             </div>
 
             <!-- Tab Trabajadoras -->
-            <div id="tab-profs" class="admin-tab-content" style="display:none;">
+            <div id="tab-profs" class="admin-tab-content" style="${getTabPaneStyle('tab-profs')}">
                 <div style="display:flex; justify-content:flex-end; margin-bottom: 15px;">
                     <button class="btn btn-primary" id="btn-add-worker"><i data-lucide="plus"></i> Añadir Trabajadora</button>
                 </div>
@@ -1039,7 +1064,7 @@ function renderAdminView() {
             ` : ''}
             
             <!-- Tab Galería (Visible para Administradora y Trabajadoras) -->
-            <div id="tab-galeria" class="admin-tab-content" style="display:none;">
+            <div id="tab-galeria" class="admin-tab-content" style="${getTabPaneStyle('tab-galeria')}">
                 ${!isAdmin ? `
                 <div class="card" style="margin-bottom:20px; padding:20px; background:linear-gradient(135deg, #FFF9F5 0%, #FFFFFF 100%); border-left: 5px solid var(--clr-rose-gold);">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
@@ -1252,7 +1277,7 @@ function renderAdminView() {
             
             ${isAdmin ? `
             <!-- Tab Configuración Flow -->
-            <div id="tab-flow" class="admin-tab-content" style="display:none;">
+            <div id="tab-flow" class="admin-tab-content" style="${getTabPaneStyle('tab-flow')}">
                 <div class="card" style="max-width: 750px; margin: 0 auto; padding: 25px;">
                     <div style="display:flex; align-items:center; gap:12px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
                         <div style="background: linear-gradient(135deg, #1b75bb, #0b4f82); color:white; width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:1.1rem;">

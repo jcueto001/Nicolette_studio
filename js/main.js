@@ -301,6 +301,10 @@ window.updateNavAuthVisibility = function() {
 window.logoutStaff = async function() {
     if (confirm('¿Segura que deseas salir del panel de administración?')) {
         StorageHelper.setAuth({ loggedIn: false, user: null });
+        try {
+            sessionStorage.removeItem('nicolett_active_admin_tab');
+            sessionStorage.removeItem('nicolett_admin_gallery_filter');
+        } catch(e) {}
         if (typeof firebase !== 'undefined' && firebase.auth) {
             try { await firebase.auth().signOut(); } catch(e) {}
         }
@@ -1258,16 +1262,24 @@ function initAdminEvents() {
                 t.classList.remove('active');
                 t.style.borderBottomColor = 'transparent';
                 t.style.color = 'var(--clr-neutral-gray)';
+                t.style.fontWeight = 'normal';
             });
             contents.forEach(c => c.style.display = 'none');
 
             tab.classList.add('active');
             tab.style.borderBottomColor = 'var(--clr-rose-gold)';
             tab.style.color = 'var(--clr-neutral-dark)';
+            tab.style.fontWeight = 'bold';
             const targetId = tab.getAttribute('data-target');
+            if (targetId) {
+                try {
+                    sessionStorage.setItem('nicolett_active_admin_tab', targetId);
+                } catch (e) {}
+            }
             if (document.getElementById(targetId)) {
                 document.getElementById(targetId).style.display = 'block';
             }
+            if (window.lucide) lucide.createIcons();
         });
     });
 
@@ -1870,20 +1882,37 @@ function initAdminEvents() {
         });
     }
 
+    const savedGalleryFilter = (function() {
+        try { return sessionStorage.getItem('nicolett_admin_gallery_filter'); } catch(e) { return null; }
+    })();
+    let hasAppliedFilter = false;
+    if (savedGalleryFilter && filterChips.length > 0) {
+        const targetChip = document.querySelector(`#gallery-filter-chips .gallery-filter-chip[data-filter="${savedGalleryFilter}"]`);
+        if (targetChip) {
+            filterChips.forEach(c => c.classList.remove('active'));
+            targetChip.classList.add('active');
+            applyGalleryFilter(savedGalleryFilter);
+            hasAppliedFilter = true;
+        }
+    }
+
+    if (!hasAppliedFilter) {
+        // Si no hay filtro previo guardado, activar el filtro inicial activo por defecto
+        const initialActiveChip = document.querySelector('#gallery-filter-chips .gallery-filter-chip.active');
+        if (initialActiveChip) {
+            applyGalleryFilter(initialActiveChip.getAttribute('data-filter'));
+        }
+    }
+
     filterChips.forEach(chip => {
         chip.addEventListener('click', () => {
             filterChips.forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
             const filter = chip.getAttribute('data-filter');
+            try { sessionStorage.setItem('nicolett_admin_gallery_filter', filter); } catch(e) {}
             applyGalleryFilter(filter);
         });
     });
-
-    // Si el usuario conectado es trabajadora, activar de inmediato el filtro inicial (Fotos de mis clientas)
-    const initialActiveChip = document.querySelector('#gallery-filter-chips .gallery-filter-chip.active');
-    if (initialActiveChip) {
-        applyGalleryFilter(initialActiveChip.getAttribute('data-filter'));
-    }
 
     // Actualizar Stock de Inventario
     document.querySelectorAll('.btn-update-stock').forEach(btn => {
