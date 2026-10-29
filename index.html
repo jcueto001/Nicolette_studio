@@ -104,29 +104,28 @@
 
             <h3
                 style="font-family: var(--font-heading); color: var(--clr-rose-gold-dark); font-size: 1.8rem; margin-bottom: 10px; margin-top: 10px;">
-                ¿Quieres personalizar la página?</h3>
+                Acceso a tu Perfil y Citas</h3>
             <p style="margin-bottom: 25px; color: var(--clr-neutral-gray); font-size: 0.95rem;">
-                Ingresa tus datos para brindarte una experiencia a tu medida. Más adelante, todas tus horas agendadas
-                quedarán asociadas a tu perfil.
+                Ingresa tus datos para ver tus horas agendadas, tus fotos de resultados y gestionar tu perfil. Si ya estás registrada, tus citas aparecerán automáticamente.
             </p>
 
             <form id="personalize-form" style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
                 <div>
                     <label
-                        style="display:block; margin-bottom:5px; font-weight:bold; color: var(--clr-neutral-dark);">Nombre
-                        y Apellido</label>
-                    <input type="text" id="personalize-name" required placeholder="Tu nombre"
+                        style="display:block; margin-bottom:5px; font-weight:bold; color: var(--clr-neutral-dark);">Correo
+                        Electrónico <span style="color:#e53935;">*</span></label>
+                    <input type="email" id="personalize-email" required placeholder="tu@correo.com"
                         style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; font-family: var(--font-body);">
                 </div>
                 <div>
                     <label
-                        style="display:block; margin-bottom:5px; font-weight:bold; color: var(--clr-neutral-dark);">Correo
-                        Electrónico</label>
-                    <input type="email" id="personalize-email" required placeholder="tu@correo.com"
+                        style="display:block; margin-bottom:5px; font-weight:bold; color: var(--clr-neutral-dark);">Nombre
+                        y Apellido <span style="font-weight:normal; font-size:0.85rem; color:#777;">(opcional si ya estás registrada)</span></label>
+                    <input type="text" id="personalize-name" placeholder="Tu nombre"
                         style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; font-family: var(--font-body);">
                 </div>
                 <button type="submit" class="btn btn-primary btn-block"
-                    style="margin-top: 15px; font-size: 1.1rem; padding: 14px;">¡Sí, personalizar!</button>
+                    style="margin-top: 15px; font-size: 1.1rem; padding: 14px;">Ingresar a Mi Perfil / Ver Citas</button>
             </form>
         </div>
     </div>
@@ -195,7 +194,7 @@
             </div>
 
             <form id="form-client-photo" style="display: flex; flex-direction: column; gap: 16px;">
-                <!-- Selección de Servicio -->
+                <!-- Selección de Servicio y Especialista -->
                 <div>
                     <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem; color: var(--clr-neutral-dark);">
                         ¿Qué servicio te realizaste?
@@ -204,6 +203,10 @@
                         style="width:100%; padding:11px 12px; border:1px solid #ddd; border-radius:8px; font-family: var(--font-body); background:white;">
                         <option value="">Selecciona un servicio...</option>
                     </select>
+                    <div id="client-photo-prof-badge" style="display:none; margin-top:8px; font-size:0.85rem; color:var(--clr-rose-gold-dark); background:var(--clr-nude-light); padding:5px 12px; border-radius:14px; font-weight:600; align-items:center; gap:6px;">
+                        <i data-lucide="sparkles" style="width:14px; height:14px; color:var(--clr-rose-gold);"></i>
+                        <span>Especialista: <strong id="client-photo-prof-name"></strong></span>
+                    </div>
                 </div>
 
                 <!-- Título o Comentario opcional -->
@@ -369,6 +372,24 @@
         </div>
     </div>
 
+    <!-- Modal de Éxito Global (Confirmación de Reserva Flow) -->
+    <div id="success-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); z-index: 3000; align-items:center; justify-content:center; padding:15px;">
+        <div class="card text-center" style="max-width: 440px; width: 100%; background:white; border-radius:var(--radius-md); padding:35px 25px; box-shadow:var(--shadow-medium);">
+            <div style="width: 64px; height: 64px; background: #e8f5e9; color: #2e7d32; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                <i data-lucide="party-popper" style="width: 32px; height: 32px;"></i>
+            </div>
+            <h3 style="margin-bottom: 10px; color:var(--clr-neutral-dark);">¡Cita Agendada y Abono Confirmado!</h3>
+            <div id="success-balance-notice" style="background:#e8f5e9; border:1px solid #c8e6c9; border-radius:6px; padding:12px; margin-bottom:15px; font-size:0.9rem; color:#1b5e20;">
+                <strong>Abono recibido vía Flow:</strong> $5.000 CLP<br>
+                <span style="font-size:0.85rem; color:#2e7d32;">El saldo restante se cancela el día de tu atención en el estudio.</span>
+            </div>
+            <p style="color: var(--clr-neutral-gray); font-size: 0.9rem; margin-bottom: 25px;">
+                Te hemos enviado los detalles de tu cita y confirmación a tu correo electrónico.
+            </p>
+            <button class="btn btn-primary btn-block" onclick="document.getElementById('success-modal').style.display='none'; if(typeof AppRouter!=='undefined') AppRouter.navigate('home')">Volver al Inicio</button>
+        </div>
+    </div>
+
     <!-- WhatsApp Floating Button -->
     <a href="https://wa.me/56940322551?text=Hola!%20Quisiera%20consultar%20por%20una%20cita%20en%20Nicolett%20Studio" 
        target="_blank" 
@@ -395,9 +416,9 @@
             emailjs.init("tUxZAGW52juzs6H5Q");
         })();
     </script>
-    <script src="js/mockData.js?v=8"></script>
-    <script src="js/app.js?v=8"></script>
-    <script src="js/main.js?v=8"></script>
+    <script src="js/mockData.js?v=11"></script>
+    <script src="js/app.js?v=11"></script>
+    <script src="js/main.js?v=11"></script>
 </body>
 
 </html>

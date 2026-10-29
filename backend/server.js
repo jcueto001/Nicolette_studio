@@ -301,6 +301,9 @@ function renderReturnHtml(title, subtitle, isSuccess, targetUrl) {
             font-weight: 600;
             box-shadow: 0 4px 14px rgba(212, 163, 115, 0.4);
             transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            font-size: 1rem;
         }
         .btn:hover { background: #b08968; }
     </style>
@@ -311,12 +314,24 @@ function renderReturnHtml(title, subtitle, isSuccess, targetUrl) {
         <div class="spinner"></div>
         <h2>${title}</h2>
         <p>${subtitle}</p>
-        <a class="btn" href="${targetUrl}">Continuar a Nicolett Studio</a>
+        <button id="btn-redirect" class="btn" onclick="doRedirect()">Continuar a Nicolett Studio</button>
     </div>
     <script>
-        setTimeout(() => {
+        var navigated = false;
+        function doRedirect() {
+            if (navigated) return;
+            navigated = true;
+            if (window._redirTimer) clearTimeout(window._redirTimer);
+            var btn = document.getElementById('btn-redirect');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Redirigiendo...';
+                btn.style.opacity = '0.7';
+                btn.style.pointerEvents = 'none';
+            }
             window.location.replace(${JSON.stringify(targetUrl)});
-        }, 800);
+        }
+        window._redirTimer = setTimeout(doRedirect, 800);
     </script>
 </body>
 </html>`;

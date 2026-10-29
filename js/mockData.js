@@ -62,12 +62,12 @@ const mockData = {
     ],
 
     gallery: [
-        { id: 'g1', src: 'img/galeria1.jpg', title: 'Manicure Acrílica' },
-        { id: 'g2', src: 'img/galeria2.jpg', title: 'Lifting de Pestañas' },
-        { id: 'g3', src: 'img/galeria3.jpg', title: 'Tratamiento Capilar' },
-        { id: 'g4', src: 'img/galeria4.jpg', title: 'Maquillaje Profesional' },
-        { id: 'g5', src: 'img/galeria5.jpg', title: 'Perfilado de Cejas' },
-        { id: 'g6', src: 'img/galeria6.jpg', title: 'Pedicure Spa' }
+        { id: 'g1', src: 'img/galeria1.jpg', title: 'Manicure Acrílica', serviceName: 'Manicure Acrílica', profesional: 'Camila', profId: 'p2' },
+        { id: 'g2', src: 'img/galeria2.jpg', title: 'Lifting de Pestañas', serviceName: 'Lifting de Pestañas', profesional: 'Camila', profId: 'p2' },
+        { id: 'g3', src: 'img/galeria3.jpg', title: 'Tratamiento Capilar', serviceName: 'Tratamiento Capilar', profesional: 'Nicolett', profId: 'p1' },
+        { id: 'g4', src: 'img/galeria4.jpg', title: 'Maquillaje Profesional', serviceName: 'Maquillaje Profesional', profesional: 'Nicolett', profId: 'p1' },
+        { id: 'g5', src: 'img/galeria5.jpg', title: 'Perfilado de Cejas', serviceName: 'Perfilado de Cejas', profesional: 'Camila', profId: 'p2' },
+        { id: 'g6', src: 'img/galeria6.jpg', title: 'Pedicure Spa', serviceName: 'Pedicure Spa', profesional: 'Nicolett', profId: 'p1' }
     ],
 
     // Clientas Globales
@@ -153,8 +153,67 @@ const StorageHelper = {
         }
     },
 
+    _getAppointmentKey: function(appt) {
+        if (!appt) return null;
+        if (appt.flowOrder) return `flow_order_${appt.flowOrder}`;
+        if (appt.flowToken) return `flow_token_${appt.flowToken}`;
+        if (appt.orderId) return `order_${appt.orderId}`;
+        if (appt.date && appt.time) {
+            const prof = (appt.profId || appt.profesional || '').toString().trim().toLowerCase();
+            const client = (appt.clientEmail || appt.clientPhone || appt.clientName || '').toString().trim().toLowerCase();
+            return `slot_${appt.date}_${appt.time}_${prof}_${client}`;
+        }
+        return appt.id || null;
+    },
+
     getAppointments: function () {
-        return this._appointmentsCache;
+        const seen = new Set();
+        const unique = [];
+        for (const a of this._appointmentsCache) {
+            const key = this._getAppointmentKey(a) || a.id;
+            if (key) {
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    unique.push(a);
+                }
+            } else {
+                unique.push(a);
+            }
+        }
+        return unique;
+    },
+
+    getClientAppointments: function (email, phone) {
+        const normEmail = (email || '').toString().trim().toLowerCase();
+        const cleanPhone = (phone || '').toString().replace(/\D/g, '');
+
+        if (!normEmail && !cleanPhone) return [];
+
+        const all = this.getAppointments();
+        const matches = all.filter(a => {
+            if (!a) return false;
+            // Coincidencia por correo normalizado
+            if (normEmail && a.clientEmail && a.clientEmail.toString().trim().toLowerCase() === normEmail) {
+                return true;
+            }
+            // Coincidencia por teléfono (últimos 8 dígitos para cubrir variaciones +569 / 9)
+            if (cleanPhone && cleanPhone.length >= 8 && a.clientPhone) {
+                const apptPhone = a.clientPhone.toString().replace(/\D/g, '');
+                if (apptPhone && (apptPhone === cleanPhone || apptPhone.endsWith(cleanPhone.slice(-8)) || cleanPhone.endsWith(apptPhone.slice(-8)))) {
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        // Ordenar de más reciente a más antigua
+        matches.sort((a, b) => {
+            const dateA = new Date(`${a.date || '1970-01-01'}T${a.time || '00:00'}`);
+            const dateB = new Date(`${b.date || '1970-01-01'}T${b.time || '00:00'}`);
+            return dateB - dateA;
+        });
+
+        return matches;
     },
 
     loadAppointmentsCache: async function() {
@@ -163,10 +222,34 @@ const StorageHelper = {
         try {
             const querySnapshot = await db.collection("Citas").get();
             const appointments = [];
+            const seenKeys = new Set();
+            const duplicateDocIds = [];
+
             querySnapshot.forEach((doc) => {
-                appointments.push({ id: doc.id, ...doc.data() });
+                const data = doc.data();
+                const appt = { id: doc.id, ...data };
+                const key = this._getAppointmentKey(appt);
+
+                if (key && seenKeys.has(key)) {
+                    console.warn(`[StorageHelper] Cita duplicada detectada: ${doc.id} (clave: ${key}). Omitiendo.`);
+                    duplicateDocIds.push(doc.id);
+                } else {
+                    if (key) seenKeys.add(key);
+                    appointments.push(appt);
+                }
             });
+
             this._appointmentsCache = appointments;
+
+            // Limpieza pasiva de citas duplicadas en Firestore si se encontraron (para sanar la base de datos)
+            if (duplicateDocIds.length > 0) {
+                console.log(`[StorageHelper] Limpiando ${duplicateDocIds.length} citas duplicadas en Firestore...`);
+                duplicateDocIds.forEach(dupId => {
+                    db.collection("Citas").doc(dupId).delete().catch(err => {
+                        console.warn(`[StorageHelper] Error al eliminar duplicado ${dupId}:`, err);
+                    });
+                });
+            }
         } catch(e) { console.error("Error cargando appointments:", e); }
         
         try {
@@ -289,8 +372,68 @@ const StorageHelper = {
         appointment.depositAmount = appointment.depositAmount || 5000;
         appointment.createdAt = new Date().toISOString(); // Fallback date
 
+        const key = this._getAppointmentKey(appointment);
+
+        // 1. Evitar duplicar en la memoria local si ya está presente
+        if (key) {
+            const existingIdx = this._appointmentsCache.findIndex(a => this._getAppointmentKey(a) === key);
+            if (existingIdx >= 0) {
+                console.warn("[StorageHelper] Cita ya presente en memoria local, actualizando:", this._appointmentsCache[existingIdx].id);
+                this._appointmentsCache[existingIdx] = { ...this._appointmentsCache[existingIdx], ...appointment };
+                return this._appointmentsCache[existingIdx];
+            }
+        }
+
         if(typeof db !== 'undefined') {
             try {
+                // 2. Verificar en Firestore si ya existe un documento previo con la misma orden, token o slot
+                let existingDocId = null;
+                if (appointment.flowOrder || appointment.orderId || appointment.flowToken) {
+                    const queries = [];
+                    if (appointment.flowOrder) queries.push(db.collection("Citas").where("flowOrder", "==", appointment.flowOrder).limit(1).get());
+                    if (appointment.orderId) queries.push(db.collection("Citas").where("orderId", "==", appointment.orderId).limit(1).get());
+                    if (appointment.flowToken) queries.push(db.collection("Citas").where("flowToken", "==", appointment.flowToken).limit(1).get());
+
+                    const snaps = await Promise.all(queries);
+                    for (const snap of snaps) {
+                        if (!snap.empty) {
+                            existingDocId = snap.docs[0].id;
+                            break;
+                        }
+                    }
+                }
+
+                if (!existingDocId && appointment.date && appointment.time) {
+                    const snap = await db.collection("Citas")
+                        .where("date", "==", appointment.date)
+                        .where("time", "==", appointment.time)
+                        .get();
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        const matchProf = (d.profId === appointment.profId) || (d.profesional === appointment.profesional);
+                        const matchClient = (d.clientEmail && d.clientEmail === appointment.clientEmail) ||
+                                            (d.clientPhone && d.clientPhone === appointment.clientPhone) ||
+                                            (d.clientName && d.clientName === appointment.clientName);
+                        if (matchProf && matchClient && d.status !== 'cancelada') {
+                            existingDocId = doc.id;
+                        }
+                    });
+                }
+
+                if (existingDocId) {
+                    console.warn("[StorageHelper] Cita ya existe en Firestore con id:", existingDocId, "- Actualizando registro en vez de duplicar.");
+                    appointment.id = existingDocId;
+                    await db.collection("Citas").doc(existingDocId).set(appointment, { merge: true });
+                    const idx = this._appointmentsCache.findIndex(a => a.id === existingDocId);
+                    if (idx >= 0) {
+                        this._appointmentsCache[idx] = { ...this._appointmentsCache[idx], ...appointment };
+                    } else {
+                        this._appointmentsCache.push(appointment);
+                    }
+                    return appointment;
+                }
+
+                // 3. Documento nuevo
                 appointment.createdAt = firebase.firestore.FieldValue.serverTimestamp();
                 const docRef = await db.collection("Citas").add(appointment);
                 appointment.id = docRef.id;
@@ -471,7 +614,23 @@ const StorageHelper = {
         const stored = localStorage.getItem('nicolett_gallery_v2');
         if (stored) {
             try {
-                return JSON.parse(stored);
+                const list = JSON.parse(stored);
+                // Asegurar que las fotos iniciales tengan profesional si no lo tenían
+                let changed = false;
+                list.forEach(item => {
+                    if (!item.profesional) {
+                        const defaultMatch = mockData.gallery.find(d => d.id === item.id || d.title === item.title);
+                        if (defaultMatch) {
+                            item.profesional = defaultMatch.profesional || 'Nicolett Studio';
+                            item.profId = defaultMatch.profId || '';
+                            changed = true;
+                        }
+                    }
+                });
+                if (changed) {
+                    localStorage.setItem('nicolett_gallery_v2', JSON.stringify(list));
+                }
+                return list;
             } catch(e) {}
         }
         
@@ -486,7 +645,7 @@ const StorageHelper = {
         return initial;
     },
 
-    // Galería pública (solo fotos del estudio o fotos de clientas APROBADAS por la administradora)
+    // Galería pública (solo fotos del estudio o fotos de clientas APROBADAS)
     getPublicGallery: function() {
         const gallery = this.getGallery();
         return gallery.filter(img => {
@@ -506,13 +665,27 @@ const StorageHelper = {
         return gallery.filter(img => img.source === 'client' && img.clientEmail && img.clientEmail.trim().toLowerCase() === normEmail);
     },
 
+    // Obtener fotos asociadas a una trabajadora específica (por nombre o id)
+    getProfessionalGallery: function(profNameOrId) {
+        if (!profNameOrId) return [];
+        const norm = profNameOrId.toString().trim().toLowerCase();
+        const gallery = this.getGallery();
+        return gallery.filter(img => {
+            const pName = (img.profesional || '').toString().trim().toLowerCase();
+            const pId = (img.profId || '').toString().trim().toLowerCase();
+            return pName === norm || pId === norm || pName.includes(norm) || norm.includes(pName);
+        });
+    },
+
     addGalleryImage: async function(imageObj) {
         const gallery = this.getGallery();
         imageObj.id = imageObj.id || ('g' + Date.now());
         imageObj.timestamp = imageObj.timestamp || Date.now();
         imageObj.date = imageObj.date || new Date().toLocaleDateString('es-CL');
+        imageObj.profesional = imageObj.profesional || '';
+        imageObj.profId = imageObj.profId || '';
 
-        // Si la foto es subida por una clienta, queda PENDIENTE de aprobación por la administradora
+        // Si la foto es subida por una clienta, queda PENDIENTE de aprobación
         const isClient = imageObj.source === 'client';
         imageObj.approved = isClient ? (imageObj.approved === true) : true;
         imageObj.status = isClient ? (imageObj.status || (imageObj.approved ? 'approved' : 'pending')) : 'approved';
@@ -529,6 +702,8 @@ const StorageHelper = {
                     serviceName: imageObj.serviceName || '',
                     clientName: imageObj.clientName || '',
                     clientEmail: imageObj.clientEmail || '',
+                    profesional: imageObj.profesional || '',
+                    profId: imageObj.profId || '',
                     source: imageObj.source || 'admin',
                     approved: imageObj.approved,
                     status: imageObj.status,
@@ -629,7 +804,7 @@ const StorageHelper = {
         }
     },
 
-    // --- Clientas Globales ---
+    // --- Clientas Globales y CRM ---
     getClients: function() {
         return JSON.parse(localStorage.getItem('nicolett_clients') || '[]');
     },
@@ -638,7 +813,27 @@ const StorageHelper = {
     },
     addClient: function(client) {
         const clients = this.getClients();
-        client.id = 'client_' + Date.now();
+        const normEmail = (client.email || '').toString().trim().toLowerCase();
+        const cleanPhone = (client.phone || '').toString().replace(/\D/g, '');
+
+        // Evitar duplicar clientas en el listado CRM
+        const existingIndex = clients.findIndex(c => {
+            if (normEmail && c.email && c.email.toString().trim().toLowerCase() === normEmail) return true;
+            if (cleanPhone && cleanPhone.length >= 8 && c.phone && c.phone.toString().replace(/\D/g, '').endsWith(cleanPhone.slice(-8))) return true;
+            return false;
+        });
+
+        if (existingIndex !== -1) {
+            clients[existingIndex] = {
+                ...clients[existingIndex],
+                ...client,
+                id: clients[existingIndex].id
+            };
+            this.saveClients(clients);
+            return clients[existingIndex];
+        }
+
+        client.id = client.id || ('client_' + Date.now());
         clients.push(client);
         this.saveClients(clients);
         return client;
@@ -655,6 +850,131 @@ const StorageHelper = {
         let clients = this.getClients();
         clients = clients.filter(c => c.id !== id);
         this.saveClients(clients);
+    },
+
+    // --- Gestión de Perfil de Clienta (Autenticación e Historial) ---
+    getOrCreateClientProfile: async function(rawEmail, rawName, rawPhone) {
+        const email = (rawEmail || '').toString().trim().toLowerCase();
+        let name = (rawName || '').toString().trim();
+        let phone = (rawPhone || '').toString().trim();
+
+        if (!email) {
+            throw new Error('El correo electrónico es requerido.');
+        }
+
+        let existingDoc = null;
+        let existingDocId = null;
+
+        if (typeof db !== 'undefined' && db && typeof db.collection === 'function') {
+            try {
+                // 1. Buscar en perfil_cliente por correo normalizado en minúsculas
+                let snapshot = await db.collection('perfil_cliente').where('email', '==', email).get();
+
+                // 2. Si no se encontró por minúsculas, probar con el texto original sin modificar mayúsculas
+                if (snapshot.empty && rawEmail && rawEmail.trim() !== email) {
+                    snapshot = await db.collection('perfil_cliente').where('email', '==', rawEmail.trim()).get();
+                }
+
+                // 3. Fallback de búsqueda case-insensitive recorriendo los perfiles si aún no se encuentra
+                if (snapshot.empty) {
+                    const allSnap = await db.collection('perfil_cliente').get();
+                    allSnap.forEach(doc => {
+                        const data = doc.data();
+                        if (!existingDoc && data.email && data.email.toString().trim().toLowerCase() === email) {
+                            existingDoc = data;
+                            existingDocId = doc.id;
+                        }
+                    });
+                } else {
+                    const doc = snapshot.docs[0];
+                    existingDoc = doc.data();
+                    existingDocId = doc.id;
+                }
+            } catch (err) {
+                console.warn('[StorageHelper] Error consultando perfil_cliente en Firestore:', err);
+            }
+        }
+
+        // Si el perfil ya existe en Firestore
+        if (existingDoc && existingDocId) {
+            console.log(`[StorageHelper] Perfil existente encontrado en Firestore (ID: ${existingDocId}) para ${email}. No se creará duplicado.`);
+            const finalName = name || existingDoc.name || 'Clienta';
+            const finalPhone = phone || existingDoc.phone || '';
+
+            // Actualización no destructiva en Firestore si se aportó nombre o teléfono
+            if (typeof db !== 'undefined' && db && typeof db.collection === 'function') {
+                const updates = { email: email };
+                if (name && (!existingDoc.name || existingDoc.name === 'Clienta')) updates.name = name;
+                if (phone && !existingDoc.phone) updates.phone = phone;
+
+                try {
+                    await db.collection('perfil_cliente').doc(existingDocId).set(updates, { merge: true });
+                } catch(e) {}
+            }
+
+            const profile = {
+                id: existingDocId,
+                name: finalName,
+                email: email,
+                phone: finalPhone,
+                isExisting: true
+            };
+
+            localStorage.setItem('nicolett_personalization', JSON.stringify({
+                name: profile.name,
+                email: profile.email,
+                phone: profile.phone
+            }));
+
+            return profile;
+        }
+
+        // Si NO existe en perfil_cliente, buscar si tiene citas agendadas previas para rescatar su nombre
+        const clientAppts = this.getClientAppointments(email, phone);
+        if (!name && clientAppts.length > 0 && clientAppts[0].clientName) {
+            name = clientAppts[0].clientName.trim();
+        }
+        if (!phone && clientAppts.length > 0 && clientAppts[0].clientPhone) {
+            phone = clientAppts[0].clientPhone.trim();
+        }
+
+        const finalName = name || 'Clienta';
+        const finalPhone = phone || '';
+
+        // Crear registro único en Firestore
+        let newDocId = 'cli_' + Date.now();
+        if (typeof db !== 'undefined' && db && typeof db.collection === 'function') {
+            try {
+                const newDocRef = await db.collection('perfil_cliente').add({
+                    name: finalName,
+                    email: email,
+                    phone: finalPhone,
+                    createdAt: (typeof firebase !== 'undefined' && firebase.firestore) 
+                        ? firebase.firestore.FieldValue.serverTimestamp() 
+                        : new Date().toISOString()
+                });
+                newDocId = newDocRef.id;
+                console.log(`[StorageHelper] Nuevo perfil_cliente creado en Firestore con ID: ${newDocId} para ${email}.`);
+            } catch(err) {
+                console.error('[StorageHelper] Error creando perfil_cliente:', err);
+            }
+        }
+
+        const profile = {
+            id: newDocId,
+            name: finalName,
+            email: email,
+            phone: finalPhone,
+            isExisting: false
+        };
+
+        localStorage.setItem('nicolett_personalization', JSON.stringify({
+            name: profile.name,
+            email: profile.email,
+            phone: profile.phone
+        }));
+
+        return profile;
     },
 
     // --- Configuración de Flow (Pasarela de Pago de Abonos) ---

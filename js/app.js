@@ -91,6 +91,7 @@ const AppRouter = {
 
                 // Ejecutar scripts específicos de la vista si existen
                 if (route === 'home') initHomeEvents();
+                if (route === 'galeria') initGaleriaEvents();
                 if (route === 'agendar') initAgendarEvents();
                 if (route === 'admin') initAdminEvents();
                 if (route === 'perfil') initPerfilEvents();
@@ -246,21 +247,61 @@ function renderHomeView() {
 
 function renderGaleriaView() {
     const images = StorageHelper.getPublicGallery();
+    const professionals = StorageHelper.getProfessionals();
 
     return `
         <div class="container section">
             <div class="section-header">
                 <h2 class="section-title">Galería de Trabajos</h2>
-                <p class="section-subtitle">Conoce los espectaculares resultados creados por nuestras especialistas. Desliza para ver más.</p>
+                <p class="section-subtitle">Conoce los espectaculares resultados creados por nuestras especialistas. Desliza o filtra por profesional.</p>
+            </div>
+
+            <!-- Filtros por Especialista -->
+            <div class="gallery-filter-chips" style="display:flex; justify-content:center; gap:10px; margin-bottom:28px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-sm public-gal-filter active" data-filter="all" style="border-radius:20px; padding:8px 20px; font-weight:600; cursor:pointer;">
+                    Todas (${images.length})
+                </button>
+                ${professionals.map(p => {
+                    const count = images.filter(img => {
+                        const pName = (img.profesional || '').toLowerCase();
+                        const pId = (img.profId || '').toLowerCase();
+                        return pName.includes(p.name.toLowerCase()) || pId === p.id.toLowerCase();
+                    }).length;
+                    return `
+                        <button type="button" class="btn btn-outline btn-sm public-gal-filter" data-filter="${p.name.toLowerCase()}" style="border-radius:20px; padding:8px 20px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                            <i data-lucide="sparkles" style="width:13px; height:13px;"></i> ${p.name} (${count})
+                        </button>
+                    `;
+                }).join('')}
             </div>
             
-            <div class="gallery-container" style="display: flex; overflow-x: auto; gap: 30px; padding: 20px 0 40px; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--clr-rose-gold) var(--clr-nude-light);">
+            <div class="gallery-container" id="public-gallery-grid" style="display: flex; overflow-x: auto; gap: 30px; padding: 20px 0 40px; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--clr-rose-gold) var(--clr-nude-light);">
                 ${images.length === 0 ? '<p style="text-align:center; width:100%; padding:40px; color:var(--clr-neutral-gray);">Aún no hay fotos públicas en la galería.</p>' : ''}
-                ${images.map(img => `
-                    <div class="gallery-item" style="width: 85vw; max-width: 600px; flex: 0 0 auto; scroll-snap-align: center; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; aspect-ratio: 1/1;">
+                ${images.map(img => {
+                    const profName = img.profesional || 'Nicolett Studio';
+                    const isClient = img.source === 'client';
+
+                    return `
+                    <div class="gallery-item public-gallery-card" data-prof="${profName.toLowerCase()}" style="width: 85vw; max-width: 520px; flex: 0 0 auto; scroll-snap-align: center; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; aspect-ratio: 1/1; background:#000;">
                         <img src="${img.src}" alt="${img.title || 'Trabajo'}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                        
+                        <!-- Overlay Informativo -->
+                        <div style="position:absolute; bottom:0; left:0; right:0; padding:22px 20px; background:linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.45) 70%, transparent 100%); color:white;">
+                            <h3 style="margin:0 0 6px 0; font-size:1.3rem; font-weight:700;">${img.serviceName || img.title || 'Servicio de Belleza'}</h3>
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                                <span style="background:rgba(219, 137, 160, 0.95); color:white; padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:5px;">
+                                    <i data-lucide="sparkles" style="width:12px; height:12px;"></i> Especialista: ${profName}
+                                </span>
+                                ${isClient ? `
+                                    <span style="background:rgba(255,255,255,0.25); color:white; padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; backdrop-filter:blur(4px); display:inline-flex; align-items:center; gap:4px;">
+                                        <i data-lucide="camera" style="width:12px; height:12px;"></i> Clienta: ${img.clientName || 'Clienta'}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
 
             <div style="text-align: center; margin-top: 10px; padding: 30px 20px; border-top: 1px solid var(--clr-nude);">
@@ -562,24 +603,6 @@ function renderAgendarView() {
                     <small style="color: var(--clr-neutral-gray); font-size: 0.76rem; display:block;">
                         <i data-lucide="lock" style="width:12px; height:12px; display:inline; vertical-align:middle; color:#1b75bb;"></i> Pago protegido con encriptación SSL 256-bit. El saldo restante se paga en el estudio.
                     </small>
-                </div>
-            </div>
-
-            <!-- Modal de Éxito Actualizado -->
-            <div id="success-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); z-index: 3000; align-items:center; justify-content:center; padding:15px;">
-                <div class="card text-center" style="max-width: 440px; width: 100%; background:white; border-radius:var(--radius-md); padding:35px 25px; box-shadow:var(--shadow-medium);">
-                    <div style="width: 64px; height: 64px; background: #e8f5e9; color: #2e7d32; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
-                        <i data-lucide="party-popper" style="width: 32px; height: 32px;"></i>
-                    </div>
-                    <h3 style="margin-bottom: 10px; color:var(--clr-neutral-dark);">¡Cita Agendada y Abono Confirmado!</h3>
-                    <div style="background:#e8f5e9; border:1px solid #c8e6c9; border-radius:6px; padding:12px; margin-bottom:15px; font-size:0.9rem; color:#1b5e20;">
-                        <strong>Abono recibido vía Flow:</strong> $5.000 CLP<br>
-                        <span id="success-balance-notice" style="font-size:0.85rem; color:#2e7d32;">El saldo restante se cancela el día de tu atención en el estudio.</span>
-                    </div>
-                    <p style="color: var(--clr-neutral-gray); font-size: 0.9rem; margin-bottom: 25px;">
-                        Te hemos enviado los detalles de tu cita y confirmación a tu correo electrónico.
-                    </p>
-                    <button class="btn btn-primary btn-block" onclick="document.getElementById('success-modal').style.display='none'; AppRouter.navigate('home')">Volver al Inicio</button>
                 </div>
             </div>
         </div>
@@ -1013,11 +1036,27 @@ function renderAdminView() {
                     </div>
                 </div>
             </div>
+            ` : ''}
             
-            <!-- Tab Galería -->
+            <!-- Tab Galería (Visible para Administradora y Trabajadoras) -->
             <div id="tab-galeria" class="admin-tab-content" style="display:none;">
+                ${!isAdmin ? `
+                <div class="card" style="margin-bottom:20px; padding:20px; background:linear-gradient(135deg, #FFF9F5 0%, #FFFFFF 100%); border-left: 5px solid var(--clr-rose-gold);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                        <div>
+                            <h3 style="margin:0; font-size:1.35rem; color:var(--clr-rose-gold-dark); display:flex; align-items:center; gap:8px;">
+                                <i data-lucide="camera" style="width:22px; height:22px;"></i> Galería de Trabajos • ${auth.user.name || 'Especialista'}
+                            </h3>
+                            <p style="margin:6px 0 0; color:var(--clr-neutral-gray); font-size:0.92rem;">
+                                Aquí se reflejan automáticamente las fotos que tus clientas suben de los servicios que realizaste con ellas. Puedes revisarlas, descargarlas o aprobarlas para la galería pública.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+
                 <div class="card" style="margin-bottom:20px; padding:20px;">
-                    <h3 style="margin-bottom:15px;">Subir Nueva Foto (Administración)</h3>
+                    <h3 style="margin-bottom:15px;">Subir Nueva Foto a Galería (${isAdmin ? 'Administración' : (auth.user.name || 'Trabajadora')})</h3>
                     <form id="form-upload-gallery" style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">
                         <div style="flex: 1; min-width: 200px;">
                             <label style="display:block; margin-bottom:5px; font-weight:bold;">Título / Servicio</label>
@@ -1036,6 +1075,25 @@ function renderAdminView() {
 
                 ${(() => {
                     const allGal = StorageHelper.getGallery();
+                    const workerName = (auth.user?.name || '').trim();
+                    const workerId = (auth.user?.id || '').trim();
+
+                    // Función para determinar si una imagen pertenece a la trabajadora conectada
+                    const isMyImage = (img) => {
+                        if (!workerName && !workerId) return false;
+                        const pName = (img.profesional || '').trim().toLowerCase();
+                        const pId = (img.profId || '').trim().toLowerCase();
+                        if (workerId && pId && pId === workerId.toLowerCase()) return true;
+                        if (workerName && pName) {
+                            return pName === workerName.toLowerCase() || pName.includes(workerName.toLowerCase()) || workerName.toLowerCase().includes(pName);
+                        }
+                        return false;
+                    };
+
+                    const myPhotos = allGal.filter(g => isMyImage(g));
+                    const myClientPhotos = myPhotos.filter(g => g.source === 'client');
+                    const myPendingList = myClientPhotos.filter(g => !g.approved && g.status !== 'approved');
+
                     const pendingList = allGal.filter(g => g.source === 'client' && !g.approved && g.status !== 'approved');
                     const approvedClientList = allGal.filter(g => g.source === 'client' && (g.approved === true || g.status === 'approved'));
                     const studioList = allGal.filter(g => g.source !== 'client');
@@ -1045,26 +1103,49 @@ function renderAdminView() {
                     <!-- Barra de Moderación y Filtros de Galería -->
                     <div style="background:#fff; border:1px solid #e7ded4; border-radius:var(--radius-md); padding:16px 20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
                         <div style="display:flex; gap:8px; flex-wrap:wrap;" id="gallery-filter-chips">
-                            <button type="button" class="gallery-filter-chip active" data-filter="all">
-                                Todas (${allGal.length})
-                            </button>
-                            <button type="button" class="gallery-filter-chip" data-filter="pending" style="${pendingList.length > 0 ? 'background:#fffbeb; color:#b45309; border-color:#fcd34d; font-weight:700;' : ''}">
-                                <i data-lucide="clock" style="width:14px; height:14px;"></i> Por Aprobar (${pendingList.length})
-                            </button>
-                            <button type="button" class="gallery-filter-chip" data-filter="public">
-                                <i data-lucide="eye" style="width:14px; height:14px;"></i> En Galería Pública (${publicTotal})
-                            </button>
-                            <button type="button" class="gallery-filter-chip" data-filter="client">
-                                <i data-lucide="camera" style="width:14px; height:14px;"></i> Clientas (${pendingList.length + approvedClientList.length})
-                            </button>
-                            <button type="button" class="gallery-filter-chip" data-filter="admin">
-                                Estudio (${studioList.length})
-                            </button>
+                            ${!isAdmin ? `
+                                <button type="button" class="gallery-filter-chip active" data-filter="my-client" style="background:#fff7ed; color:#c2410c; border-color:#fdba74; font-weight:700;">
+                                    <i data-lucide="camera" style="width:14px; height:14px;"></i> Fotos de Mis Clientas (${myClientPhotos.length})
+                                </button>
+                                <button type="button" class="gallery-filter-chip" data-filter="my-all">
+                                    <i data-lucide="user" style="width:14px; height:14px;"></i> Todos mis Trabajos (${myPhotos.length})
+                                </button>
+                                <button type="button" class="gallery-filter-chip" data-filter="my-pending" style="${myPendingList.length > 0 ? 'background:#fffbeb; color:#b45309; border-color:#fcd34d; font-weight:700;' : ''}">
+                                    <i data-lucide="clock" style="width:14px; height:14px;"></i> Por Aprobar (${myPendingList.length})
+                                </button>
+                                <button type="button" class="gallery-filter-chip" data-filter="all">
+                                    Toda la Galería (${allGal.length})
+                                </button>
+                            ` : `
+                                <button type="button" class="gallery-filter-chip active" data-filter="all">
+                                    Todas (${allGal.length})
+                                </button>
+                                <button type="button" class="gallery-filter-chip" data-filter="pending" style="${pendingList.length > 0 ? 'background:#fffbeb; color:#b45309; border-color:#fcd34d; font-weight:700;' : ''}">
+                                    <i data-lucide="clock" style="width:14px; height:14px;"></i> Por Aprobar (${pendingList.length})
+                                </button>
+                                <button type="button" class="gallery-filter-chip" data-filter="public">
+                                    <i data-lucide="eye" style="width:14px; height:14px;"></i> En Galería Pública (${publicTotal})
+                                </button>
+                                <button type="button" class="gallery-filter-chip" data-filter="client">
+                                    <i data-lucide="camera" style="width:14px; height:14px;"></i> Clientas (${pendingList.length + approvedClientList.length})
+                                </button>
+                                <button type="button" class="gallery-filter-chip" data-filter="admin">
+                                    Estudio (${studioList.length})
+                                </button>
+                                ${professionals.map(p => {
+                                    const pCount = allGal.filter(g => (g.profesional && g.profesional.toLowerCase().includes(p.name.toLowerCase())) || (g.profId && g.profId === p.id)).length;
+                                    return `
+                                        <button type="button" class="gallery-filter-chip" data-filter="prof-${p.name.toLowerCase()}">
+                                            <i data-lucide="user" style="width:13px; height:13px;"></i> ${p.name} (${pCount})
+                                        </button>
+                                    `;
+                                }).join('')}
+                            `}
                         </div>
 
                         <div style="font-size:0.85rem; color:var(--clr-neutral-gray); display:flex; align-items:center; gap:6px;">
                             <i data-lucide="shield-check" style="width:16px; height:16px; color:var(--clr-rose-gold);"></i>
-                            <span>Las fotos de clientas <strong>requieren tu aprobación</strong> antes de ser visibles al público.</span>
+                            <span>Las fotos de clientas quedan registradas con su especialista asignada.</span>
                         </div>
                     </div>
 
@@ -1073,17 +1154,40 @@ function renderAdminView() {
                             const isClient = img.source === 'client';
                             const isApproved = !isClient || img.approved === true || img.status === 'approved';
                             const statusKey = isClient ? (isApproved ? 'approved' : 'pending') : 'studio';
+                            const belongsToMe = isMyImage(img);
+                            const profName = img.profesional || 'Nicolett Studio';
 
                             return `
-                            <div class="admin-gallery-item" data-source="${isClient ? 'client' : 'admin'}" data-status="${statusKey}" style="border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; height: 260px; background:#1c1917; border: 2px solid ${!isApproved ? '#f59e0b' : 'transparent'};">
+                            <div class="admin-gallery-item" 
+                                data-source="${isClient ? 'client' : 'admin'}" 
+                                data-status="${statusKey}" 
+                                data-prof="${profName.toLowerCase()}"
+                                data-is-my-client="${(belongsToMe && isClient) ? 'true' : 'false'}"
+                                data-is-my-work="${belongsToMe ? 'true' : 'false'}"
+                                data-is-my-pending="${(belongsToMe && isClient && !isApproved) ? 'true' : 'false'}"
+                                style="border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; height: 260px; background:#1c1917; border: 2px solid ${!isApproved ? '#f59e0b' : 'transparent'};">
                                 <img src="${img.src}" alt="${img.title || 'Trabajo'}" style="width:100%; height:100%; object-fit:cover; display:block;">
                                 
                                 <!-- Badges Superiores -->
-                                <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; z-index:2; pointer-events:none;">
+                                <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; z-index:2; pointer-events:none; flex-wrap:wrap; gap:4px;">
+                                    <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                                        ${isClient ? `
+                                            <span class="badge-client-photo" style="box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+                                                <i data-lucide="user" style="width:11px; height:11px;"></i> ${img.clientName || 'Clienta'}
+                                            </span>
+                                        ` : `
+                                            <span style="background:rgba(0,0,0,0.65); color:#f5ebe0; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:600; backdrop-filter:blur(4px);">
+                                                Estudio
+                                            </span>
+                                        `}
+                                        ${img.profesional ? `
+                                            <span style="background:rgba(219, 137, 160, 0.95); color:white; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:700; display:inline-flex; align-items:center; gap:3px; box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+                                                <i data-lucide="sparkles" style="width:11px; height:11px;"></i> ${img.profesional}
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                    
                                     ${isClient ? `
-                                        <span class="badge-client-photo" style="box-shadow:0 2px 6px rgba(0,0,0,0.3);">
-                                            <i data-lucide="user" style="width:11px; height:11px;"></i> ${img.clientName || 'Clienta'}
-                                        </span>
                                         ${!isApproved ? `
                                             <span style="background:#f59e0b; color:white; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(0,0,0,0.3);">
                                                 <i data-lucide="clock" style="width:11px; height:11px;"></i> Por Aprobar
@@ -1093,11 +1197,7 @@ function renderAdminView() {
                                                 <i data-lucide="check" style="width:11px; height:11px;"></i> En Galería
                                             </span>
                                         `}
-                                    ` : `
-                                        <span style="background:rgba(0,0,0,0.65); color:#f5ebe0; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:600; backdrop-filter:blur(4px);">
-                                            Estudio
-                                        </span>
-                                    `}
+                                    ` : ''}
                                 </div>
 
                                 <!-- Barra Inferior de Información y Acciones -->
@@ -1110,7 +1210,7 @@ function renderAdminView() {
                                             <div style="font-size:0.78rem; color:#f0d0c0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"${img.title}"</div>
                                         ` : ''}
                                         <div style="font-size:0.72rem; color:#d6d3d1; margin-top:2px;">
-                                            ${img.date || ''} ${isClient && img.clientEmail ? '• ' + img.clientEmail : ''}
+                                            ${img.date || ''} ${isClient && img.clientEmail ? '• ' + img.clientEmail : ''} ${img.profesional ? '• Atendió: ' + img.profesional : ''}
                                         </div>
                                     </div>
 
@@ -1150,6 +1250,7 @@ function renderAdminView() {
                 })()}
             </div>
             
+            ${isAdmin ? `
             <!-- Tab Configuración Flow -->
             <div id="tab-flow" class="admin-tab-content" style="display:none;">
                 <div class="card" style="max-width: 750px; margin: 0 auto; padding: 25px;">
@@ -1654,20 +1755,42 @@ function renderPerfilView() {
     const persStr = localStorage.getItem('nicolett_personalization');
     if (!persStr) {
         return `
-            <div class="container section text-center" style="padding: 80px 20px;">
-                <div class="card" style="max-width: 550px; margin: 0 auto; padding: 40px 30px; background: #ffffff; box-shadow: var(--shadow-medium); border-radius: var(--radius-lg);">
+            <div class="container section text-center" style="padding: 70px 20px;">
+                <div class="card" style="max-width: 520px; margin: 0 auto; padding: 40px 32px; background: #ffffff; box-shadow: var(--shadow-medium); border-radius: var(--radius-lg); text-align: center;">
                     <div style="width: 70px; height: 70px; border-radius: 50%; background: var(--clr-nude-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--clr-rose-gold);">
                         <i data-lucide="user" style="width: 32px; height: 32px;"></i>
                     </div>
-                    <h3 class="section-title" style="margin-bottom: 15px; font-size: 1.8rem;">Mi Perfil</h3>
-                    <p style="color: var(--clr-neutral-gray); margin-bottom: 25px; line-height: 1.6;">
-                        Personaliza tu experiencia ingresando tus datos para acceder a tu historial de visitas y facilitar tus próximas reservas.
+                    <h3 class="section-title" style="margin-bottom: 12px; font-size: 1.8rem; color: var(--clr-rose-gold-dark);">Acceso a tu Perfil y Citas</h3>
+                    <p style="color: var(--clr-neutral-gray); margin-bottom: 25px; line-height: 1.6; font-size: 0.95rem;">
+                        Ingresa tu correo para ver todas tus citas agendadas, verificar tus abonos y acceder a la galería de tus resultados. Si ya te has atendido con nosotras, tus citas aparecerán de inmediato.
                     </p>
-                    <button class="btn btn-primary" onclick="const m=document.getElementById('personalize-modal'); if(m){m.style.display='flex'; m.style.opacity='1';}">
-                        Personalizar mi Perfil
-                    </button>
-                    <div style="margin-top: 15px;">
-                        <button class="btn btn-secondary" style="font-size: 0.9rem;" onclick="AppRouter.navigate('agendar')">
+
+                    <form id="perfil-direct-login-form" style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
+                        <div>
+                            <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem; color: var(--clr-neutral-dark);">
+                                Correo Electrónico <span style="color:#e53935;">*</span>
+                            </label>
+                            <input type="email" id="perfil-login-email" required placeholder="ejemplo@correo.com"
+                                style="width:100%; padding:12px 14px; border:1px solid #dcd3cb; border-radius:8px; font-family: var(--font-body); font-size:1rem; outline:none; transition:border-color 0.3s ease;">
+                        </div>
+
+                        <div>
+                            <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem; color: var(--clr-neutral-dark);">
+                                Nombre y Apellido <span style="font-weight:400; font-size:0.8rem; color:var(--clr-neutral-gray);">(opcional si ya estás registrada)</span>
+                            </label>
+                            <input type="text" id="perfil-login-name" placeholder="Tu nombre completo"
+                                style="width:100%; padding:12px 14px; border:1px solid #dcd3cb; border-radius:8px; font-family: var(--font-body); font-size:1rem; outline:none; transition:border-color 0.3s ease;">
+                        </div>
+
+                        <button type="submit" id="btn-perfil-direct-login" class="btn btn-primary" style="margin-top: 10px; font-size: 1.05rem; padding: 14px; width: 100%; font-weight: 600;">
+                            <i data-lucide="log-in" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
+                            Ingresar a Mi Perfil / Ver Mis Citas
+                        </button>
+                    </form>
+
+                    <div style="margin-top: 24px; padding-top: 18px; border-top: 1px dashed #e8dcd0; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" style="font-size: 0.9rem; padding: 10px 18px;" onclick="AppRouter.navigate('agendar')">
+                            <i data-lucide="calendar" style="width: 15px; height: 15px; margin-right: 4px; vertical-align: middle;"></i>
                             Agendar Cita Directamente
                         </button>
                     </div>
@@ -1683,24 +1806,31 @@ function renderPerfilView() {
         return `<div class="container section text-center"><p>Error al cargar el perfil.</p></div>`;
     }
 
-    // Filtrar citas de la clienta por su correo registrado
-    const allAppointments = StorageHelper.getAppointments();
-    const userAppointments = allAppointments.filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase());
+    // Filtrar citas de la clienta por su correo o teléfono registrado de forma segura y normalizada
+    const userAppointments = StorageHelper.getClientAppointments ? StorageHelper.getClientAppointments(pers.email, pers.phone) : [];
     
     // Obtener fotos que esta clienta ha subido
     const clientPhotos = StorageHelper.getClientGallery ? StorageHelper.getClientGallery(pers.email) : [];
-
-    // Ordenar citas por fecha descendente
-    userAppointments.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     let historyHtml = '';
     if (userAppointments.length > 0) {
         historyHtml = '<div style="display:grid; gap:16px; max-width:680px; margin: 0 auto; text-align:left;">';
         userAppointments.forEach(appt => {
+            const hasDeposit = appt.abono || appt.depositAmount || appt.paymentStatus === 'pagado' || appt.status === 'confirmada';
+            const depAmount = appt.depositAmount || 5000;
+            const statusLabel = (appt.status || 'confirmada').toUpperCase();
+            const statusBg = appt.status === 'cancelada' ? '#ffebee' : (appt.status === 'completada' ? '#e3f2fd' : '#e8f5e9');
+            const statusColor = appt.status === 'cancelada' ? '#c62828' : (appt.status === 'completada' ? '#1565c0' : '#2e7d32');
+
             historyHtml += `
                 <div class="card" style="padding:22px 24px; border-left: 5px solid var(--clr-rose-gold); background: #ffffff; box-shadow: var(--shadow-soft); border-radius: var(--radius-md);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-                        <h4 style="margin:0; color:var(--clr-neutral-dark); font-size:1.2rem;">${appt.servicio || 'Servicio de Belleza'}</h4>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <h4 style="margin:0; color:var(--clr-neutral-dark); font-size:1.2rem;">${appt.servicio || 'Servicio de Belleza'}</h4>
+                            <span style="font-size:0.75rem; font-weight:700; padding:3px 10px; border-radius:12px; background:${statusBg}; color:${statusColor};">
+                                ${statusLabel}
+                            </span>
+                        </div>
                         <span style="font-size:0.85rem; color:var(--clr-rose-gold-dark); font-weight:600; background:var(--clr-nude-light); padding:5px 12px; border-radius:20px;">
                             ${appt.date} • ${appt.time}
                         </span>
@@ -1708,13 +1838,13 @@ function renderPerfilView() {
                     <p style="margin:4px 0 0 0; font-size:0.95rem; color:var(--clr-neutral-gray);">
                         Especialista: <strong style="color:var(--clr-neutral-dark);">${appt.profesional}</strong>
                     </p>
-                    ${appt.abono ? `<p style="margin:6px 0 0 0; font-size:0.85rem; color:#28a745; font-weight:500;">✓ Abono verificado: $5.000</p>` : ''}
+                    ${hasDeposit ? `<p style="margin:6px 0 0 0; font-size:0.85rem; color:#28a745; font-weight:500;">✓ Abono verificado: $${depAmount.toLocaleString('es-CL')}</p>` : ''}
                     
                     <div style="margin-top:14px; padding-top:12px; border-top: 1px dashed #e8dcd0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                         <span style="font-size:0.85rem; color:var(--clr-neutral-gray); display:inline-flex; align-items:center; gap:5px;">
                             <i data-lucide="sparkles" style="width:13px; height:13px; color:var(--clr-rose-gold);"></i> ¿Cómo quedó tu resultado?
                         </span>
-                        <button type="button" class="btn btn-outline btn-sm btn-service-photo" data-service="${appt.servicio || ''}" data-prof="${appt.profesional || ''}" data-date="${appt.date || ''}" style="padding:6px 14px; font-size:0.82rem; font-weight:600; border-radius:20px; display:inline-flex; align-items:center; gap:6px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark);">
+                        <button type="button" class="btn btn-outline btn-sm btn-service-photo" data-service="${appt.servicio || ''}" data-prof="${appt.profesional || ''}" data-prof-id="${appt.profId || ''}" data-date="${appt.date || ''}" style="padding:6px 14px; font-size:0.82rem; font-weight:600; border-radius:20px; display:inline-flex; align-items:center; gap:6px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark);">
                             <i data-lucide="camera" style="width:14px; height:14px;"></i> Sacar foto de este servicio
                         </button>
                     </div>
@@ -1772,6 +1902,11 @@ function renderPerfilView() {
                                 <div style="font-weight:600; color:var(--clr-neutral-dark); font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                                     ${photo.serviceName || photo.title || 'Servicio realizado'}
                                 </div>
+                                ${photo.profesional ? `
+                                    <div style="font-size:0.78rem; color:var(--clr-rose-gold-dark); font-weight:600; margin-top:2px; display:flex; align-items:center; gap:4px;">
+                                        <i data-lucide="sparkles" style="width:11px; height:11px;"></i> Especialista: ${photo.profesional}
+                                    </div>
+                                ` : ''}
                                 ${photo.title && photo.title !== photo.serviceName ? `
                                     <p style="margin:3px 0 0; font-size:0.8rem; color:var(--clr-neutral-gray); line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">"${photo.title}"</p>
                                 ` : ''}

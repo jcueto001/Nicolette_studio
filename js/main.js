@@ -78,75 +78,110 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Variable de bloqueo para evitar que checkFlowPaymentReturn se ejecute simultáneamente
+let isProcessingFlowReturn = false;
+
 // --- Manejo de Retorno de Pasarela Flow ---
-function checkFlowPaymentReturn() {
+async function checkFlowPaymentReturn() {
     const params = new URLSearchParams(window.location.search);
     const action = params.get('action');
 
     if (action === 'flow-success') {
+        const token = params.get('token') || '';
+        const order = params.get('order') || '';
+        const tokenProcessedKey = `flow_done_${token || order || 'success'}`;
+
+        // Si ya se está procesando o ya fue procesado previamente (ej. recargas o doble navegación), salir inmediatamente
+        if (isProcessingFlowReturn || sessionStorage.getItem(tokenProcessedKey) || localStorage.getItem(tokenProcessedKey)) {
+            console.warn('[Flow] Retorno de pago ya procesado o en curso, llamada duplicada evitada.');
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+            return;
+        }
+
         const pendingStr = sessionStorage.getItem('nicolett_pending_booking') || localStorage.getItem('nicolett_pending_booking');
-        if (pendingStr) {
-            try {
-                const app = JSON.parse(pendingStr);
-                app.status = 'confirmada';
-                app.paymentStatus = 'pagado';
-                app.depositAmount = 5000;
-                app.flowToken = params.get('token') || '';
-                app.flowOrder = params.get('order') || '';
-                app.paymentMethod = app.paymentMethod || 'Flow (Webpay Plus)';
+        if (!pendingStr) {
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+            return;
+        }
 
-                StorageHelper.saveAppointment(app);
-                sessionStorage.removeItem('nicolett_pending_booking');
-                localStorage.removeItem('nicolett_pending_booking');
+        isProcessingFlowReturn = true;
 
-                // Enviar confirmación por EmailJS si está configurado
-                if (typeof emailjs !== 'undefined' && app.clientEmail) {
-                    try {
-                        emailjs.send("service_rmc9mu9", "template_2h2ya38", {
-                            to_name: app.clientName,
-                            to_email: app.clientEmail,
-                            service: app.servicio,
-                            date: app.date,
-                            time: app.time,
-                            profesional: app.profesional,
-                            deposit: '$5.000 (Vía Flow)',
-                            balance: "$" + (app.balanceDue || 0).toLocaleString('es-CL')
-                        });
-                    } catch (err) {
-                        console.log("EmailJS error:", err);
-                    }
+        // IMPORTANTE: Marcar de inmediato como procesado y limpiar los pendientes para evitar concurrencia
+        sessionStorage.setItem(tokenProcessedKey, 'true');
+        localStorage.setItem(tokenProcessedKey, 'true');
+        sessionStorage.removeItem('nicolett_pending_booking');
+        localStorage.removeItem('nicolett_pending_booking');
+
+        // Limpiar la URL de inmediato para evitar que un F5 reintente la acción
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+
+        try {
+            const app = JSON.parse(pendingStr);
+            app.status = 'confirmada';
+            app.paymentStatus = 'pagado';
+            app.depositAmount = 5000;
+            app.flowToken = token;
+            app.flowOrder = order;
+            app.paymentMethod = app.paymentMethod || 'Flow (Webpay Plus)';
+
+            await StorageHelper.saveAppointment(app);
+
+            // Asegurar que el perfil de la clienta quede vinculado sin duplicados en Firestore
+            if (app.clientEmail && typeof StorageHelper.getOrCreateClientProfile === 'function') {
+                try {
+                    await StorageHelper.getOrCreateClientProfile(app.clientEmail, app.clientName, app.clientPhone);
+                    window.updateNavAuthVisibility();
+                } catch(profileErr) {
+                    console.warn('[Flow] Error vinculando perfil_cliente:', profileErr);
                 }
-
-                // Limpiar la URL sin recargar
-                window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
-
-                // Mostrar modal de éxito
-                setTimeout(() => {
-                    const balanceNotice = document.getElementById('success-balance-notice');
-                    if (balanceNotice) {
-                        const bal = app.balanceDue || 0;
-                        balanceNotice.innerHTML = `
-                            <div style="font-weight:700; color:#1b5e20; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                                <i data-lucide="check-circle" style="width:18px; height:18px; color:#2e7d32;"></i>
-                                ¡Abono de $5.000 recibido exitosamente vía Flow!
-                            </div>
-                            <div style="font-size:0.88rem; color:#2e7d32; line-height:1.4;">
-                                Cita confirmada para <strong>${app.clientName}</strong> con <strong>${app.profesional}</strong> el <strong>${app.date}</strong> a las <strong>${app.time}</strong>.<br>
-                                Saldo restante en el estudio: <strong>$${bal.toLocaleString('es-CL')}</strong>.
-                            </div>
-                        `;
-                    }
-                    const successModal = document.getElementById('success-modal');
-                    if (successModal) {
-                        successModal.style.display = 'flex';
-                        if (window.lucide) lucide.createIcons();
-                    } else {
-                        alert(`✨ ¡Excelente! Tu abono de $5.000 vía Flow fue recibido con éxito.\nTu cita de ${app.servicio} para el ${app.date} a las ${app.time} ha quedado confirmada.`);
-                    }
-                }, 400);
-            } catch (e) {
-                console.error("Error confirmando retorno Flow:", e);
             }
+
+            // Enviar confirmación por EmailJS si está configurado
+            if (typeof emailjs !== 'undefined' && app.clientEmail) {
+                try {
+                    await emailjs.send("service_rmc9mu9", "template_2h2ya38", {
+                        to_name: app.clientName,
+                        to_email: app.clientEmail,
+                        service: app.servicio,
+                        date: app.date,
+                        time: app.time,
+                        profesional: app.profesional,
+                        deposit: '$5.000 (Vía Flow)',
+                        balance: "$" + (app.balanceDue || 0).toLocaleString('es-CL')
+                    });
+                } catch (err) {
+                    console.log("EmailJS error:", err);
+                }
+            }
+
+            // Mostrar modal de éxito
+            setTimeout(() => {
+                const balanceNotice = document.getElementById('success-balance-notice');
+                if (balanceNotice) {
+                    const bal = app.balanceDue || 0;
+                    balanceNotice.innerHTML = `
+                        <div style="font-weight:700; color:#1b5e20; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                            <i data-lucide="check-circle" style="width:18px; height:18px; color:#2e7d32;"></i>
+                            ¡Abono de $5.000 recibido exitosamente vía Flow!
+                        </div>
+                        <div style="font-size:0.88rem; color:#2e7d32; line-height:1.4;">
+                            Cita confirmada para <strong>${app.clientName}</strong> con <strong>${app.profesional}</strong> el <strong>${app.date}</strong> a las <strong>${app.time}</strong>.<br>
+                            Saldo restante en el estudio: <strong>$${bal.toLocaleString('es-CL')}</strong>.
+                        </div>
+                    `;
+                }
+                const successModal = document.getElementById('success-modal');
+                if (successModal) {
+                    successModal.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                } else {
+                    alert(`✨ ¡Excelente! Tu abono de $5.000 vía Flow fue recibido con éxito.\nTu cita de ${app.servicio} para el ${app.date} a las ${app.time} ha quedado confirmada.`);
+                }
+            }, 400);
+        } catch (e) {
+            console.error("Error confirmando retorno Flow:", e);
+        } finally {
+            isProcessingFlowReturn = false;
         }
     } else if (action === 'flow-failed') {
         window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
@@ -222,7 +257,11 @@ window.updateNavAuthVisibility = function() {
     const navAdmin = document.getElementById('nav-admin');
     const navStaffDoor = document.getElementById('nav-staff-door');
     const authData = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
-    const isPersonalized = localStorage.getItem('nicolett_personalization');
+    const persStr = localStorage.getItem('nicolett_personalization');
+    let pers = null;
+    if (persStr) {
+        try { pers = JSON.parse(persStr); } catch(e){}
+    }
 
     if (authData && authData.loggedIn) {
         if (btnLogout) {
@@ -235,21 +274,27 @@ window.updateNavAuthVisibility = function() {
             navAdmin.textContent = isAdm ? 'Portal Administradora' : `Portal Trabajadora (${authData.user?.name || 'Equipo'})`;
         }
         if (navStaffDoor) navStaffDoor.style.display = 'none';
-    } else if (isPersonalized) {
+        if (navPerfil) navPerfil.style.display = 'none';
+    } else if (pers) {
         if (btnLogout) {
             btnLogout.style.display = 'inline-block';
             btnLogout.title = 'Cerrar sesión de mi perfil';
         }
         if (navAdmin) navAdmin.style.display = 'none';
         if (navStaffDoor) navStaffDoor.style.display = 'inline-flex';
+        if (navPerfil) {
+            navPerfil.style.display = 'inline-block';
+            const firstName = (pers.name || '').trim().split(' ')[0];
+            navPerfil.textContent = firstName ? `Mi Perfil (${firstName})` : 'Mi Perfil';
+        }
     } else {
         if (btnLogout) btnLogout.style.display = 'none';
         if (navAdmin) navAdmin.style.display = 'none';
         if (navStaffDoor) navStaffDoor.style.display = 'inline-flex';
-    }
-
-    if (navPerfil) {
-        navPerfil.style.display = isPersonalized ? 'inline-block' : 'none';
+        if (navPerfil) {
+            navPerfil.style.display = 'inline-block';
+            navPerfil.textContent = 'Mi Perfil';
+        }
     }
 };
 
@@ -321,33 +366,31 @@ function setupPersonalization() {
             const email = document.getElementById('personalize-email').value.trim();
             const btn = form.querySelector('button[type="submit"]');
 
+            if (!email) {
+                alert('Por favor ingresa tu correo electrónico.');
+                return;
+            }
+
             btn.disabled = true;
-            btn.innerText = 'Guardando...';
+            btn.innerText = 'Cargando perfil...';
 
             try {
-                if (typeof firebase !== 'undefined' && firebase.firestore) {
-                    const db = firebase.firestore();
-                    const snapshot = await db.collection('perfil_cliente').where('email', '==', email).get();
-                    if (snapshot.empty) {
-                        await db.collection('perfil_cliente').add({
-                            name: name,
-                            email: email,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    }
-                }
-
-                localStorage.setItem('nicolett_personalization', JSON.stringify({ name, email }));
+                // Utiliza la función centralizada que verifica si ya existe en Firestore
+                // para evitar crear un registro duplicado
+                const profile = await StorageHelper.getOrCreateClientProfile(email, name);
+                await StorageHelper.loadAppointmentsCache();
                 window.updateNavAuthVisibility();
 
                 if (modal) modal.style.opacity = '0';
                 setTimeout(() => {
                     if (modal) modal.style.display = 'none';
-                    AppRouter.navigate('perfil');
-                }, 500);
+                    if (typeof AppRouter !== 'undefined') {
+                        AppRouter.navigate('perfil');
+                    }
+                }, 400);
             } catch (error) {
-                console.error('Error al guardar perfil:', error);
-                alert('Hubo un problema al guardar tus datos, intenta de nuevo.');
+                console.error('Error al guardar o acceder al perfil:', error);
+                alert('Hubo un problema al procesar tus datos: ' + (error.message || 'intenta de nuevo.'));
                 btn.disabled = false;
                 btn.innerText = '¡Sí, personalizar!';
             }
@@ -892,6 +935,7 @@ function initAgendarEvents() {
             const pers = JSON.parse(persStr);
             if (inputName && !inputName.value) inputName.value = pers.name || '';
             if (inputEmail && !inputEmail.value) inputEmail.value = pers.email || '';
+            if (inputPhone && !inputPhone.value && pers.phone) inputPhone.value = pers.phone;
             validateStep4();
         } catch (e) { }
     }
@@ -1666,16 +1710,21 @@ function initAdminEvents() {
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
 
                         try {
+                            const currentAuth = StorageHelper.getAuth();
+                            const profName = currentAuth?.user?.name || 'Administración';
+                            const profId = currentAuth?.user?.id || '';
                             await StorageHelper.addGalleryImage({
                                 title: titleInput.value.trim(),
                                 serviceName: titleInput.value.trim(),
-                                source: 'admin',
+                                profesional: profName,
+                                profId: profId,
+                                source: currentAuth?.user?.role === 'admin' ? 'admin' : 'worker',
                                 date: new Date().toLocaleDateString('es-CL'),
                                 src: dataUrl
                             });
                             formGallery.reset();
                             statusGallery.style.display = 'none';
-                            alert("¡Foto agregada a la galería con éxito desde el panel de administración!");
+                            alert("¡Foto agregada a la galería con éxito!");
                             AppRouter.refresh(); // Recargar para ver los cambios
                         } catch (err) {
                             alert("Error: No hay más espacio en la memoria. Por favor, elimina algunas fotos de la galería primero.");
@@ -1784,33 +1833,57 @@ function initAdminEvents() {
         });
     });
 
-    // Filtros de Galería en Panel Admin (Todas, Por Aprobar, En Galería Pública, Clientas, Estudio)
+    // Filtros de Galería en Panel Admin / Trabajadora
     const filterChips = document.querySelectorAll('#gallery-filter-chips .gallery-filter-chip');
+    function applyGalleryFilter(filter) {
+        const items = document.querySelectorAll('#admin-gallery-grid .admin-gallery-item');
+        items.forEach(item => {
+            const source = item.getAttribute('data-source');
+            const status = item.getAttribute('data-status');
+            const prof = item.getAttribute('data-prof') || '';
+            const isMyClient = item.getAttribute('data-is-my-client') === 'true';
+            const isMyWork = item.getAttribute('data-is-my-work') === 'true';
+            const isMyPending = item.getAttribute('data-is-my-pending') === 'true';
+
+            if (filter === 'all') {
+                item.style.display = 'block';
+            } else if (filter === 'my-client') {
+                item.style.display = isMyClient ? 'block' : 'none';
+            } else if (filter === 'my-all') {
+                item.style.display = isMyWork ? 'block' : 'none';
+            } else if (filter === 'my-pending') {
+                item.style.display = isMyPending ? 'block' : 'none';
+            } else if (filter === 'pending') {
+                item.style.display = (status === 'pending') ? 'block' : 'none';
+            } else if (filter === 'public') {
+                item.style.display = (status === 'approved' || status === 'studio') ? 'block' : 'none';
+            } else if (filter === 'client') {
+                item.style.display = (source === 'client') ? 'block' : 'none';
+            } else if (filter === 'admin') {
+                item.style.display = (source !== 'client') ? 'block' : 'none';
+            } else if (filter.startsWith('prof-')) {
+                const targetProf = filter.replace('prof-', '').toLowerCase();
+                item.style.display = prof.includes(targetProf) ? 'block' : 'none';
+            } else {
+                item.style.display = 'block';
+            }
+        });
+    }
+
     filterChips.forEach(chip => {
         chip.addEventListener('click', () => {
             filterChips.forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
             const filter = chip.getAttribute('data-filter');
-            const items = document.querySelectorAll('#admin-gallery-grid .admin-gallery-item');
-            items.forEach(item => {
-                const source = item.getAttribute('data-source');
-                const status = item.getAttribute('data-status');
-                if (filter === 'all') {
-                    item.style.display = 'block';
-                } else if (filter === 'pending') {
-                    item.style.display = (status === 'pending') ? 'block' : 'none';
-                } else if (filter === 'public') {
-                    item.style.display = (status === 'approved' || status === 'studio') ? 'block' : 'none';
-                } else if (filter === 'client') {
-                    item.style.display = (source === 'client') ? 'block' : 'none';
-                } else if (filter === 'admin') {
-                    item.style.display = (source !== 'client') ? 'block' : 'none';
-                } else {
-                    item.style.display = 'block';
-                }
-            });
+            applyGalleryFilter(filter);
         });
     });
+
+    // Si el usuario conectado es trabajadora, activar de inmediato el filtro inicial (Fotos de mis clientas)
+    const initialActiveChip = document.querySelector('#gallery-filter-chips .gallery-filter-chip.active');
+    if (initialActiveChip) {
+        applyGalleryFilter(initialActiveChip.getAttribute('data-filter'));
+    }
 
     // Actualizar Stock de Inventario
     document.querySelectorAll('.btn-update-stock').forEach(btn => {
@@ -3154,14 +3227,30 @@ function setupClientPhotoModal() {
             } catch(err) {}
 
             // Validar que la clienta tenga citas agendadas previamente
-            const clientAppointments = (pers && pers.email) 
-                ? StorageHelper.getAppointments().filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase())
+            const clientAppointments = (pers && (pers.email || pers.phone)) 
+                ? (typeof StorageHelper.getClientAppointments === 'function'
+                    ? StorageHelper.getClientAppointments(pers.email, pers.phone)
+                    : StorageHelper.getAppointments().filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase()))
                 : [];
 
             if (clientAppointments.length === 0) {
                 alert("Acción no permitida: Solo las clientas con citas agendadas previamente pueden subir fotos.");
                 closeModal();
                 return;
+            }
+
+            // Obtener el especialista que realizó la atención
+            const selectedOption = serviceSelect ? serviceSelect.options[serviceSelect.selectedIndex] : null;
+            let profName = selectedOption?.dataset?.prof || '';
+            let profId = selectedOption?.dataset?.profId || '';
+
+            // Fallback si la clienta seleccionó el servicio pero no estaba en dataset
+            if (!profName) {
+                const matchedAppt = clientAppointments.find(a => (a.servicio || '') === serviceVal);
+                if (matchedAppt) {
+                    profName = matchedAppt.profesional || '';
+                    profId = matchedAppt.profId || '';
+                }
             }
 
             btnSubmit.disabled = true;
@@ -3173,6 +3262,8 @@ function setupClientPhotoModal() {
                 serviceName: serviceVal,
                 clientName: pers.name,
                 clientEmail: pers.email,
+                profesional: profName, // ej: "Camila"
+                profId: profId,
                 source: 'client',
                 approved: false,
                 status: 'pending',
@@ -3183,7 +3274,8 @@ function setupClientPhotoModal() {
             try {
                 await StorageHelper.addGalleryImage(newPhoto);
 
-                alert("¡Excelente! Tu foto ha sido guardada en tu perfil y enviada a la administradora para su revisión. Una vez aprobada, aparecerá publicada en la Galería de Trabajos. ¡Gracias por compartir tu resultado!");
+                const msgProf = profName ? `asignada a tu especialista ${profName}` : 'enviada a la galería del salón';
+                alert(`¡Excelente! Tu foto ha sido guardada en tu perfil y ${msgProf}. Ahora se reflejará en la galería de su perfil para que pueda ver tu resultado.`);
                 closeModal();
 
                 // Recargar vista para ver los cambios
@@ -3210,15 +3302,93 @@ function initPerfilEvents() {
         if (persStr) pers = JSON.parse(persStr);
     } catch(e) {}
 
-    // Obtener citas de la clienta
-    const clientAppointments = (pers && pers.email)
-        ? StorageHelper.getAppointments().filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase())
+    // 1. Manejo del formulario de inicio de sesión / consulta directa en Mi Perfil
+    const directLoginForm = document.getElementById('perfil-direct-login-form');
+    if (directLoginForm) {
+        directLoginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const emailInput = document.getElementById('perfil-login-email');
+            const nameInput = document.getElementById('perfil-login-name');
+            const btnSubmit = document.getElementById('btn-perfil-direct-login');
+
+            const email = (emailInput?.value || '').trim();
+            const name = (nameInput?.value || '').trim();
+
+            if (!email) {
+                alert('Por favor ingresa tu correo electrónico.');
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<i data-lucide="loader" class="lucide-spin" style="width:18px; height:18px; margin-right:6px; vertical-align:middle;"></i> Conectando...';
+            if (window.lucide) lucide.createIcons();
+
+            try {
+                // Recuperar o crear perfil (no duplicará si ya existe en Firestore)
+                const profile = await StorageHelper.getOrCreateClientProfile(email, name);
+
+                // Asegurarse de que el caché de citas esté sincronizado
+                await StorageHelper.loadAppointmentsCache();
+
+                // Actualizar barra de navegación
+                window.updateNavAuthVisibility();
+
+                const clientAppts = StorageHelper.getClientAppointments(profile.email, profile.phone);
+                if (profile.isExisting) {
+                    const countMsg = clientAppts.length > 0 
+                        ? `Encontramos ${clientAppts.length} cita(s) asociadas a tu correo.` 
+                        : 'No encontramos citas registradas aún, ¡puedes agendar tu primera cita!';
+                    alert(`✨ ¡Bienvenida de nuevo, ${profile.name}!\n${countMsg}`);
+                } else {
+                    const countMsg = clientAppts.length > 0
+                        ? `Asociamos ${clientAppts.length} cita(s) agendada(s) a tu nuevo perfil.`
+                        : 'Tu cuenta ha sido creada con éxito.';
+                    alert(`✨ ¡Cuenta creada exitosamente, ${profile.name}!\n${countMsg}`);
+                }
+
+                if (typeof AppRouter !== 'undefined') {
+                    AppRouter.refresh();
+                }
+            } catch (err) {
+                console.error('Error al iniciar sesión en perfil:', err);
+                alert('Hubo un error al procesar tu acceso: ' + (err.message || 'Intenta nuevamente'));
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i data-lucide="log-in" style="width:18px; height:18px; margin-right:6px; vertical-align:middle;"></i> Ingresar a Mi Perfil / Ver Mis Citas';
+                if (window.lucide) lucide.createIcons();
+            }
+        });
+    }
+
+    // Obtener citas de la clienta mediante el buscador seguro y normalizado
+    const clientAppointments = (pers && (pers.email || pers.phone))
+        ? (typeof StorageHelper.getClientAppointments === 'function'
+            ? StorageHelper.getClientAppointments(pers.email, pers.phone)
+            : StorageHelper.getAppointments().filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase()))
         : [];
 
     const modal = document.getElementById('client-photo-modal');
     const serviceSelect = document.getElementById('client-photo-service');
 
-    function populateServiceSelect(preselectedService) {
+    function updateProfBadge() {
+        const badge = document.getElementById('client-photo-prof-badge');
+        const nameEl = document.getElementById('client-photo-prof-name');
+        if (!badge || !nameEl || !serviceSelect) return;
+        const selectedOpt = serviceSelect.options[serviceSelect.selectedIndex];
+        const prof = selectedOpt?.dataset?.prof;
+        if (prof) {
+            nameEl.textContent = prof;
+            badge.style.display = 'inline-flex';
+        } else {
+            badge.style.display = 'none';
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+
+    if (serviceSelect) {
+        serviceSelect.addEventListener('change', updateProfBadge);
+    }
+
+    function populateServiceSelect(preselectedService, preselectedProf) {
         if (!serviceSelect) return;
         serviceSelect.innerHTML = '<option value="">Selecciona el servicio que te realizaste...</option>';
 
@@ -3227,26 +3397,35 @@ function initPerfilEvents() {
             groupOpt.label = 'Tus Citas Realizadas en Nicolett Studio';
             clientAppointments.forEach(a => {
                 const sName = a.servicio || 'Servicio';
-                const label = `${sName} (${a.date} • ${a.profesional || 'Especialista'})`;
+                const pName = a.profesional || 'Especialista';
+                const label = `${sName} (${a.date} • ${pName})`;
                 const opt = document.createElement('option');
                 opt.value = sName;
                 opt.textContent = label;
+                opt.dataset.prof = pName;
+                opt.dataset.profId = a.profId || '';
+                opt.dataset.date = a.date || '';
+                opt.dataset.appointmentId = a.id || '';
+
                 if (preselectedService && (preselectedService === sName || preselectedService === label)) {
-                    opt.selected = true;
+                    if (!preselectedProf || preselectedProf === pName) {
+                        opt.selected = true;
+                    }
                 }
                 groupOpt.appendChild(opt);
             });
             serviceSelect.appendChild(groupOpt);
+            updateProfBadge();
         }
     }
 
-    function openModalWithService(serviceName) {
+    function openModalWithService(serviceName, prof, profId) {
         // Validación obligatoria: Solo clientas con citas pueden subir fotos
         if (clientAppointments.length === 0) {
             alert("Para poder subir fotos a la galería, debes tener al menos una cita agendada o completada previamente.");
             return;
         }
-        populateServiceSelect(serviceName);
+        populateServiceSelect(serviceName, prof);
         if (modal) {
             modal.style.display = 'flex';
             if (window.lucide) lucide.createIcons();
@@ -3268,7 +3447,9 @@ function initPerfilEvents() {
     document.querySelectorAll('.btn-service-photo').forEach(btn => {
         btn.addEventListener('click', () => {
             const sName = btn.getAttribute('data-service') || '';
-            openModalWithService(sName);
+            const prof = btn.getAttribute('data-prof') || '';
+            const profId = btn.getAttribute('data-prof-id') || '';
+            openModalWithService(sName, prof, profId);
         });
     });
 
@@ -3282,6 +3463,34 @@ function initPerfilEvents() {
                     AppRouter.refresh();
                 }
             }
+        });
+    });
+}
+
+// --- Eventos de Galería Pública ---
+function initGaleriaEvents() {
+    if (window.lucide) lucide.createIcons();
+
+    const filterBtns = document.querySelectorAll('.public-gal-filter');
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterBtns.forEach(b => {
+                b.classList.remove('active');
+                b.classList.add('btn-outline');
+            });
+            btn.classList.add('active');
+            btn.classList.remove('btn-outline');
+
+            const filter = (btn.getAttribute('data-filter') || 'all').toLowerCase();
+            const cards = document.querySelectorAll('#public-gallery-grid .public-gallery-card');
+            cards.forEach(card => {
+                const cardProf = (card.getAttribute('data-prof') || '').toLowerCase();
+                if (filter === 'all' || cardProf.includes(filter)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
         });
     });
 }
