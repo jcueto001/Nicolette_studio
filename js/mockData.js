@@ -1406,7 +1406,8 @@ const StorageHelper = {
         const gallery = this.getGallery();
         if (!email) return [];
         const normEmail = email.trim().toLowerCase();
-        return gallery.filter(img => img.source === 'client' && img.clientEmail && img.clientEmail.trim().toLowerCase() === normEmail);
+        // Muestra todas las fotos asociadas a esta clienta (tomadas por la trabajadora o registradas para su correo)
+        return gallery.filter(img => img.clientEmail && img.clientEmail.trim().toLowerCase() === normEmail);
     },
 
     // Obtener fotos asociadas a una trabajadora específica (por nombre o id)

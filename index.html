@@ -188,21 +188,21 @@
                 <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--clr-nude-light); display: inline-flex; align-items: center; justify-content: center; color: var(--clr-rose-gold); margin-bottom: 10px;">
                     <i data-lucide="camera" style="width: 28px; height: 28px;"></i>
                 </div>
-                <h3 style="font-family: var(--font-heading); color: var(--clr-rose-gold-dark); font-size: 1.6rem; margin: 0 0 6px 0;">Foto de tu Servicio</h3>
+                <h3 style="font-family: var(--font-heading); color: var(--clr-rose-gold-dark); font-size: 1.6rem; margin: 0 0 6px 0;">Sacar Foto de Trabajo</h3>
                 <p style="color: var(--clr-neutral-gray); font-size: 0.92rem; margin: 0; line-height: 1.5;">
-                    Saca o sube una foto del resultado de tu atención para que se guarde en tu perfil y se agregue a la galería del salón.
+                    Captura con la cámara o sube una imagen de la atención realizada. Se guardará en tu galería de especialista y en el perfil de la clienta.
                 </p>
             </div>
 
             <form id="form-client-photo" style="display: flex; flex-direction: column; gap: 16px;">
-                <!-- Selección de Servicio y Especialista -->
+                <!-- Selección de Cita / Clienta y Especialista -->
                 <div>
                     <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem; color: var(--clr-neutral-dark);">
-                        ¿Qué servicio te realizaste?
+                        ¿A qué cita o clienta corresponde?
                     </label>
                     <select id="client-photo-service" required
                         style="width:100%; padding:11px 12px; border:1px solid #ddd; border-radius:8px; font-family: var(--font-body); background:white;">
-                        <option value="">Selecciona un servicio...</option>
+                        <option value="">Selecciona la cita o clienta...</option>
                     </select>
                     <div id="client-photo-prof-badge" style="display:none; margin-top:8px; font-size:0.85rem; color:var(--clr-rose-gold-dark); background:var(--clr-nude-light); padding:5px 12px; border-radius:14px; font-weight:600; align-items:center; gap:6px;">
                         <i data-lucide="sparkles" style="width:14px; height:14px; color:var(--clr-rose-gold);"></i>
@@ -213,9 +213,9 @@
                 <!-- Título o Comentario opcional -->
                 <div>
                     <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem; color: var(--clr-neutral-dark);">
-                        Comentario o detalle (opcional)
+                        Título o Detalle del Trabajo (opcional)
                     </label>
-                    <input type="text" id="client-photo-title" placeholder="Ej: Mis uñas acrílicas baby boomer con brillo ✨"
+                    <input type="text" id="client-photo-title" placeholder="Ej: Manicure Permanente con Foil y Brillo ✨"
                         style="width:100%; padding:11px 12px; border:1px solid #ddd; border-radius:8px; font-family: var(--font-body);">
                 </div>
 
@@ -278,6 +278,14 @@
                 <!-- Estado / Compresión -->
                 <div id="client-photo-status" style="display:none; text-align:center; padding:8px; font-size:0.88rem; border-radius:6px;"></div>
 
+                <!-- Opción de Publicación -->
+                <div style="background:var(--clr-nude-light); padding:10px 14px; border-radius:8px;">
+                    <label style="display:flex; align-items:center; gap:8px; font-size:0.88rem; color:var(--clr-neutral-dark); cursor:pointer; margin:0;">
+                        <input type="checkbox" id="worker-photo-public" checked style="width:17px; height:17px; accent-color:var(--clr-rose-gold);">
+                        <span>Mostrar en la Galería Pública del Salón</span>
+                    </label>
+                </div>
+
                 <!-- Botones del Modal -->
                 <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
                     <button type="button" id="btn-cancel-client-photo" class="btn btn-outline" style="padding:10px 18px;">
@@ -285,7 +293,7 @@
                     </button>
                     <button type="submit" id="btn-submit-client-photo" class="btn btn-primary" disabled
                         style="padding:10px 22px; display:inline-flex; align-items:center; gap:8px;">
-                        <i data-lucide="upload"></i> Guardar en Galería
+                        <i data-lucide="camera"></i> Guardar Foto de Trabajo
                     </button>
                 </div>
             </form>
@@ -417,9 +425,9 @@
             emailjs.init("tUxZAGW52juzs6H5Q");
         })();
     </script>
-    <script src="js/mockData.js?v=14"></script>
-    <script src="js/app.js?v=14"></script>
-    <script src="js/main.js?v=14"></script>
+    <script src="js/mockData.js?v=15"></script>
+    <script src="js/app.js?v=15"></script>
+    <script src="js/main.js?v=15"></script>
 </body>
 
 </html>

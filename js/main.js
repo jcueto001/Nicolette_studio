@@ -1866,6 +1866,30 @@ function initAdminEvents() {
         });
     }
 
+    // Sacar foto de trabajo directamente desde la Agenda (Exclusivo Trabajadoras / Admin)
+    document.querySelectorAll('.btn-worker-take-photo').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const appid = btn.getAttribute('data-appid') || '';
+            const clientName = btn.getAttribute('data-clientname') || '';
+            const clientEmail = btn.getAttribute('data-clientemail') || '';
+            const serviceName = btn.getAttribute('data-servicename') || '';
+            const profName = btn.getAttribute('data-profname') || '';
+            const profId = btn.getAttribute('data-profid') || '';
+            if (typeof window.openWorkerPhotoModal === 'function') {
+                window.openWorkerPhotoModal({ appid, clientName, clientEmail, serviceName, profName, profId });
+            }
+        });
+    });
+
+    // Sacar foto de trabajo con cámara desde la pestaña Galería
+    document.querySelectorAll('.btn-worker-open-camera-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (typeof window.openWorkerPhotoModal === 'function') {
+                window.openWorkerPhotoModal({});
+            }
+        });
+    });
+
     // Eliminar Ficha
     document.querySelectorAll('.btn-del-ficha').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -3345,71 +3369,61 @@ function setupClientPhotoModal() {
         });
     }
 
-    // Enviar formulario y guardar foto
+    // Enviar formulario y guardar foto de trabajo (Exclusivo para Trabajadoras y Admin)
     if (form) {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!clientCapturedDataUrl) {
-                alert("Por favor, toma o selecciona una foto antes de guardar.");
+
+            const auth = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
+            if (!auth || !auth.loggedIn) {
+                alert("Acceso no autorizado: Solo las profesionales y la administración del salón pueden sacar y guardar fotos.");
+                closeModal();
                 return;
             }
 
+            if (!clientCapturedDataUrl) {
+                alert("Por favor, toma una foto con la cámara o selecciona una imagen antes de guardar.");
+                return;
+            }
+
+            const selectedOption = serviceSelect ? serviceSelect.options[serviceSelect.selectedIndex] : null;
             const serviceVal = serviceSelect ? serviceSelect.value : '';
             if (!serviceVal) {
-                alert("Por favor, selecciona qué servicio te realizaste.");
+                alert("Por favor, selecciona a qué cita o servicio corresponde la foto.");
                 return;
             }
 
             const titleInput = document.getElementById('client-photo-title');
             const customTitle = titleInput ? titleInput.value.trim() : '';
 
-            let pers = { name: 'Clienta', email: '' };
-            try {
-                const persStr = localStorage.getItem('nicolett_personalization');
-                if (persStr) pers = JSON.parse(persStr);
-            } catch(err) {}
+            // Datos de la cita/clienta seleccionada
+            const clientName = selectedOption?.dataset?.clientname || '';
+            const clientEmail = selectedOption?.dataset?.clientemail || '';
+            const serviceName = selectedOption?.dataset?.servicename || serviceVal;
+            const appointmentId = selectedOption?.dataset?.appid || '';
 
-            // Validar que la clienta tenga citas agendadas previamente
-            const clientAppointments = (pers && (pers.email || pers.phone)) 
-                ? (typeof StorageHelper.getClientAppointments === 'function'
-                    ? StorageHelper.getClientAppointments(pers.email, pers.phone)
-                    : StorageHelper.getAppointments().filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase()))
-                : [];
-
-            if (clientAppointments.length === 0) {
-                alert("Acción no permitida: Solo las clientas con citas agendadas previamente pueden subir fotos.");
-                closeModal();
-                return;
-            }
-
-            // Obtener el especialista que realizó la atención
-            const selectedOption = serviceSelect ? serviceSelect.options[serviceSelect.selectedIndex] : null;
-            let profName = selectedOption?.dataset?.prof || '';
-            let profId = selectedOption?.dataset?.profId || '';
-
-            // Fallback si la clienta seleccionó el servicio pero no estaba en dataset
-            if (!profName) {
-                const matchedAppt = clientAppointments.find(a => (a.servicio || '') === serviceVal);
-                if (matchedAppt) {
-                    profName = matchedAppt.profesional || '';
-                    profId = matchedAppt.profId || '';
-                }
-            }
+            // Datos de la especialista conectada
+            const profName = auth.user?.name || selectedOption?.dataset?.prof || 'Especialista';
+            const profId = auth.user?.id || selectedOption?.dataset?.profId || '';
+            const isPublicChecked = document.getElementById('worker-photo-public') ? document.getElementById('worker-photo-public').checked : true;
 
             btnSubmit.disabled = true;
-            btnSubmit.innerText = "Guardando en galería...";
+            btnSubmit.innerText = "Guardando foto de trabajo...";
+
+            const finalTitle = customTitle || (serviceName + (clientName ? ` - ${clientName}` : ''));
 
             const newPhoto = {
                 src: clientCapturedDataUrl,
-                title: customTitle || `${serviceVal} - ${pers.name}`,
-                serviceName: serviceVal,
-                clientName: pers.name,
-                clientEmail: pers.email,
-                profesional: profName, // ej: "Camila"
+                title: finalTitle,
+                serviceName: serviceName,
+                clientName: clientName,
+                clientEmail: clientEmail,
+                appointmentId: appointmentId,
+                profesional: profName,
                 profId: profId,
-                source: 'client',
-                approved: false,
-                status: 'pending',
+                source: auth.user?.role === 'admin' ? 'admin' : 'worker',
+                approved: isPublicChecked, // Si está marcado, visible directamente en la galería pública
+                status: isPublicChecked ? 'approved' : 'studio',
                 date: new Date().toLocaleDateString('es-CL'),
                 timestamp: Date.now()
             };
@@ -3417,8 +3431,8 @@ function setupClientPhotoModal() {
             try {
                 await StorageHelper.addGalleryImage(newPhoto);
 
-                const msgProf = profName ? `asignada a tu especialista ${profName}` : 'enviada a la galería del salón';
-                alert(`¡Excelente! Tu foto ha sido guardada en tu perfil y ${msgProf}. Ahora se reflejará en la galería de su perfil para que pueda ver tu resultado.`);
+                const clientMsg = clientName ? ` y en el perfil de ${clientName}` : '';
+                alert(`✨ ¡Foto de trabajo guardada con éxito!\nSe ha guardado en tu galería de especialista${clientMsg}.`);
                 closeModal();
 
                 // Recargar vista para ver los cambios
@@ -3435,6 +3449,102 @@ function setupClientPhotoModal() {
     }
 }
 
+// Función global para que las trabajadoras y admin abran el modal de fotos
+window.openWorkerPhotoModal = function(params = {}) {
+    const auth = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
+    if (!auth || !auth.loggedIn) {
+        alert("Acceso exclusivo: Solo las profesionales y la administración del salón pueden sacar y subir fotos de servicios.");
+        return;
+    }
+
+    const modal = document.getElementById('client-photo-modal');
+    const serviceSelect = document.getElementById('client-photo-service');
+    const badge = document.getElementById('client-photo-prof-badge');
+    const nameEl = document.getElementById('client-photo-prof-name');
+    const titleInput = document.getElementById('client-photo-title');
+
+    if (!modal) return;
+
+    if (badge && nameEl) {
+        nameEl.textContent = auth.user?.name || 'Especialista';
+        badge.style.display = 'inline-flex';
+    }
+
+    if (serviceSelect) {
+        serviceSelect.innerHTML = '';
+
+        const defOpt = document.createElement('option');
+        defOpt.value = '';
+        defOpt.textContent = 'Selecciona la cita o clienta...';
+        serviceSelect.appendChild(defOpt);
+
+        const allAppointments = StorageHelper.getAppointments ? StorageHelper.getAppointments() : [];
+        const isAdmin = auth.user?.role === 'admin';
+        const myName = (auth.user?.name || '').toLowerCase();
+        const myId = (auth.user?.id || '').toLowerCase();
+
+        // Filtrar citas que correspondan a esta trabajadora (o todas si es admin)
+        const relevantAppointments = isAdmin 
+            ? allAppointments 
+            : allAppointments.filter(a => {
+                const aProf = (a.profesional || '').toLowerCase();
+                const aId = (a.profId || '').toLowerCase();
+                return aProf === myName || aId === myId || aProf.includes(myName) || myName.includes(aProf);
+            });
+
+        if (relevantAppointments.length > 0) {
+            const group = document.createElement('optgroup');
+            group.label = `Citas de ${auth.user?.name || 'Especialista'}`;
+            relevantAppointments.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.servicio || 'Servicio';
+                opt.textContent = `${a.date} ${a.time || ''} • ${a.clientName || 'Clienta'} (${a.servicio || 'Servicio'})`;
+                opt.dataset.appid = a.id || '';
+                opt.dataset.clientname = a.clientName || '';
+                opt.dataset.clientemail = a.clientEmail || '';
+                opt.dataset.servicename = a.servicio || '';
+                opt.dataset.prof = a.profesional || auth.user?.name || '';
+                opt.dataset.profId = a.profId || auth.user?.id || '';
+
+                if (params.appid && params.appid === a.id) {
+                    opt.selected = true;
+                }
+                group.appendChild(opt);
+            });
+            serviceSelect.appendChild(group);
+        }
+
+        // Opción general si no es para una cita específica
+        const genOpt = document.createElement('option');
+        genOpt.value = 'Servicio General';
+        genOpt.textContent = '✨ Foto General de Portafolio / Sin clienta específica';
+        genOpt.dataset.appid = '';
+        genOpt.dataset.clientname = '';
+        genOpt.dataset.clientemail = '';
+        genOpt.dataset.servicename = 'Servicio General';
+        genOpt.dataset.prof = auth.user?.name || '';
+        genOpt.dataset.profId = auth.user?.id || '';
+        serviceSelect.appendChild(genOpt);
+
+        // Si vinieron parámetros directos y no se seleccionó ninguna por appid
+        if (params.serviceName && !params.appid) {
+            const match = Array.from(serviceSelect.options).find(o => o.dataset.servicename === params.serviceName);
+            if (match) match.selected = true;
+        }
+    }
+
+    if (titleInput) {
+        if (params.serviceName) {
+            titleInput.value = `${params.serviceName}${params.clientName ? ' - ' + params.clientName : ''}`;
+        } else {
+            titleInput.value = '';
+        }
+    }
+
+    modal.style.display = 'flex';
+    if (window.lucide) lucide.createIcons();
+};
+
 // --- Eventos del Portal de la Clienta (Mi Perfil) ---
 function initPerfilEvents() {
     if (window.lucide) lucide.createIcons();
@@ -3445,7 +3555,7 @@ function initPerfilEvents() {
         if (persStr) pers = JSON.parse(persStr);
     } catch(e) {}
 
-    // 1. Manejo del formulario de inicio de sesión / consulta directa en Mi Perfil
+    // Manejo del formulario de inicio de sesión / consulta directa en Mi Perfil
     const directLoginForm = document.getElementById('perfil-direct-login-form');
     if (directLoginForm) {
         directLoginForm.addEventListener('submit', async (e) => {
@@ -3501,113 +3611,6 @@ function initPerfilEvents() {
             }
         });
     }
-
-    // Obtener citas de la clienta mediante el buscador seguro y normalizado
-    const clientAppointments = (pers && (pers.email || pers.phone))
-        ? (typeof StorageHelper.getClientAppointments === 'function'
-            ? StorageHelper.getClientAppointments(pers.email, pers.phone)
-            : StorageHelper.getAppointments().filter(a => a.clientEmail && a.clientEmail.toLowerCase() === pers.email.toLowerCase()))
-        : [];
-
-    const modal = document.getElementById('client-photo-modal');
-    const serviceSelect = document.getElementById('client-photo-service');
-
-    function updateProfBadge() {
-        const badge = document.getElementById('client-photo-prof-badge');
-        const nameEl = document.getElementById('client-photo-prof-name');
-        if (!badge || !nameEl || !serviceSelect) return;
-        const selectedOpt = serviceSelect.options[serviceSelect.selectedIndex];
-        const prof = selectedOpt?.dataset?.prof;
-        if (prof) {
-            nameEl.textContent = prof;
-            badge.style.display = 'inline-flex';
-        } else {
-            badge.style.display = 'none';
-        }
-        if (window.lucide) lucide.createIcons();
-    }
-
-    if (serviceSelect) {
-        serviceSelect.addEventListener('change', updateProfBadge);
-    }
-
-    function populateServiceSelect(preselectedService, preselectedProf) {
-        if (!serviceSelect) return;
-        serviceSelect.innerHTML = '<option value="">Selecciona el servicio que te realizaste...</option>';
-
-        if (clientAppointments.length > 0) {
-            const groupOpt = document.createElement('optgroup');
-            groupOpt.label = 'Tus Citas Realizadas en Nicolett Studio';
-            clientAppointments.forEach(a => {
-                const sName = a.servicio || 'Servicio';
-                const pName = a.profesional || 'Especialista';
-                const label = `${sName} (${a.date} • ${pName})`;
-                const opt = document.createElement('option');
-                opt.value = sName;
-                opt.textContent = label;
-                opt.dataset.prof = pName;
-                opt.dataset.profId = a.profId || '';
-                opt.dataset.date = a.date || '';
-                opt.dataset.appointmentId = a.id || '';
-
-                if (preselectedService && (preselectedService === sName || preselectedService === label)) {
-                    if (!preselectedProf || preselectedProf === pName) {
-                        opt.selected = true;
-                    }
-                }
-                groupOpt.appendChild(opt);
-            });
-            serviceSelect.appendChild(groupOpt);
-            updateProfBadge();
-        }
-    }
-
-    function openModalWithService(serviceName, prof, profId) {
-        // Validación obligatoria: Solo clientas con citas pueden subir fotos
-        if (clientAppointments.length === 0) {
-            alert("Para poder subir fotos a la galería, debes tener al menos una cita agendada o completada previamente.");
-            return;
-        }
-        populateServiceSelect(serviceName, prof);
-        if (modal) {
-            modal.style.display = 'flex';
-            if (window.lucide) lucide.createIcons();
-        }
-    }
-
-    // Botón en banner superior del perfil
-    const btnBanner = document.getElementById('btn-open-photo-modal-banner');
-    if (btnBanner) {
-        btnBanner.addEventListener('click', () => openModalWithService(''));
-    }
-
-    // Botones de acción "Nueva foto" o "Sacar mi primera foto"
-    document.querySelectorAll('.btn-open-photo-modal-action').forEach(btn => {
-        btn.addEventListener('click', () => openModalWithService(''));
-    });
-
-    // Botón específico en cada cita del historial
-    document.querySelectorAll('.btn-service-photo').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const sName = btn.getAttribute('data-service') || '';
-            const prof = btn.getAttribute('data-prof') || '';
-            const profId = btn.getAttribute('data-prof-id') || '';
-            openModalWithService(sName, prof, profId);
-        });
-    });
-
-    // Eliminar foto propia de la clienta
-    document.querySelectorAll('.btn-del-client-photo').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const id = btn.getAttribute('data-id');
-            if (confirm('¿Deseas eliminar esta foto de tu perfil y de la galería del salón?')) {
-                await StorageHelper.deleteGalleryImage(id);
-                if (typeof AppRouter !== 'undefined') {
-                    AppRouter.refresh();
-                }
-            }
-        });
-    });
 }
 
 // --- Eventos de Galería Pública ---

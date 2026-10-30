@@ -924,7 +924,12 @@ function renderAdminView() {
                         </select>
                     </td>
                     <td style="padding: 15px;">
-                        ${!isFichaDone ? `<button class="btn btn-outline btn-sm btn-ficha" data-appid="${app.id}">Crear Ficha</button>` : `<span style="color: #4CAF50;"><i data-lucide="check-circle" style="width:16px; display:inline; vertical-align:middle;"></i> Ficha Lista</span>`}
+                        <div style="display:inline-flex; align-items:center; gap:6px;">
+                            ${!isFichaDone ? `<button class="btn btn-outline btn-sm btn-ficha" data-appid="${app.id}">Crear Ficha</button>` : `<span style="color: #4CAF50;"><i data-lucide="check-circle" style="width:16px; display:inline; vertical-align:middle;"></i> Ficha Lista</span>`}
+                            <button type="button" class="btn btn-outline btn-sm btn-worker-take-photo" data-appid="${app.id}" data-clientname="${app.clientName || 'Cliente'}" data-clientemail="${app.clientEmail || ''}" data-servicename="${serviceName}" data-profname="${profName}" data-profid="${app.profId || ''}" style="border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Sacar foto del trabajo para esta clienta">
+                                <i data-lucide="camera" style="width:14px; height:14px;"></i> Sacar Foto
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -1264,27 +1269,28 @@ function renderAdminView() {
             
             <!-- Tab Galería (Visible para Administradora y Trabajadoras) -->
             <div id="tab-galeria" class="admin-tab-content" style="${getTabPaneStyle('tab-galeria')}">
-                ${!isAdmin ? `
                 <div class="card" style="margin-bottom:20px; padding:20px; background:linear-gradient(135deg, #FFF9F5 0%, #FFFFFF 100%); border-left: 5px solid var(--clr-rose-gold);">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                         <div>
                             <h3 style="margin:0; font-size:1.35rem; color:var(--clr-rose-gold-dark); display:flex; align-items:center; gap:8px;">
-                                <i data-lucide="camera" style="width:22px; height:22px;"></i> Galería de Trabajos • ${auth.user.name || 'Especialista'}
+                                <i data-lucide="camera" style="width:22px; height:22px;"></i> Galería de Trabajos • ${auth.user.name || (isAdmin ? 'Administración' : 'Especialista')}
                             </h3>
                             <p style="margin:6px 0 0; color:var(--clr-neutral-gray); font-size:0.92rem;">
-                                Aquí se reflejan automáticamente las fotos que tus clientas suben de los servicios que realizaste con ellas. Puedes revisarlas, descargarlas o aprobarlas para la galería pública.
+                                Saca fotos de tus atenciones con la cámara o sube imágenes de trabajos. Las fotos vinculadas a una clienta se reflejarán en su perfil y en la galería del salón.
                             </p>
                         </div>
+                        <button type="button" class="btn btn-primary btn-worker-open-camera-modal" style="display:inline-flex; align-items:center; gap:8px; padding:10px 22px; font-weight:600; box-shadow:var(--shadow-soft);">
+                            <i data-lucide="camera" style="width:18px; height:18px;"></i> Sacar Foto con Cámara
+                        </button>
                     </div>
                 </div>
-                ` : ''}
 
                 <div class="card" style="margin-bottom:20px; padding:20px;">
-                    <h3 style="margin-bottom:15px;">Subir Nueva Foto a Galería (${isAdmin ? 'Administración' : (auth.user.name || 'Trabajadora')})</h3>
+                    <h3 style="margin-bottom:15px;">Subir Archivo de Foto a Galería (${isAdmin ? 'Administración' : (auth.user.name || 'Trabajadora')})</h3>
                     <form id="form-upload-gallery" style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">
                         <div style="flex: 1; min-width: 200px;">
                             <label style="display:block; margin-bottom:5px; font-weight:bold;">Título / Servicio</label>
-                            <input type="text" id="gallery-title" required placeholder="Ej: Manicure Permanente" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                            <input type="text" id="gallery-title" required placeholder="Ej: Manicure Permanente con Foil" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
                         </div>
                         <div style="flex: 1; min-width: 250px;">
                             <label style="display:block; margin-bottom:5px; font-weight:bold;">Seleccionar Imagen (Máx 5MB, se comprimirá automáticamente)</label>
@@ -1315,12 +1321,12 @@ function renderAdminView() {
                     };
 
                     const myPhotos = allGal.filter(g => isMyImage(g));
-                    const myClientPhotos = myPhotos.filter(g => g.source === 'client');
+                    const myClientPhotos = myPhotos.filter(g => g.source === 'client' || !!g.clientEmail || !!g.clientName);
                     const myPendingList = myClientPhotos.filter(g => !g.approved && g.status !== 'approved');
 
                     const pendingList = allGal.filter(g => g.source === 'client' && !g.approved && g.status !== 'approved');
-                    const approvedClientList = allGal.filter(g => g.source === 'client' && (g.approved === true || g.status === 'approved'));
-                    const studioList = allGal.filter(g => g.source !== 'client');
+                    const approvedClientList = allGal.filter(g => (g.source === 'client' || !!g.clientEmail || !!g.clientName) && (g.approved === true || g.status === 'approved'));
+                    const studioList = allGal.filter(g => g.source !== 'client' && !g.clientEmail && !g.clientName);
                     const publicTotal = studioList.length + approvedClientList.length;
 
                     return `
@@ -1369,33 +1375,33 @@ function renderAdminView() {
 
                         <div style="font-size:0.85rem; color:var(--clr-neutral-gray); display:flex; align-items:center; gap:6px;">
                             <i data-lucide="shield-check" style="width:16px; height:16px; color:var(--clr-rose-gold);"></i>
-                            <span>Las fotos de clientas quedan registradas con su especialista asignada.</span>
+                            <span>Las fotos tomadas por especialistas quedan asociadas directamente a la clienta y al salón.</span>
                         </div>
                     </div>
 
                     <div id="admin-gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px;">
                         ${allGal.map(img => {
-                            const isClient = img.source === 'client';
-                            const isApproved = !isClient || img.approved === true || img.status === 'approved';
-                            const statusKey = isClient ? (isApproved ? 'approved' : 'pending') : 'studio';
+                            const isClientRelated = (img.source === 'client') || !!img.clientEmail || !!img.clientName;
+                            const isApproved = !img.source || img.source !== 'client' || img.approved === true || img.status === 'approved';
+                            const statusKey = isClientRelated ? (isApproved ? 'approved' : 'pending') : 'studio';
                             const belongsToMe = isMyImage(img);
                             const profName = img.profesional || 'Nicolett Studio';
 
                             return `
                             <div class="admin-gallery-item" 
-                                data-source="${isClient ? 'client' : 'admin'}" 
+                                data-source="${isClientRelated ? 'client' : 'admin'}" 
                                 data-status="${statusKey}" 
                                 data-prof="${profName.toLowerCase()}"
-                                data-is-my-client="${(belongsToMe && isClient) ? 'true' : 'false'}"
+                                data-is-my-client="${(belongsToMe && isClientRelated) ? 'true' : 'false'}"
                                 data-is-my-work="${belongsToMe ? 'true' : 'false'}"
-                                data-is-my-pending="${(belongsToMe && isClient && !isApproved) ? 'true' : 'false'}"
+                                data-is-my-pending="${(belongsToMe && isClientRelated && !isApproved) ? 'true' : 'false'}"
                                 style="border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; height: 260px; background:#1c1917; border: 2px solid ${!isApproved ? '#f59e0b' : 'transparent'};">
                                 <img src="${img.src}" alt="${img.title || 'Trabajo'}" style="width:100%; height:100%; object-fit:cover; display:block;">
                                 
                                 <!-- Badges Superiores -->
                                 <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; z-index:2; pointer-events:none; flex-wrap:wrap; gap:4px;">
                                     <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                                        ${isClient ? `
+                                        ${isClientRelated ? `
                                             <span class="badge-client-photo" style="box-shadow:0 2px 6px rgba(0,0,0,0.3);">
                                                 <i data-lucide="user" style="width:11px; height:11px;"></i> ${img.clientName || 'Clienta'}
                                             </span>
@@ -2063,15 +2069,6 @@ function renderPerfilView() {
                         Especialista: <strong style="color:var(--clr-neutral-dark);">${appt.profesional}</strong>
                     </p>
                     ${hasDeposit ? `<p style="margin:6px 0 0 0; font-size:0.85rem; color:#28a745; font-weight:500;">✓ Abono verificado: $${depAmount.toLocaleString('es-CL')}</p>` : ''}
-                    
-                    <div style="margin-top:14px; padding-top:12px; border-top: 1px dashed #e8dcd0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                        <span style="font-size:0.85rem; color:var(--clr-neutral-gray); display:inline-flex; align-items:center; gap:5px;">
-                            <i data-lucide="sparkles" style="width:13px; height:13px; color:var(--clr-rose-gold);"></i> ¿Cómo quedó tu resultado?
-                        </span>
-                        <button type="button" class="btn btn-outline btn-sm btn-service-photo" data-service="${appt.servicio || ''}" data-prof="${appt.profesional || ''}" data-prof-id="${appt.profId || ''}" data-date="${appt.date || ''}" style="padding:6px 14px; font-size:0.82rem; font-weight:600; border-radius:20px; display:inline-flex; align-items:center; gap:6px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark);">
-                            <i data-lucide="camera" style="width:14px; height:14px;"></i> Sacar foto de este servicio
-                        </button>
-                    </div>
                 </div>
             `;
         });
@@ -2093,33 +2090,25 @@ function renderPerfilView() {
         `;
     }
 
-    // Condición: La clienta solo puede subir fotos si tiene citas agendadas previamente
-    const hasAppointments = userAppointments.length > 0;
-
-    // Sección de fotos tomadas / subidas por la clienta
+    // Galería de resultados de la clienta (fotos tomadas por su especialista)
     let clientGalleryHtml = `
         <div style="max-width:680px; margin:40px auto 0; text-align:left;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
                 <div>
                     <h3 style="margin:0; font-size:1.35rem; color:var(--clr-rose-gold-dark); display:flex; align-items:center; gap:8px;">
-                        <i data-lucide="images" style="width:22px; height:22px;"></i> Galería de mis Resultados
+                        <i data-lucide="sparkles" style="width:22px; height:22px;"></i> Galería de tus Resultados
                     </h3>
                     <p style="margin:4px 0 0; font-size:0.88rem; color:var(--clr-neutral-gray);">
-                        Fotos de tus servicios guardadas en tu perfil y enviadas a la galería del salón.
+                        Fotos de tus atenciones tomadas por tu especialista en Nicolett Studio Fantasy.
                     </p>
                 </div>
-                ${hasAppointments ? `
-                    <button type="button" class="btn btn-outline btn-sm btn-open-photo-modal-action" style="display:inline-flex; align-items:center; gap:6px; border-radius:20px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark);">
-                        <i data-lucide="plus"></i> Nueva Foto
-                    </button>
-                ` : ''}
             </div>
 
             ${clientPhotos.length > 0 ? `
                 <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:16px;">
                     ${clientPhotos.map(photo => `
                         <div class="card client-photo-card" style="padding:0; overflow:hidden; border-radius:var(--radius-md); box-shadow:var(--shadow-soft); background:#fff; position:relative;">
-                            <div style="height:170px; width:100%; overflow:hidden; background:#000;">
+                            <div style="height:180px; width:100%; overflow:hidden; background:#000;">
                                 <img src="${photo.src}" alt="${photo.title || 'Foto de servicio'}" style="width:100%; height:100%; object-fit:cover; display:block;">
                             </div>
                             <div style="padding:12px 14px;">
@@ -2136,43 +2125,26 @@ function renderPerfilView() {
                                 ` : ''}
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:0.75rem; color:var(--clr-neutral-gray);">
                                     <span><i data-lucide="calendar" style="width:12px; height:12px; vertical-align:middle;"></i> ${photo.date || 'Reciente'}</span>
-                                    <button type="button" class="btn-del-client-photo" data-id="${photo.id}" title="Eliminar mi foto" style="background:none; border:none; color:#c62828; cursor:pointer; padding:4px;">
-                                        <i data-lucide="trash-2" style="width:15px; height:15px;"></i>
-                                    </button>
+                                    <span style="color:#2e7d32; font-weight:600;"><i data-lucide="check" style="width:12px; height:12px; vertical-align:middle;"></i> Verificada</span>
                                 </div>
                             </div>
                             ${photo.approved === true || photo.status === 'approved' ? `
                                 <span style="position:absolute; top:8px; right:8px; background:rgba(16,185,129,0.95); color:white; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:700; backdrop-filter:blur(3px); display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
                                     <i data-lucide="check" style="width:12px; height:12px;"></i> Publicada en Galería
                                 </span>
-                            ` : `
-                                <span style="position:absolute; top:8px; right:8px; background:rgba(217,119,6,0.95); color:white; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:700; backdrop-filter:blur(3px); display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
-                                    <i data-lucide="clock" style="width:12px; height:12px;"></i> En revisión por admin
-                                </span>
-                            `}
+                            ` : ''}
                         </div>
                     `).join('')}
                 </div>
             ` : `
                 <div class="card" style="padding:28px 20px; text-align:center; background:#ffffff; box-shadow:var(--shadow-soft); border-radius:var(--radius-md); border:1.5px dashed #dfd5cb;">
-                    <i data-lucide="${hasAppointments ? 'camera' : 'calendar-plus'}" style="width:36px; height:36px; color:var(--clr-rose-gold); margin-bottom:8px;"></i>
+                    <i data-lucide="sparkles" style="width:36px; height:36px; color:var(--clr-rose-gold); margin-bottom:8px;"></i>
                     <h4 style="margin:0 0 6px; font-size:1.1rem; color:var(--clr-neutral-dark);">
-                        ${hasAppointments ? 'Aún no has compartido fotos de tus servicios' : 'Aún no tienes fotos de servicios'}
+                        Tus resultados se verán aquí
                     </h4>
-                    <p style="margin:0 auto 16px; font-size:0.88rem; color:var(--clr-neutral-gray); max-width:440px; line-height:1.5;">
-                        ${hasAppointments 
-                            ? 'Toma una foto de tus uñas, pestañas o peinado para mostrar el resultado de tu atención. ¡Aparecerá aquí y en la galería del salón!'
-                            : 'Para poder subir fotos a la galería y compartir tus resultados, primero debes agendar tu atención con nosotros.'}
+                    <p style="margin:0 auto; font-size:0.88rem; color:var(--clr-neutral-gray); max-width:440px; line-height:1.5;">
+                        Tu especialista tomará las fotos del resultado de tu atención al finalizar el servicio para que las veas guardadas en este espacio.
                     </p>
-                    ${hasAppointments ? `
-                        <button type="button" class="btn btn-outline btn-sm btn-open-photo-modal-action" style="display:inline-flex; align-items:center; gap:6px; border-radius:20px; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); padding:8px 18px; font-weight:600;">
-                            <i data-lucide="camera"></i> Sacar mi primera foto
-                        </button>
-                    ` : `
-                        <button type="button" class="btn btn-primary btn-sm" onclick="AppRouter.navigate('agendar')" style="display:inline-flex; align-items:center; gap:6px; border-radius:20px; padding:8px 20px; font-weight:600;">
-                            <i data-lucide="calendar"></i> Agendar mi primera cita
-                        </button>
-                    `}
                 </div>
             `}
         </div>
@@ -2197,42 +2169,6 @@ function renderPerfilView() {
                 </div>
             </div>
 
-            ${hasAppointments ? `
-            <!-- Banner para tomar/subir fotos del servicio (Habilitado para clientas con citas) -->
-            <div class="card" style="padding: 22px 24px; max-width: 680px; margin: 0 auto 28px; background: linear-gradient(135deg, #FFF9F5 0%, #FFFFFF 100%); border: 1.5px solid var(--clr-rose-gold-light); box-shadow: var(--shadow-soft); border-radius: var(--radius-md); text-align: left;">
-                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
-                    <div style="display:flex; align-items:center; gap:16px; flex:1; min-width:240px;">
-                        <div style="width:50px; height:50px; border-radius:50%; background:var(--clr-nude); display:flex; align-items:center; justify-content:center; color:var(--clr-rose-gold-dark); flex-shrink:0;">
-                            <i data-lucide="camera" style="width:24px; height:24px;"></i>
-                        </div>
-                        <div>
-                            <h4 style="margin:0 0 4px 0; color:var(--clr-rose-gold-dark); font-size:1.15rem;">¿Te encantó tu resultado?</h4>
-                            <p style="margin:0; font-size:0.88rem; color:var(--clr-neutral-gray); line-height:1.4;">
-                                Saca una foto con tu cámara o sube una imagen de tu atención para guardarla en tu perfil y compartirla en la galería del salón.
-                            </p>
-                        </div>
-                    </div>
-                    <button type="button" id="btn-open-photo-modal-banner" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; font-size:0.92rem; white-space:nowrap;">
-                        <i data-lucide="camera"></i> Sacar / Subir Foto
-                    </button>
-                </div>
-            </div>
-            ` : `
-            <!-- Aviso de bloqueo: solo clientas con citas pueden subir fotos -->
-            <div class="card" style="padding: 24px 20px; max-width: 680px; margin: 0 auto 28px; background: #faf7f4; border: 1.5px dashed var(--clr-rose-gold-light); box-shadow: var(--shadow-soft); border-radius: var(--radius-md); text-align: center;">
-                <div style="width: 48px; height: 48px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; color: var(--clr-rose-gold-dark); box-shadow: var(--shadow-soft);">
-                    <i data-lucide="lock" style="width: 22px; height: 22px;"></i>
-                </div>
-                <h4 style="margin: 0 0 6px 0; color: var(--clr-rose-gold-dark); font-size: 1.15rem;">Subida de fotos para clientas con citas</h4>
-                <p style="margin: 0 auto 16px; color: var(--clr-neutral-gray); font-size: 0.9rem; max-width: 480px; line-height: 1.5;">
-                    Para compartir fotos de tus servicios en la galería, primero debes tener al menos una cita agendada o realizada con nosotras.
-                </p>
-                <button class="btn btn-outline btn-sm" onclick="AppRouter.navigate('agendar')" style="padding: 8px 22px; border-radius: 20px; border-color: var(--clr-rose-gold); color: var(--clr-rose-gold-dark); font-weight: 600;">
-                    <i data-lucide="calendar"></i> Agendar mi primera cita
-                </button>
-            </div>
-            `}
-            
             ${historyHtml}
 
             ${clientGalleryHtml}
