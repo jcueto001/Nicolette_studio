@@ -187,7 +187,7 @@ function renderHomeView() {
                                 <img src="${s.image}" alt="${s.name}" style="width: 100%; height: 220px; object-fit: cover;">
                                 <div style="padding: 18px 20px 10px;">
                                     <span style="font-size: 0.72rem; text-transform: uppercase; background: var(--clr-nude-light); color: var(--clr-rose-gold-dark); padding: 3px 8px; border-radius: 10px; font-weight: 600; display: inline-block; margin-bottom: 6px;">
-                                        ${s.categoryId === 'manicura' ? 'Manicura' : (s.categoryId === 'pedicure' ? 'Pedicure' : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas' : (s.categoryId === 'depilacion' ? 'Depilación' : 'Cabello')))}
+                                        ${s.categoryId === 'capilar' ? 'Cabello' : (s.categoryId === 'manicura' ? 'Manicura' : (s.categoryId === 'pedicure' ? 'Pedicure' : (s.categoryId === 'podologia' ? 'Podología' : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas' : (s.categoryId === 'depilacion-femenina' ? 'Depilación Fem.' : (s.categoryId === 'depilacion' ? 'Depilación Masc.' : 'Servicio'))))))}
                                     </span>
                                     <h3 style="font-size: 1.15rem; margin-bottom: 6px; color: var(--clr-neutral-dark);">${s.name}</h3>
                                     ${s.description ? `<p style="font-size: 0.85rem; color: var(--clr-neutral-gray); margin-bottom: 10px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${s.description}</p>` : ''}
@@ -279,11 +279,13 @@ function renderServiciosView() {
                     <!-- Chips de Categorías -->
                     <div id="services-page-filter-chips" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px;">
                         <button type="button" class="service-cat-chip active" data-filter="all">✨ Todos (${services.length})</button>
+                        <button type="button" class="service-cat-chip" data-filter="capilar">💆‍♀️ Cabello (${services.filter(s => s.categoryId === 'capilar').length})</button>
                         <button type="button" class="service-cat-chip" data-filter="manicura">💅 Manicura (${services.filter(s => s.categoryId === 'manicura').length})</button>
                         <button type="button" class="service-cat-chip" data-filter="pedicure">🦶 Pedicure (${services.filter(s => s.categoryId === 'pedicure').length})</button>
+                        <button type="button" class="service-cat-chip" data-filter="podologia">🩺 Podología Clínica (${services.filter(s => s.categoryId === 'podologia').length})</button>
                         <button type="button" class="service-cat-chip" data-filter="pestanas-cejas">👁️ Pestañas & Cejas (${services.filter(s => s.categoryId === 'pestanas-cejas').length})</button>
+                        <button type="button" class="service-cat-chip" data-filter="depilacion-femenina">🍯 Depilación Femenina (${services.filter(s => s.categoryId === 'depilacion-femenina').length})</button>
                         <button type="button" class="service-cat-chip" data-filter="depilacion">✂️ Depilación Masculina (${services.filter(s => s.categoryId === 'depilacion').length})</button>
-                        <button type="button" class="service-cat-chip" data-filter="capilar">💆‍♀️ Cabello (${services.filter(s => s.categoryId === 'capilar').length})</button>
                     </div>
                 </div>
 
@@ -293,18 +295,21 @@ function renderServiciosView() {
                         ✨ Todos los Servicios
                     </h3>
                     <p id="cat-banner-desc" style="margin:0; color: var(--clr-neutral-gray); font-size: 0.98rem; line-height: 1.6;">
-                        Explora nuestra carta completa de tratamientos para manos, pies, mirada, estética masculina y cabello.
+                        Explora nuestra carta completa de tratamientos para cabello, manicura, pedicure, podología clínica, pestañas, cejas y depilación.
                     </p>
                 </div>
 
                 <!-- Grilla de Servicios -->
                 <div id="services-catalog-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 25px; margin-bottom: 50px;">
                     ${services.map(s => {
-                        const catLabel = s.categoryId === 'manicura' ? 'Manicura'
+                        const catLabel = s.categoryId === 'capilar' ? 'Cabello & Capilar'
+                            : (s.categoryId === 'manicura' ? 'Manicura'
                             : (s.categoryId === 'pedicure' ? 'Pedicure'
+                            : (s.categoryId === 'podologia' ? 'Podología Clínica'
                             : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas'
+                            : (s.categoryId === 'depilacion-femenina' ? 'Depilación Femenina'
                             : (s.categoryId === 'depilacion' ? 'Depilación Masculina'
-                            : 'Cabello & Capilar')));
+                            : 'Servicio'))))));
 
                         return `
                         <div class="card service-catalog-card" data-category="${s.categoryId}" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; border: 1px solid #f0eae4; border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.04); transition: transform 0.25s, box-shadow 0.25s;">
@@ -509,20 +514,25 @@ function renderAgendarView() {
                     <!-- Filtros por categoría en Agendar -->
                     <div class="service-cat-filter-container" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:12px; margin-bottom:20px; -webkit-overflow-scrolling:touch;">
                         <button type="button" class="service-cat-chip active" data-filter="all">Todos</button>
+                        <button type="button" class="service-cat-chip" data-filter="capilar">💆‍♀️ Cabello</button>
                         <button type="button" class="service-cat-chip" data-filter="manicura">💅 Manicura</button>
                         <button type="button" class="service-cat-chip" data-filter="pedicure">🦶 Pedicure</button>
+                        <button type="button" class="service-cat-chip" data-filter="podologia">🩺 Podología Clínica</button>
                         <button type="button" class="service-cat-chip" data-filter="pestanas-cejas">👁️ Pestañas & Cejas</button>
-                        <button type="button" class="service-cat-chip" data-filter="depilacion">✂️ Depilación</button>
-                        <button type="button" class="service-cat-chip" data-filter="capilar">💆‍♀️ Cabello</button>
+                        <button type="button" class="service-cat-chip" data-filter="depilacion-femenina">🍯 Depilación Fem.</button>
+                        <button type="button" class="service-cat-chip" data-filter="depilacion">✂️ Depilación Masc.</button>
                     </div>
 
                     <div id="booking-services-grid" style="display: flex; flex-direction: column; gap: 14px; max-height: 520px; overflow-y: auto; padding-right: 6px;">
                         ${mockData.services.map(s => {
-                            const catLabel = s.categoryId === 'manicura' ? 'Manicura'
+                            const catLabel = s.categoryId === 'capilar' ? 'Cabello'
+                                : (s.categoryId === 'manicura' ? 'Manicura'
                                 : (s.categoryId === 'pedicure' ? 'Pedicure'
+                                : (s.categoryId === 'podologia' ? 'Podología'
                                 : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas'
-                                : (s.categoryId === 'depilacion' ? 'Depilación'
-                                : 'Cabello')));
+                                : (s.categoryId === 'depilacion-femenina' ? 'Depilación Fem.'
+                                : (s.categoryId === 'depilacion' ? 'Depilación Masc.'
+                                : 'Servicio'))))));
                             return `
                             <div class="service-select-card card" data-service-id="${s.id}" data-category="${s.categoryId}" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;">
                                 <div style="flex: 1; padding-right: 15px;">

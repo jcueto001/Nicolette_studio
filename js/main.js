@@ -734,27 +734,35 @@ function initServiciosEvents() {
     const catInfo = {
         'all': {
             title: '✨ Todos los Servicios',
-            desc: 'Explora nuestra carta completa de tratamientos para manos, pies, mirada, estética masculina y cabello.'
+            desc: 'Explora nuestra carta completa de tratamientos para cabello, manicura, pedicure, podología clínica, pestañas, cejas y depilación.'
+        },
+        'capilar': {
+            title: '💆‍♀️ Cabello, Cortes, Coloración & Activación Fotónica',
+            desc: 'Tu estilo, nuestra pasión. Cortes de cabello, coloración profesional con acabado a elección y tratamientos capilares avanzados con tecnología de activación fotónica Photon Lizze Supreme (luz roja, verde y azul).'
         },
         'manicura': {
-            title: '💅 Manicura',
-            desc: 'Más que uñas, es un momento para ti. Técnicas avanzadas en esmaltado permanente, ruber base, kapping y extensiones poly gel.'
+            title: '💅 Manicura • Belleza a tu ritmo y sin barreras',
+            desc: 'Más que uñas, es un momento para ti. Técnicas avanzadas en esmaltado permanente, ruber base, kapping poly gel y extensiones poly gel con productos premium.'
         },
         'pedicure': {
             title: '🦶 Pedicure • Cuida tus pasos',
-            desc: 'Pies felices, mujeres más libres. Cuidarte también es amor propio con exfoliaciones, hidratación y pedicure spa premium.'
+            desc: 'Pies felices, mujeres más libres. Cuidarte también es amor propio: limpieza de pies, exfoliaciones, hidratación profunda y pedicure spa premium.'
+        },
+        'podologia': {
+            title: '🩺 Podología Clínica • Priscila Villarreal (ROL MINSAL: 164959)',
+            desc: 'Salud, bienestar y confianza para tus pies. Atención podológica básica, tratamientos para hongos y resolución especializada de uñas encarnadas con evaluación personalizada.'
         },
         'pestanas-cejas': {
             title: '👁️ Pestañas & Cejas • Miradas que inspiran',
-            desc: 'Realza tu belleza natural. Lifting coreano, laminado y extensiones clásicas y tecnológicas de máxima retención.'
+            desc: 'Realza tu belleza natural. Lifting coreano, laminado y extensiones clásicas, rímel y tecnológicas de máxima retención.'
+        },
+        'depilacion-femenina': {
+            title: '🍯 Depilación Femenina • Cera de abeja hipoalergénica',
+            desc: 'Piel suave, piel feliz. Cera de abeja hipoalergénica más suave con tu piel, menos irritación y apta para todo tipo de pieles sensibles.'
         },
         'depilacion': {
-            title: '✂️ Depilación Masculina • Cera de miel natural',
-            desc: 'Estética masculina profesional con cera caliente de miel de abeja natural. Procedimientos higiénicos con materiales 100% descartables.'
-        },
-        'capilar': {
-            title: '💆‍♀️ Cabello & Tratamientos Capilares',
-            desc: 'Nutrición intensiva, botox capilar reconstructor, alisados antifrizz y peinados express para potenciar tu estilo.'
+            title: '✂️ Depilación Masculina • Cera caliente de miel de abeja',
+            desc: 'Estética masculina profesional con cera natural. Procedimientos higiénicos con materiales 100% descartables en un ambiente cómodo y seguro.'
         }
     };
 

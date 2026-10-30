@@ -9,11 +9,13 @@ const mockData = {
 
     // Categorías de Servicios
     categories: [
+        { id: 'capilar', label: 'Cabello & Capilar', icon: 'heart', desc: 'Corte, peinado, coloración y tratamientos fotónicos' },
         { id: 'manicura', label: 'Manicura', icon: 'sparkles', desc: 'Uñas, esmaltados y extensiones' },
         { id: 'pedicure', label: 'Pedicure', icon: 'footprints', desc: 'Cuidado y spa de pies' },
-        { id: 'pestanas-cejas', label: 'Pestañas & Cejas', icon: 'eye', desc: 'Lifting, extensiones y diseño' },
+        { id: 'podologia', label: 'Podología Clínica', icon: 'stethoscope', desc: 'Por Podóloga Priscila Villarreal, ROL MINSAL 164959' },
+        { id: 'pestanas-cejas', label: 'Pestañas & Cejas', icon: 'eye', desc: 'Lifting coreano, extensiones y diseño' },
+        { id: 'depilacion-femenina', label: 'Depilación Femenina', icon: 'flower', desc: 'Cera de abeja hipoalergénica' },
         { id: 'depilacion', label: 'Depilación Masculina', icon: 'scissors', desc: 'Cera caliente de miel de abeja' },
-        { id: 'capilar', label: 'Cabello & Capilar', icon: 'heart', desc: 'Tratamientos capilares, masajes y botox' },
         // Compatibilidad previa
         { id: 'manos-pies', label: 'Manicure & Pedicure', icon: 'sparkles' },
         { id: 'mirada', label: 'Lashista & Mirada', icon: 'eye' },
@@ -390,13 +392,400 @@ const mockData = {
             adicionales: 'Perfecto para lucir impecable en tus días importantes',
             recommendedFor: ['evento', 'turnos'],
             image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+
+        // --- CORTES & PEINADOS (CABELLO) ---
+        {
+            id: 's_cab_corte',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Corte de Cabello',
+            price: 19990,
+            duration: 45,
+            description: 'Corte personalizado según tu estilo y necesidades. Un buen corte realza tu belleza natural.',
+            adicionales: 'Tratamiento Capilar Adicional (Hidratación o nutrición + masaje capilar): +$9.990',
+            recommendedFor: ['ejecutiva', 'evento'],
+            image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_cab_corte_avanzado',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Corte Avanzado (con Lavado & Brushing)',
+            price: 24990,
+            duration: 60,
+            description: 'Corte personalizado con mayor detalle y definición. Incluye lavado profesional y brushing.',
+            adicionales: 'Tratamiento Capilar Adicional (+ masaje capilar): +$9.990',
+            recommendedFor: ['evento', 'ejecutiva'],
+            image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_cab_brushing',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Brushing / Ondas / Liso',
+            price: 19990,
+            duration: 50,
+            description: 'Lavado de cabello + peinado (liso, ondas o brushing). Lavado incluido para un resultado perfecto.',
+            adicionales: 'Valores base consideran cabellos hasta largo L (hasta el codo)',
+            recommendedFor: ['evento', 'turnos'],
+            image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_cab_peinado_evento',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Peinado para Ocasión Especial',
+            price: 24990,
+            duration: 75,
+            description: 'Desde $24.990. Lavado de cabello + peinado elaborado, adaptado a la ocasión y estilo deseado (recogidos, semi-recogidos, trenzas o fiesta).',
+            adicionales: 'Cabellos XL o extra densidad pueden tener adicional',
+            recommendedFor: ['evento'],
+            image: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+
+        // --- COLORACIÓN (CABELLO) ---
+        {
+            id: 's_cab_color_raiz',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Tintura de Raíz (con Peinado)',
+            price: 29990,
+            duration: 90,
+            description: 'Cobertura del crecimiento, respetando tu color y necesidades de tu cabello. INCLUYE acabado a elección: Brushing, Alisado u Ondas.',
+            adicionales: 'Peinado especial elaborado adicional: +$9.990',
+            recommendedFor: ['ejecutiva', 'evento'],
+            image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_cab_bano_color',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Baño de Color (con Peinado)',
+            price: 29990,
+            duration: 75,
+            description: 'Refresca el tono, aporta brillo y mantiene o realza tus reflejos. INCLUYE acabado: Brushing, Alisado u Ondas.',
+            adicionales: 'Peinado especial elaborado adicional: +$9.990',
+            recommendedFor: ['evento', 'mama'],
+            image: 'https://images.unsplash.com/photo-1605980776566-0486c3ac7617?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_cab_raiz_bano',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Raíz + Baño de Color (con Peinado)',
+            price: 39990,
+            duration: 120,
+            description: 'Renovación del crecimiento + refresco y armonización del color en medios y puntas. INCLUYE acabado: Brushing, Alisado u Ondas.',
+            adicionales: 'Peinado elaborado adicional: +$9.990',
+            recommendedFor: ['ejecutiva', 'evento'],
+            image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_cab_raiz_bano_tratam',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Raíz + Baño de Color + Tratamiento Capilar',
+            price: 49990,
+            duration: 140,
+            description: 'Coloración + baño de color acompañado de tratamiento de hidratación o nutrición profunda y masaje capilar. INCLUYE brushing o peinado a elección.',
+            adicionales: 'Combo completo de color y nutrición',
+            recommendedFor: ['evento', 'ejecutiva'],
+            image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+
+        // --- TRATAMIENTOS CAPILARES CON ACTIVACIÓN FOTÓNICA (Photon Lizze Supreme) ---
+        {
+            id: 's_tratam_hidratacion',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Hidratación Profunda (Activación Fotónica)',
+            price: 25000,
+            duration: 60,
+            description: 'Devuelve suavidad, brillo y vitalidad. Incluye diagnóstico, aplicación, masaje capilar, lavado, secado, brushing y tecnología de Activación Fotónica Lizze Supreme.',
+            adicionales: 'Base S (hombros): $25.000 | M: $30.000 | L: $35.000 | XL: $40.000',
+            recommendedFor: ['mama', 'bienestar'],
+            image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_tratam_reconstruccion',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Reconstrucción Capilar (Activación Fotónica)',
+            price: 25000,
+            duration: 65,
+            description: 'Repara y fortalece la fibra capilar dañada. Incluye Activación Fotónica Photon Lizze Supreme, masaje, lavado y brushing.',
+            adicionales: 'Base S (hombros): $25.000 | M: $30.000 | L: $35.000 | XL: $40.000',
+            recommendedFor: ['evento', 'bienestar'],
+            image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_tratam_ampolla',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Nutrición con Ampolla Capilar (Fotónica)',
+            price: 30000,
+            duration: 60,
+            description: 'Aporta nutrientes intensivos y mejora la elasticidad. Potenciado con luz fotónica Lizze Supreme para absorción profunda.',
+            adicionales: 'Base S (hombros): $30.000 | M: $35.000 | L: $40.000 | XL: $45.000',
+            recommendedFor: ['ejecutiva', 'bienestar'],
+            image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_tratam_nanobotox',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Nanobotox Capilar (Activación Fotónica)',
+            price: 35000,
+            duration: 90,
+            description: 'Controla el frizz, aporta brillo extremo, disciplina y regenera la fibra capilar. Activación con luz fotónica y sellado térmico.',
+            adicionales: 'Base S (hombros): $35.000 | M: $40.000 | L: $45.000 | XL: $55.000',
+            recommendedFor: ['evento', 'ejecutiva'],
+            image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_tratam_personalizado',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Tratamiento Capilar Personalizado',
+            price: 25000,
+            duration: 60,
+            description: 'Evaluación previa y diagnóstico capilar con especialista para determinar el tratamiento ideal según las necesidades específicas de tu cabello.',
+            adicionales: 'Valor final según evaluación y largo del cabello',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+
+        // ==========================================
+        // --- PODOLOGÍA CLÍNICA (MINSAL 164959) ---
+        // ==========================================
+        {
+            id: 's_podo_basica',
+            categoryId: 'podologia',
+            categoryGroup: 'podologia',
+            name: 'Podología Clínica Básica',
+            price: 20000,
+            duration: 45,
+            description: 'Desde $20.000. Atención podológica general por Priscila Villarreal (Podóloga MINSAL 164959): limpieza, corte y cuidado de uñas, retiro de durezas y evaluación del pie.',
+            adicionales: 'Atención certificada por el MINSAL con materiales esterilizados',
+            recommendedFor: ['bienestar', 'ejecutiva'],
+            image: 'https://images.unsplash.com/photo-1519415510236-718bdfcd89c8?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_podo_hongos',
+            categoryId: 'podologia',
+            categoryGroup: 'podologia',
+            name: 'Podología + Tratamiento para Hongos',
+            price: 23000,
+            duration: 60,
+            description: 'Desde $23.000. Incluye limpieza podológica clínica y aplicación de tratamiento específico para hongos (varía según cantidad de uñas y grado de afección).',
+            adicionales: 'Procedimiento podológico clínico individualizado',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_podo_encarnada_sencillo',
+            categoryId: 'podologia',
+            categoryGroup: 'podologia',
+            name: 'Tratamiento Uña Encarnada (Caso Sencillo)',
+            price: 25000,
+            duration: 45,
+            description: 'Uña encarnada localizada, enrojecimiento e inflamación leve, dolor moderado, sin secreción ni tejido de granulación. Incluye procedimiento y control inicial.',
+            adicionales: 'Procedimiento profesional clínico indoloro',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1583001809873-a128495da465?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_podo_encarnada_medio',
+            categoryId: 'podologia',
+            categoryGroup: 'podologia',
+            name: 'Tratamiento Uña Encarnada (Complejidad Media)',
+            price: 28000,
+            duration: 60,
+            description: 'Mayor inflamación y dolor, puede presentar secreción (pus), inicio de tejido de granulación, aumento de rodete ungueal. Incluye procedimiento y control inicial.',
+            adicionales: 'Manejo clínico cuidadoso y curación',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_podo_encarnada_complejo',
+            categoryId: 'podologia',
+            categoryGroup: 'podologia',
+            name: 'Tratamiento Uña Encarnada (Caso Complejo)',
+            price: 30000,
+            duration: 75,
+            description: 'Uña profundamente encarnada, presencia de tejido de granulación (granuloma), inflamación importante y secreción persistente. Incluye manejo cuidadoso y controles posteriores.',
+            adicionales: 'Tratamiento avanzado y seguimiento clínico',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1519415510236-718bdfcd89c8?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+
+        // ==========================================
+        // --- DEPILACIÓN FEMENINA (Cera Hipoalergénica) ---
+        // ==========================================
+        {
+            id: 's_dep_fem_pierna_comp',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Pierna Completa (Femenina)',
+            price: 15000,
+            duration: 45,
+            description: 'Desde muslo a tobillo. Cera de abeja hipoalergénica: menos irritación, más suavidad, apta para pieles sensibles.',
+            adicionales: 'Resultados más duraderos y piel suave',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_media_pierna',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Media Pierna (Femenina)',
+            price: 7000,
+            duration: 25,
+            description: 'Desde rodilla a tobillo con cera de abeja hipoalergénica.',
+            adicionales: 'Suave con tu piel, cuida y protege',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_brazo_comp',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Brazo Completo (Femenina)',
+            price: 13000,
+            duration: 30,
+            description: 'Depilación completa de brazos con cera hipoalergénica suave.',
+            adicionales: 'Menos irritación',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_medio_brazo',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Medio Brazo (Femenina)',
+            price: 6000,
+            duration: 20,
+            description: 'Depilación de medio brazo con cera hipoalergénica.',
+            adicionales: 'Apta para pieles sensibles',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_axila',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Axila (Femenina)',
+            price: 5000,
+            duration: 15,
+            description: 'Piel suave, fresca y protegida con cera de abeja hipoalergénica.',
+            adicionales: 'Materiales descartables higiénicos',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_rebaje_comp',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Rebaje Completo',
+            price: 15000,
+            duration: 35,
+            description: 'Depilación íntima completa con cera de abeja hipoalergénica. Cuidado, privacidad y máxima suavidad.',
+            adicionales: 'Apta para pieles sensibles',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_medio_rebaje',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Medio Rebaje',
+            price: 10000,
+            duration: 25,
+            description: 'Depilación de medio rebaje / bikini con cera hipoalergénica.',
+            adicionales: 'Resultados duraderos y limpios',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_rostro',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Rostro Completo (Femenina)',
+            price: 10000,
+            duration: 30,
+            description: 'Depilación facial completa con cera suave hipoalergénica. Piel limpia, tersa y luminosa.',
+            adicionales: 'Menos irritación para el rostro',
+            recommendedFor: ['bienestar', 'evento'],
+            image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_bozo',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Bozo',
+            price: 5000,
+            duration: 15,
+            description: 'Eliminación suave del vello del labio superior con cera de abeja hipoalergénica.',
+            adicionales: 'Procedimiento rápido e higiénico',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_cejas',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Cejas (Femenina)',
+            price: 5000,
+            duration: 20,
+            description: 'Limpieza y perfilado de cejas con cera hipoalergénica.',
+            adicionales: 'Enmarca tu mirada de forma natural',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1588510849202-3866299d6d84?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_nariz',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Nariz (Femenina)',
+            price: 5000,
+            duration: 15,
+            description: 'Eliminación higiénica de vello nasal.',
+            adicionales: 'Cera hipoalergénica',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_oidos',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Oídos (Femenina)',
+            price: 5000,
+            duration: 15,
+            description: 'Eliminación de vello en oídos.',
+            adicionales: 'Rápido e higiénico',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_fem_menton',
+            categoryId: 'depilacion-femenina',
+            categoryGroup: 'depilacion-femenina',
+            name: 'Depilación Mentón',
+            price: 3000,
+            duration: 15,
+            description: 'Eliminación de vello en zona del mentón con cera hipoalergénica.',
+            adicionales: 'Suave y efectivo',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
         }
     ],
 
     // Profesionales
     professionals: [
-        { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80' },
-        { id: 'p2', name: 'Camila', email: 'camila@gmail.com', role: 'profesional', avatar: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=150&q=80' }
+        { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin', specialty: 'Especialista Integral & Fundadora', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80' },
+        { id: 'p2', name: 'Camila', email: 'camila@gmail.com', role: 'profesional', specialty: 'Manicura & Mirada', avatar: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=150&q=80' },
+        { id: 'p3', name: 'Priscila Villarreal', email: 'priscila@gmail.com', role: 'profesional', specialty: 'Podología Clínica (ROL MINSAL 164959)', avatar: 'https://images.unsplash.com/photo-1594824813583-0599a80b064c?auto=format&fit=crop&w=150&q=80' }
     ],
 
     gallery: [
@@ -612,7 +1001,13 @@ const StorageHelper = {
             profsSnapshot.forEach((doc) => {
                 profs.push({ id: doc.id, ...doc.data() });
             });
-            this._professionalsCache = profs.length > 0 ? profs : mockData.professionals;
+            this._professionalsCache = profs.length > 0 ? profs : [...mockData.professionals];
+            // Asegurar que profesionales base (incluyendo podóloga clínica Priscila Villarreal) estén disponibles
+            mockData.professionals.forEach(dp => {
+                if (!this._professionalsCache.some(p => p.email === dp.email || p.id === dp.id)) {
+                    this._professionalsCache.push(dp);
+                }
+            });
         } catch(e) { 
             console.error("Error cargando profesionales:", e); 
             if(this._professionalsCache.length === 0) this._professionalsCache = mockData.professionals;
