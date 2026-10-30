@@ -8,6 +8,7 @@ const AppRouter = {
     routes: {
         'home': renderHomeView,
         'servicios': renderServiciosView,
+        'cuidados': renderCuidadosView,
         'galeria': renderGaleriaView,
         'agendar': renderAgendarView,
         'perfil': renderPerfilView,
@@ -93,6 +94,7 @@ const AppRouter = {
                 // Ejecutar scripts específicos de la vista si existen
                 if (route === 'home') initHomeEvents();
                 if (route === 'servicios') initServiciosEvents();
+                if (route === 'cuidados') initCuidadosEvents();
                 if (route === 'galeria') initGaleriaEvents();
                 if (route === 'agendar') initAgendarEvents();
                 if (route === 'admin') initAdminEvents();
@@ -356,7 +358,7 @@ function renderServiciosView() {
                 </div>
 
                 <!-- Sección Informativa de Adicionales & Garantías (Inspirado en los Flyers Oficiales) -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 50px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 25px;">
                     <div class="card" style="padding: 24px; border: 1px solid var(--clr-nude); background: white;">
                         <h4 style="color: var(--clr-rose-gold-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
                             <i data-lucide="sparkles"></i> Adicionales Uñas & Pies
@@ -394,6 +396,13 @@ function renderServiciosView() {
                     </div>
                 </div>
 
+                <!-- Botón de acceso al apartado completo de cuidados -->
+                <div style="text-align: center; margin-bottom: 45px;">
+                    <button type="button" class="btn btn-outline" onclick="AppRouter.navigate('cuidados')" style="border-radius: 25px; padding: 12px 28px; font-weight: 700; border-color: var(--clr-rose-gold); color: var(--clr-rose-gold-dark); background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.04); display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <i data-lucide="heart-handshake" style="width:18px; height:18px;"></i> Ver Guía Completa de Cuidados Pre y Post Atención
+                    </button>
+                </div>
+
                 <!-- Call to Action Banner -->
                 <div class="card" style="text-align: center; padding: 45px 25px; background: linear-gradient(135deg, var(--clr-nude-light) 0%, #fff4ec 100%); border: 1px solid var(--clr-rose-gold); border-radius: var(--radius-lg);">
                     <h2 style="font-size: 2.2rem; color: var(--clr-rose-gold-dark); margin-bottom: 12px;">¿Lista para reservar tu momento de autocuidado?</h2>
@@ -404,6 +413,286 @@ function renderServiciosView() {
                         <i data-lucide="calendar"></i> Agendar Mi Cita Ahora
                     </button>
                 </div>
+            </div>
+        </section>
+    `;
+}
+
+function renderCuidadosView() {
+    return `
+        <section class="section" style="background-color: transparent; padding-top: 40px;">
+            <div class="container">
+                <!-- Header del Apartado de Cuidados -->
+                <div class="section-header" style="text-align: center; max-width: 800px; margin: 0 auto 35px;">
+                    <div style="display:inline-flex; align-items:center; gap:8px; background:white; padding:6px 18px; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-bottom:15px;">
+                        <i data-lucide="heart-handshake" style="color:var(--clr-rose-gold); width:16px; height:16px;"></i>
+                        <span style="font-size:0.88rem; font-weight:700; color:var(--clr-rose-gold-dark); text-transform:uppercase; letter-spacing:0.5px;">Apartado Oficial de Cuidados</span>
+                    </div>
+                    <h1 class="section-title" style="margin-bottom: 12px; font-size: 2.8rem;">Cuidados & Recomendaciones</h1>
+                    <p class="section-subtitle" style="font-size: 1.15rem; color: var(--clr-neutral-gray); margin-bottom: 25px; line-height: 1.7;">
+                        Tu bienestar y la durabilidad de tus resultados son nuestra prioridad. Sigue estas recomendaciones oficiales antes y después de cada atención.
+                    </p>
+
+                    <!-- Filtros rápidos por tipo de cuidado -->
+                    <div id="cuidados-filter-chips" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px;">
+                        <button type="button" class="service-cat-chip active cuidado-chip" data-cuidado="all">✨ Todos los Cuidados</button>
+                        <button type="button" class="service-cat-chip cuidado-chip" data-cuidado="unas">💅 Uñas & Pies</button>
+                        <button type="button" class="service-cat-chip cuidado-chip" data-cuidado="pestanas">👁️ Pestañas & Cejas</button>
+                        <button type="button" class="service-cat-chip cuidado-chip" data-cuidado="podologia">🩺 Podología Clínica</button>
+                        <button type="button" class="service-cat-chip cuidado-chip" data-cuidado="cabello">💆‍♀️ Cabello & Capilar</button>
+                        <button type="button" class="service-cat-chip cuidado-chip" data-cuidado="depilacion">🍯 Depilación</button>
+                        <button type="button" class="service-cat-chip cuidado-chip" data-cuidado="garantia">🛡️ Garantía de Calidad</button>
+                    </div>
+                </div>
+
+                <!-- Grilla de Tarjetas de Cuidados -->
+                <div id="cuidados-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 26px; margin-bottom: 50px;">
+                    
+                    <!-- 1. Pestañas & Cejas -->
+                    <div class="card cuidado-card" data-cuidado-cat="pestanas" style="padding: 26px; border: 1.5px solid #ebdcd0; border-radius: var(--radius-md); background: white; box-shadow: 0 4px 18px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px;">
+                                <h3 style="color: var(--clr-rose-gold-dark); margin:0; font-size:1.35rem; display: flex; align-items: center; gap: 10px;">
+                                    <i data-lucide="eye" style="color:var(--clr-rose-gold); width:22px; height:22px;"></i> Cuidado de Pestañas & Cejas
+                                </h3>
+                                <span style="font-size:0.75rem; text-transform:uppercase; background:var(--clr-nude-light); color:var(--clr-rose-gold-dark); padding:3px 10px; border-radius:12px; font-weight:700;">Mirada</span>
+                            </div>
+
+                            <p style="font-size: 0.93rem; color: var(--clr-neutral-gray); line-height: 1.6; margin: 0 0 14px 0;">
+                                Para garantizar la máxima adherencia, duración y salud de tus pestañas naturales en extensiones o lifting coreano:
+                            </p>
+
+                            <!-- Cuadro Destacado del Flyer Oficial -->
+                            <div style="background: linear-gradient(135deg, #FFF9F5 0%, #FFF3EA 100%); border-left: 4px solid var(--clr-rose-gold); padding: 12px 14px; border-radius: 8px; font-size: 0.9rem; color: var(--clr-rose-gold-dark); font-weight: 600; margin-bottom: 16px; line-height: 1.5;">
+                                ✨ Se pide llegar con pestañas limpias, sin residuos de maquillaje <strong>24 horas antes</strong> de la postura, para una mejor retención.
+                            </div>
+
+                            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.92rem; color: var(--clr-neutral-gray); line-height: 1.75;">
+                                <li style="margin-bottom:8px;">• 🚫 <strong>Primeras 24 a 48 horas:</strong> Evitar contacto con agua, vapores intensos (duchas calientes, sauna), llanto y sudor excesivo.</li>
+                                <li style="margin-bottom:8px;">• 💧 <strong>Limpieza diaria:</strong> Lava tu rostro con agua micelar o limpiador libre de aceites (oil-free). El aceite disuelve el adhesivo.</li>
+                                <li style="margin-bottom:8px;">• 🪮 <strong>Cepillado:</strong> Péinalas suavemente en seco una vez al día con el cepillo limpio entregado por tu especialista.</li>
+                                <li style="margin-bottom:8px;">• 😴 <strong>Al dormir:</strong> Procura dormir boca arriba o de lado, evitando aplastar las extensiones contra la almohada.</li>
+                                <li>• ❌ <strong>No frotar ni jalar:</strong> Jamás retires las extensiones tirando de ellas; agenda un retiro profesional para cuidar tu pestaña natural.</li>
+                            </ul>
+                        </div>
+
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #f5ede6; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:0.82rem; color:var(--clr-neutral-gray);"><i data-lucide="sparkles" style="width:13px; height:13px; display:inline;"></i> Retención óptima 3 a 5 semanas</span>
+                            <button class="btn btn-outline btn-sm" onclick="AppRouter.navigate('agendar')" style="padding:6px 14px; font-size:0.8rem;">Agendar Mirada</button>
+                        </div>
+                    </div>
+
+                    <!-- 2. Uñas & Manicura -->
+                    <div class="card cuidado-card" data-cuidado-cat="unas" style="padding: 26px; border: 1.5px solid #ebdcd0; border-radius: var(--radius-md); background: white; box-shadow: 0 4px 18px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px;">
+                                <h3 style="color: var(--clr-rose-gold-dark); margin:0; font-size:1.35rem; display: flex; align-items: center; gap: 10px;">
+                                    <i data-lucide="sparkles" style="color:var(--clr-rose-gold); width:22px; height:22px;"></i> Adicionales & Cuidado de Uñas
+                                </h3>
+                                <span style="font-size:0.75rem; text-transform:uppercase; background:var(--clr-nude-light); color:var(--clr-rose-gold-dark); padding:3px 10px; border-radius:12px; font-weight:700;">Manos & Pies</span>
+                            </div>
+
+                            <p style="font-size: 0.93rem; color: var(--clr-neutral-gray); line-height: 1.6; margin: 0 0 14px 0;">
+                                Condiciones de servicio y cuidados indispensables para conservar tu esmaltado, kapping y poly gel:
+                            </p>
+
+                            <!-- Cuadro de Adicionales Oficiales -->
+                            <div style="background: var(--clr-nude-light); padding: 12px 14px; border-radius: 8px; font-size: 0.9rem; color: var(--clr-neutral-dark); margin-bottom: 16px;">
+                                <strong style="color:var(--clr-rose-gold-dark); display:block; margin-bottom:6px;">Detalles y Adicionales Oficiales:</strong>
+                                <ul style="list-style: none; padding: 0; margin: 0; line-height: 1.6; font-size:0.88rem;">
+                                    <li>• <strong>Francesa o Degradé:</strong> +$5.000 (+ 2 diseños simples)</li>
+                                    <li>• <strong>Diseños Aparte / Extras:</strong> $1.000 el par</li>
+                                    <li>• <strong>Kapping poly gel:</strong> Tamaños M, L, XL tienen valor adicional.</li>
+                                    <li>• <strong>Extensión poly gel:</strong> Tamaños L, XL y más tienen valor adicional.</li>
+                                </ul>
+                            </div>
+
+                            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.92rem; color: var(--clr-neutral-gray); line-height: 1.75;">
+                                <li style="margin-bottom:8px;">• 🧤 <strong>Protección en el hogar:</strong> Utiliza guantes siempre que laves vajilla o manipules productos de aseo (cloro, desengrasantes).</li>
+                                <li style="margin-bottom:8px;">• 🧴 <strong>Aceite de cutícula:</strong> Aplica una gota cada noche; previene pellejitos y mantiene flexible la unión del esmalte.</li>
+                                <li style="margin-bottom:8px;">• 🛠️ <strong>No uses tus uñas como herramientas:</strong> Evita abrir latas, raspar etiquetas o golpear teclas con las puntas.</li>
+                                <li>• ⚠️ <strong>Cero arrancamiento:</strong> Si se levanta una esquina, jamás la desprendas; arrancarás queratina natural de tu uña.</li>
+                            </ul>
+                        </div>
+
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #f5ede6; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:0.82rem; color:var(--clr-neutral-gray);"><i data-lucide="shield" style="width:13px; height:13px; display:inline;"></i> Brillo y firmeza prolongada</span>
+                            <button class="btn btn-outline btn-sm" onclick="AppRouter.navigate('agendar')" style="padding:6px 14px; font-size:0.8rem;">Agendar Uñas</button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Podología Clínica -->
+                    <div class="card cuidado-card" data-cuidado-cat="podologia" style="padding: 26px; border: 1.5px solid #ebdcd0; border-radius: var(--radius-md); background: white; box-shadow: 0 4px 18px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px;">
+                                <h3 style="color: var(--clr-rose-gold-dark); margin:0; font-size:1.35rem; display: flex; align-items: center; gap: 10px;">
+                                    <i data-lucide="stethoscope" style="color:var(--clr-rose-gold); width:22px; height:22px;"></i> Podología Clínica & Salud de Pies
+                                </h3>
+                                <span style="font-size:0.75rem; text-transform:uppercase; background:#e8f5e9; color:#2e7d32; padding:3px 10px; border-radius:12px; font-weight:700;">Salud Clínica</span>
+                            </div>
+
+                            <p style="font-size: 0.93rem; color: var(--clr-neutral-gray); line-height: 1.6; margin: 0 0 14px 0;">
+                                Atención clínica profesional dirigida por <strong>Priscila Villarreal</strong>, Podóloga Clínica Certificada por el <strong>MINSAL (ROL: 164959)</strong>.
+                            </p>
+
+                            <!-- Cuadro Importante de Evaluación Médica -->
+                            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 14px; border-radius: 8px; font-size: 0.88rem; color: #92400e; margin-bottom: 16px; line-height: 1.5;">
+                                <strong>⚠️ Consideración Importante del Procedimiento:</strong><br>
+                                Los valores indicados corresponden a precios base. Cada atención es evaluada de manera individual antes de iniciar. El valor final se informa previamente según cantidad de uñas, grado de afección, complejidad y tiempo requerido.
+                            </div>
+
+                            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.92rem; color: var(--clr-neutral-gray); line-height: 1.75;">
+                                <li style="margin-bottom:8px;">• 🦶 <strong>Secado minucioso:</strong> Seca muy bien entre cada dedo después de bañarte para prevenir hongos y mal olor.</li>
+                                <li style="margin-bottom:8px;">• ✂️ <strong>Corte recto:</strong> Corta las uñas de los pies rectas; nunca cortes los bordes laterales en curva hacia la carne.</li>
+                                <li style="margin-bottom:8px;">• 👟 <strong>Calzado adecuado:</strong> Evita zapatos apretados o en punta que compriman los dedos y originen uñas encarnadas.</li>
+                                <li>• 🩺 <strong>Evaluación periódica:</strong> No uses bisturís o agujas caseras para tratar callosidades o uñeros; acude a control profesional.</li>
+                            </ul>
+                        </div>
+
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #f5ede6; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:0.82rem; color:#2e7d32; font-weight:600;"><i data-lucide="check-circle" style="width:13px; height:13px; display:inline;"></i> ROL MINSAL: 164959</span>
+                            <button class="btn btn-outline btn-sm" onclick="AppRouter.navigate('agendar')" style="padding:6px 14px; font-size:0.8rem;">Agendar Podología</button>
+                        </div>
+                    </div>
+
+                    <!-- 4. Cabello & Tratamientos Capilares -->
+                    <div class="card cuidado-card" data-cuidado-cat="cabello" style="padding: 26px; border: 1.5px solid #ebdcd0; border-radius: var(--radius-md); background: white; box-shadow: 0 4px 18px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px;">
+                                <h3 style="color: var(--clr-rose-gold-dark); margin:0; font-size:1.35rem; display: flex; align-items: center; gap: 10px;">
+                                    <i data-lucide="scissors" style="color:var(--clr-rose-gold); width:22px; height:22px;"></i> Cabello, Color & Activación Fotónica
+                                </h3>
+                                <span style="font-size:0.75rem; text-transform:uppercase; background:var(--clr-nude-light); color:var(--clr-rose-gold-dark); padding:3px 10px; border-radius:12px; font-weight:700;">Capilar</span>
+                            </div>
+
+                            <p style="font-size: 0.93rem; color: var(--clr-neutral-gray); line-height: 1.6; margin: 0 0 14px 0;">
+                                Procedimientos avanzados para corte, coloración y nutrición profunda potenciados con <strong>Photon Lizze Supreme</strong>:
+                            </p>
+
+                            <!-- Cuadro de Consideración de Cabello -->
+                            <div style="background: var(--clr-nude-light); padding: 12px 14px; border-radius: 8px; font-size: 0.88rem; color: var(--clr-neutral-dark); margin-bottom: 16px; line-height: 1.5;">
+                                <strong>💆‍♀️ Largos, Densidad y Acabados:</strong><br>
+                                • Precios base consideran largo estándar hasta largo L (hasta el codo aprox.). En cabellos XL o muy densos puede aplicar adicional informado antes de la atención.<br>
+                                • Todos los servicios de coloración <strong>incluyen brushing, alisado u ondas</strong> a tu gusto.
+                            </div>
+
+                            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.92rem; color: var(--clr-neutral-gray); line-height: 1.75;">
+                                <li style="margin-bottom:8px;">• 🔴🟢🔵 <strong>Activación Fotónica:</strong> Luz Roja (circulación y crecimiento), Luz Verde (renovación y suavidad), Luz Azul (absorción máxima y equilibrio).</li>
+                                <li style="margin-bottom:8px;">• 🚿 <strong>Lavado post-tratamiento:</strong> Usa siempre shampoo sin sal ni sulfatos para evitar barrer los nutrientes y el pigmento.</li>
+                                <li style="margin-bottom:8px;">• 🔥 <strong>Protección térmica:</strong> Aplica termoprotector antes de cualquier secador, ondulador o plancha para no deshidratar la fibra.</li>
+                                <li>• 💧 <strong>Nutrición continua:</strong> Aplica mascarilla hidratante una vez por semana de medios a puntas.</li>
+                            </ul>
+                        </div>
+
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #f5ede6; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:0.82rem; color:var(--clr-neutral-gray);"><i data-lucide="zap" style="width:13px; height:13px; display:inline;"></i> Tecnología Photon Lizze</span>
+                            <button class="btn btn-outline btn-sm" onclick="AppRouter.navigate('agendar')" style="padding:6px 14px; font-size:0.8rem;">Agendar Capilar</button>
+                        </div>
+                    </div>
+
+                    <!-- 5. Depilación con Cera Natural -->
+                    <div class="card cuidado-card" data-cuidado-cat="depilacion" style="padding: 26px; border: 1.5px solid #ebdcd0; border-radius: var(--radius-md); background: white; box-shadow: 0 4px 18px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px;">
+                                <h3 style="color: var(--clr-rose-gold-dark); margin:0; font-size:1.35rem; display: flex; align-items: center; gap: 10px;">
+                                    <i data-lucide="flame" style="color:var(--clr-rose-gold); width:22px; height:22px;"></i> Depilación con Cera Hipoalergénica
+                                </h3>
+                                <span style="font-size:0.75rem; text-transform:uppercase; background:var(--clr-nude-light); color:var(--clr-rose-gold-dark); padding:3px 10px; border-radius:12px; font-weight:700;">Fem & Masc</span>
+                            </div>
+
+                            <p style="font-size: 0.93rem; color: var(--clr-neutral-gray); line-height: 1.6; margin: 0 0 14px 0;">
+                                Cuidados para depilación femenina y masculina con <strong>cera caliente de miel de abeja 100% natural</strong>:
+                            </p>
+
+                            <!-- Cuadro de Beneficios de la Cera de Abeja -->
+                            <div style="background: linear-gradient(135deg, #FFFDF8 0%, #FFF8EE 100%); border-left: 4px solid #d97706; padding: 12px 14px; border-radius: 8px; font-size: 0.9rem; color: #92400e; margin-bottom: 16px; line-height: 1.5;">
+                                🍯 <strong>Fórmula Hipoalergénica:</strong> Mucho más suave con tu piel, genera menos irritación y es ideal para pieles sensibles. Materiales 100% descartables.
+                            </div>
+
+                            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.92rem; color: var(--clr-neutral-gray); line-height: 1.75;">
+                                <li style="margin-bottom:8px;">• 🧼 <strong>Antes de asistir:</strong> Exfolia suavemente 24 a 48 horas antes para despejar los poros. Acude con la piel limpia, sin aceites ni cremas pesadas.</li>
+                                <li style="margin-bottom:8px;">• ☀️ <strong>Primeras 24 a 48 horas:</strong> No tomes sol directo, no uses solárium ni asistas a piscinas con cloro o saunas.</li>
+                                <li style="margin-bottom:8px;">• 🌿 <strong>Calmar la piel:</strong> Aplica gel de aloe vera o loción post-depilatoria sin alcohol ni perfumes fuertes.</li>
+                                <li>• 👗 <strong>Prendas recomendadas:</strong> Viste ropa cómoda y holgada de algodón para evitar roces y foliculitis.</li>
+                            </ul>
+                        </div>
+
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #f5ede6; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:0.82rem; color:var(--clr-neutral-gray);"><i data-lucide="feather" style="width:13px; height:13px; display:inline;"></i> Piel suave y protegida</span>
+                            <button class="btn btn-outline btn-sm" onclick="AppRouter.navigate('agendar')" style="padding:6px 14px; font-size:0.8rem;">Agendar Depilación</button>
+                        </div>
+                    </div>
+
+                    <!-- 6. Garantía de Calidad Nicolett -->
+                    <div class="card cuidado-card" data-cuidado-cat="garantia" style="padding: 26px; border: 1.5px solid #ebdcd0; border-radius: var(--radius-md); background: white; box-shadow: 0 4px 18px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px;">
+                                <h3 style="color: var(--clr-rose-gold-dark); margin:0; font-size:1.35rem; display: flex; align-items: center; gap: 10px;">
+                                    <i data-lucide="shield-check" style="color:var(--clr-rose-gold); width:22px; height:22px;"></i> Nuestra Garantía de Calidad
+                                </h3>
+                                <span style="font-size:0.75rem; text-transform:uppercase; background:var(--clr-nude-light); color:var(--clr-rose-gold-dark); padding:3px 10px; border-radius:12px; font-weight:700;">Protocolo</span>
+                            </div>
+
+                            <p style="font-size: 0.93rem; color: var(--clr-neutral-gray); line-height: 1.6; margin: 0 0 14px 0;">
+                                Los pilares fundamentales que respaldan cada uno de nuestros procedimientos en Nicolett Studio Fantasy:
+                            </p>
+
+                            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom: 15px;">
+                                <div style="display:flex; align-items:flex-start; gap:10px;">
+                                    <span style="font-size:1.3rem;">💎</span>
+                                    <div>
+                                        <strong style="color:var(--clr-neutral-dark); font-size:0.95rem;">Productos Premium:</strong>
+                                        <p style="margin:2px 0 0; font-size:0.88rem; color:var(--clr-neutral-gray); line-height:1.4;">Insumos testeados, certificados e hipoalergénicos de marcas líderes del mercado estético.</p>
+                                    </div>
+                                </div>
+                                <div style="display:flex; align-items:flex-start; gap:10px;">
+                                    <span style="font-size:1.3rem;">👩‍⚕️</span>
+                                    <div>
+                                        <strong style="color:var(--clr-neutral-dark); font-size:0.95rem;">Profesionales Certificadas:</strong>
+                                        <p style="margin:2px 0 0; font-size:0.88rem; color:var(--clr-neutral-gray); line-height:1.4;">Especialistas con formación certificada (incluyendo registro MINSAL en podología) y capacitación continua.</p>
+                                    </div>
+                                </div>
+                                <div style="display:flex; align-items:flex-start; gap:10px;">
+                                    <span style="font-size:1.3rem;">🌿</span>
+                                    <div>
+                                        <strong style="color:var(--clr-neutral-dark); font-size:0.95rem;">Higiene y Esterilización:</strong>
+                                        <p style="margin:2px 0 0; font-size:0.88rem; color:var(--clr-neutral-gray); line-height:1.4;">Materiales 100% descartables por clienta y esterilización médica de herramientas de precisión.</p>
+                                    </div>
+                                </div>
+                                <div style="display:flex; align-items:flex-start; gap:10px;">
+                                    <span style="font-size:1.3rem;">☕</span>
+                                    <div>
+                                        <strong style="color:var(--clr-neutral-dark); font-size:0.95rem;">Ambiente Relajante & Kids Friendly:</strong>
+                                        <p style="margin:2px 0 0; font-size:0.88rem; color:var(--clr-neutral-gray); line-height:1.4;">Un salón cálido y seguro para ti y tu familia, donde la belleza es a tu ritmo y sin barreras.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f5ede6; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:0.82rem; color:var(--clr-neutral-gray);"><i data-lucide="map-pin" style="width:13px; height:13px; display:inline;"></i> Buin, Región Metropolitana</span>
+                            <a href="https://wa.me/56940322551" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="padding:6px 14px; font-size:0.8rem; display:inline-flex; align-items:center; gap:5px;">
+                                <i data-lucide="phone" style="width:13px; height:13px;"></i> WhatsApp
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Banner de Llamado a la Acción -->
+                <div class="card" style="text-align: center; padding: 45px 25px; background: linear-gradient(135deg, var(--clr-nude-light) 0%, #fff4ec 100%); border: 1.5px solid var(--clr-rose-gold); border-radius: var(--radius-lg); box-shadow: var(--shadow-medium);">
+                    <div style="width:60px; height:60px; border-radius:50%; background:white; display:flex; align-items:center; justify-content:center; margin: 0 auto 16px; color:var(--clr-rose-gold-dark); box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+                        <i data-lucide="sparkles" style="width:30px; height:30px;"></i>
+                    </div>
+                    <h2 style="font-size: 2.2rem; color: var(--clr-rose-gold-dark); margin-bottom: 12px;">¡Disfruta una experiencia única en Nicolett Studio!</h2>
+                    <p style="font-size: 1.1rem; color: var(--clr-neutral-gray); max-width: 650px; margin: 0 auto 25px; line-height: 1.7;">
+                        Ahora que conoces todos los cuidados, reserva tu momento de relajación y autocuidado con nuestras especialistas certificadas.
+                    </p>
+                    <button class="btn btn-primary" onclick="AppRouter.navigate('agendar')" style="font-size: 1.1rem; padding: 14px 35px; border-radius: 30px; box-shadow: 0 4px 15px rgba(182, 141, 93, 0.35);">
+                        <i data-lucide="calendar"></i> Agendar Mi Cita Ahora
+                    </button>
+                </div>
+
             </div>
         </section>
     `;

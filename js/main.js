@@ -791,6 +791,32 @@ function initServiciosEvents() {
     });
 }
 
+function initCuidadosEvents() {
+    if (window.lucide) lucide.createIcons();
+
+    const chips = document.querySelectorAll('#cuidados-filter-chips .cuidado-chip');
+    const cards = document.querySelectorAll('#cuidados-cards-grid .cuidado-card');
+
+    chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            chips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            const target = chip.getAttribute('data-cuidado');
+
+            cards.forEach(card => {
+                const cardCat = card.getAttribute('data-cuidado-cat');
+                if (target === 'all' || cardCat === target) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            if (window.lucide) lucide.createIcons();
+        });
+    });
+}
+
 // --- Eventos de Agendamiento ---
 // Estado global del flujo de reserva actual
 const bookingState = {
