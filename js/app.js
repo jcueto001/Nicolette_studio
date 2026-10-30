@@ -140,11 +140,11 @@ function renderHomeView() {
         <section class="section" id="sobre-nosotros" style="background-color: transparent;">
             <div class="container">
                 <div class="about-flex" style="display: flex; flex-wrap: wrap; align-items: center; gap: 50px;">
-                    <div class="about-image-wrap" style="flex: 1; min-width: 300px; position: relative;">
-                        <!-- Imagen decorativa 1 -->
-                        <img src="img/sobre-nosotros.webp" 
-                             alt="Sobre Nicolett Studio" 
-                             style="width: 100%; border-radius: var(--radius-lg); box-shadow: var(--shadow-medium); position: relative; z-index: 2; object-fit: cover; aspect-ratio: 4/3;">
+                    <div class="about-image-wrap" style="flex: 1; min-width: 300px; max-width: 480px; position: relative;">
+                        <!-- Imagen de las instalaciones del estudio -->
+                        <img src="img/sobre-nosotros.jpg?v=15" 
+                             alt="Instalaciones Nicolett Studio Fantasy" 
+                             style="width: 100%; border-radius: var(--radius-lg); box-shadow: var(--shadow-medium); position: relative; z-index: 2; object-fit: cover; aspect-ratio: 3/4; max-height: 540px;">
                         <!-- Fondo decorativo -->
                         <div class="about-decorative-border" style="position: absolute; top: 20px; left: -20px; right: 20px; bottom: -20px; border: 2px solid var(--clr-rose-gold); border-radius: var(--radius-lg); z-index: 1;"></div>
                     </div>
