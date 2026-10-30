@@ -9,49 +9,387 @@ const mockData = {
 
     // Categorías de Servicios
     categories: [
-        { id: 'manos-pies', label: 'Manicure & Pedicure' },
-        { id: 'mirada', label: 'Lashista & Mirada' },
-        { id: 'capilar', label: 'Tratamientos Capilares' },
-        { id: 'bienestar', label: 'Bienestar y Relax' }
+        { id: 'manicura', label: 'Manicura', icon: 'sparkles', desc: 'Uñas, esmaltados y extensiones' },
+        { id: 'pedicure', label: 'Pedicure', icon: 'footprints', desc: 'Cuidado y spa de pies' },
+        { id: 'pestanas-cejas', label: 'Pestañas & Cejas', icon: 'eye', desc: 'Lifting, extensiones y diseño' },
+        { id: 'depilacion', label: 'Depilación Masculina', icon: 'scissors', desc: 'Cera caliente de miel de abeja' },
+        { id: 'capilar', label: 'Cabello & Capilar', icon: 'heart', desc: 'Tratamientos capilares, masajes y botox' },
+        // Compatibilidad previa
+        { id: 'manos-pies', label: 'Manicure & Pedicure', icon: 'sparkles' },
+        { id: 'mirada', label: 'Lashista & Mirada', icon: 'eye' },
+        { id: 'bienestar', label: 'Bienestar y Relax', icon: 'smile' }
     ],
 
     // Servicios
     services: [
+        // --- MANICURA (Lista Oficial) ---
         {
             id: 's1',
-            categoryId: 'manos-pies',
-            name: 'Esmaltado Permanente',
+            categoryId: 'manicura',
+            categoryGroup: 'manicura',
+            name: 'Permanente',
             price: 15000,
-            duration: 60, // en minutos
+            duration: 60,
+            description: 'Un solo tono + 2 diseños simples.',
+            adicionales: 'Francesa o degradé (+$5.000) • Diseños aparte ($1.000 el par)',
             recommendedFor: ['turnos', 'ejecutiva'],
             image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
         },
         {
-            id: 's2',
-            categoryId: 'manos-pies',
-            name: 'Uñas Acrílicas',
+            id: 's_mani_ruber',
+            categoryId: 'manicura',
+            categoryGroup: 'manicura',
+            name: 'Ruber',
+            price: 20000,
+            duration: 75,
+            description: 'Un solo tono + 2 diseños simples. Base niveladora y fortalecedora para uñas naturales.',
+            adicionales: 'Francesa o degradé (+$5.000) • Diseños aparte ($1.000 el par)',
+            recommendedFor: ['ejecutiva', 'mama'],
+            image: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_mani_kapping',
+            categoryId: 'manicura',
+            categoryGroup: 'manicura',
+            name: 'Kapping Poly Gel',
+            price: 20000,
+            duration: 80,
+            description: 'Uña corta | Un solo tono + 2 diseños simples. Protección y resistencia.',
+            adicionales: 'Kapping en tamaños M, L, XL y más tienen valor adicional • Francesa/Degradé (+$5.000)',
+            recommendedFor: ['turnos', 'ejecutiva'],
+            image: 'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_mani_softgel',
+            categoryId: 'manicura',
+            categoryGroup: 'manicura',
+            name: 'Soft Gel',
             price: 25000,
-            duration: 120,
-            recommendedFor: ['evento'],
+            duration: 90,
+            description: 'Un solo tono + 2 diseños simples. Tips completos de gel de alta duración y aspecto natural.',
+            adicionales: 'Francesa o degradé (+$5.000) • Diseños aparte ($1.000 el par)',
+            recommendedFor: ['evento', 'ejecutiva'],
             image: 'https://images.unsplash.com/photo-1522337660859-02fbefca4702?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
         },
         {
-            id: 's3',
-            categoryId: 'mirada',
-            name: 'Lifting de Pestañas',
-            price: 18000,
+            id: 's2',
+            categoryId: 'manicura',
+            categoryGroup: 'manicura',
+            name: 'Extensión Poly Gel',
+            price: 28000,
+            duration: 120,
+            description: 'Un solo tono + 2 diseños simples. Esculpido profesional de máxima duración.',
+            adicionales: 'Extensión de uñas en tamaños L, XL y más tienen valor adicional • Francesa/Degradé (+$5.000)',
+            recommendedFor: ['evento'],
+            image: 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+
+        // --- PEDICURE (Lista Oficial) ---
+        {
+            id: 's_pedi_limpieza',
+            categoryId: 'pedicure',
+            categoryGroup: 'pedicure',
+            name: 'Limpieza de Pies',
+            price: 15000,
+            duration: 45,
+            description: 'Corte de uñas, Limpieza de talones, Hidratación de pies. Pies limpios, sanos y cómodos.',
+            adicionales: 'Francesa o degradé (+$5.000) • Diseños extras ($1.000 el par)',
+            recommendedFor: ['bienestar', 'ejecutiva'],
+            image: 'https://images.unsplash.com/photo-1519415510236-718bdfcd89c8?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_pedi_spa',
+            categoryId: 'pedicure',
+            categoryGroup: 'pedicure',
+            name: 'Limpieza de Pies + Spa',
+            price: 20000,
             duration: 60,
+            description: 'Corte de uñas, Exfoliación de pies, Limpieza de talones, Hidratación de pies. Pies renovados y llenos de bienestar.',
+            adicionales: 'Francesa o degradé (+$5.000) • Diseños extras ($1.000 el par)',
+            recommendedFor: ['bienestar', 'mama'],
+            image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_pedi_esmaltado',
+            categoryId: 'pedicure',
+            categoryGroup: 'pedicure',
+            name: 'Pedicure con Esmaltado',
+            price: 25000,
+            duration: 75,
+            description: 'Corte de uñas, Limpieza de talones, Hidratación de pies, Esmaltado permanente en un solo tono + 2 diseños básicos. Color y cuidado en cada paso.',
+            adicionales: 'Francesa o degradé (+$5.000) • Diseños extras ($1.000 el par)',
+            recommendedFor: ['evento', 'bienestar'],
+            image: 'https://images.unsplash.com/photo-1583001809873-a128495da465?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_pedi_premium',
+            categoryId: 'pedicure',
+            categoryGroup: 'pedicure',
+            name: 'Pedicure Spa Premium',
+            price: 35000,
+            duration: 90,
+            description: 'Corte de uñas, Limpieza de talones, Eliminación de durezas, Exfoliación de pies, Hidratación de pies, Masaje de relajación, Esmaltado permanente en un solo tono + 2 diseños básicos. La experiencia completa para unos pies increíbles.',
+            adicionales: 'Francesa o degradé (+$5.000) • Diseños extras ($1.000 el par)',
+            recommendedFor: ['bienestar', 'evento'],
+            image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+
+        // --- PESTAÑAS & CEJAS (Lista Oficial) ---
+        {
+            id: 's_pest_laminado',
+            categoryId: 'pestanas-cejas',
+            categoryGroup: 'pestanas-cejas',
+            name: 'Laminado de Cejas',
+            price: 20000,
+            duration: 45,
+            description: 'Define, ordena y da forma a tus cejas. Acabado prolijo y natural.',
+            adicionales: 'Llegar con cejas y pestañas limpias sin residuos de maquillaje 24h antes',
+            recommendedFor: ['ejecutiva', 'evento'],
+            image: 'https://images.unsplash.com/photo-1588510849202-3866299d6d84?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's3',
+            categoryId: 'pestanas-cejas',
+            categoryGroup: 'pestanas-cejas',
+            name: 'Lifting Coreano',
+            price: 25000,
+            duration: 60,
+            description: 'Realza tu mirada de forma natural, levanta y define tus pestañas con técnica coreana avanzada.',
+            adicionales: 'Se pide llegar con pestañas limpias sin maquillaje 24h antes para mejor retención',
             recommendedFor: ['mama', 'ejecutiva'],
             image: 'https://th.bing.com/th/id/OIP.2pIe9UC-BXmhjwRBZtYmDAHaE2?w=305&h=200&c=7&r=0&o=7&pid=1.7&rm=3'
         },
         {
+            id: 's_pest_clasica',
+            categoryId: 'pestanas-cejas',
+            categoryGroup: 'pestanas-cejas',
+            name: 'Extensiones de Pestañas Rímel o Clásica',
+            price: 25000,
+            duration: 90,
+            description: 'Un efecto natural y elegante para tu día a día (técnica pelo a pelo / efecto rímel).',
+            adicionales: 'Se pide llegar con pestañas limpias sin maquillaje 24h antes',
+            recommendedFor: ['ejecutiva', 'mama'],
+            image: 'https://images.unsplash.com/photo-1583001809873-a128495da465?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_pest_tecno',
+            categoryId: 'pestanas-cejas',
+            categoryGroup: 'pestanas-cejas',
+            name: 'Extensión de Pestañas Tecnológicas',
+            price: 30000,
+            duration: 90,
+            description: 'Más volumen, más definición, más duración con fibras tecnológicas ultralivianas.',
+            adicionales: 'Se pide llegar con pestañas limpias sin maquillaje 24h antes',
+            recommendedFor: ['evento', 'ejecutiva'],
+            image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_pest_volumen',
+            categoryId: 'pestanas-cejas',
+            categoryGroup: 'pestanas-cejas',
+            name: 'Volumen Tecnológico',
+            price: 35000,
+            duration: 105,
+            description: 'Desde $35.000. Una mirada impactante, densa y personalizada.',
+            adicionales: 'Se pide llegar con pestañas limpias sin maquillaje 24h antes',
+            recommendedFor: ['evento'],
+            image: 'https://images.unsplash.com/photo-1588510849202-3866299d6d84?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+
+        // --- DEPILACIÓN MASCULINA (Cera Caliente Miel de Abeja) ---
+        {
+            id: 's_dep_cejas',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Cejas (Masculina)',
+            price: 5000,
+            duration: 20,
+            description: 'Definición y limpieza con cera caliente de miel de abeja natural.',
+            adicionales: 'Materiales descartables y ambiente higiénico profesional',
+            recommendedFor: ['ejecutiva', 'bienestar'],
+            image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_nariz',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Nariz',
+            price: 5000,
+            duration: 15,
+            description: 'Eliminación de vello nasal con máxima higiene y confort.',
+            adicionales: 'Cera suave con la piel',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_orejas',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Orejas',
+            price: 5000,
+            duration: 15,
+            description: 'Eliminación de vello en pabellón auricular.',
+            adicionales: 'Rápido, higiénico y efectivo',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_hombros',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Hombros',
+            price: 7000,
+            duration: 20,
+            description: 'Depilación de hombros con cera caliente de miel.',
+            adicionales: 'Efecto limpio y duradero',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_axilas',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Axilas (Masculina)',
+            price: 8000,
+            duration: 20,
+            description: 'Piel limpia, fresca y libre de vello.',
+            adicionales: 'Cera de miel más suave con la piel',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_pecho',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Pecho',
+            price: 10000,
+            duration: 30,
+            description: 'Depilación de pecho con cera tibia de miel de abeja.',
+            adicionales: 'Resultados limpios, cómodos y naturales',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_abdomen',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Abdomen',
+            price: 10000,
+            duration: 30,
+            description: 'Depilación de abdomen completa.',
+            adicionales: 'Piel más limpia y cuidada',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_media_pierna',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Media Pierna',
+            price: 10000,
+            duration: 30,
+            description: 'Desde rodilla a tobillo.',
+            adicionales: 'Cera natural de miel',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_brazos',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Brazos Completos',
+            price: 15000,
+            duration: 35,
+            description: 'Depilación completa de ambos brazos.',
+            adicionales: 'Materiales descartables y atención personalizada',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_pecho_abdomen',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Pecho + Abdomen',
+            price: 18000,
+            duration: 45,
+            description: 'Zona superior del torso completa (Pecho y Abdomen).',
+            adicionales: 'Combo torso completo',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_espalda',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Espalda Completa',
+            price: 18000,
+            duration: 45,
+            description: 'Depilación completa de espalda para máxima frescura.',
+            adicionales: 'Cera de abeja natural',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_dep_piernas_completas',
+            categoryId: 'depilacion',
+            categoryGroup: 'depilacion',
+            name: 'Depilación Piernas Completas',
+            price: 22000,
+            duration: 50,
+            description: 'Desde muslo a tobillo.',
+            adicionales: 'Piel limpia, cuidada y duradera',
+            recommendedFor: ['bienestar'],
+            image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+
+        // --- CABELLO & TRATAMIENTOS CAPILARES ---
+        {
             id: 's4',
             categoryId: 'capilar',
+            categoryGroup: 'capilar',
             name: 'Masaje Capilar Nutritivo',
             price: 20000,
             duration: 45,
+            description: 'Hidratación profunda con mascarilla nutritiva, masaje craneal relajante y sellado de cutícula.',
+            adicionales: 'Ideal para revitalizar cabellos secos o procesados químicamente',
             recommendedFor: ['mama', 'bienestar'],
             image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_capilar_botox',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Botox Capilar Reconstructor',
+            price: 30000,
+            duration: 90,
+            description: 'Reconstrucción intensiva de la fibra capilar, reducción de frizz y brillo efecto espejo.',
+            adicionales: 'Nutrición con ácido hialurónico y keratina',
+            recommendedFor: ['ejecutiva', 'evento'],
+            image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_capilar_alisado',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Alisado & Nutrición Antifrizz',
+            price: 45000,
+            duration: 120,
+            description: 'Tratamiento alisante progresivo termoactivo. Liso natural, disciplinado y sedoso.',
+            adicionales: 'Sellado térmico profesional de larga duración',
+            recommendedFor: ['evento', 'ejecutiva'],
+            image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+        },
+        {
+            id: 's_capilar_lavado_peinado',
+            categoryId: 'capilar',
+            categoryGroup: 'capilar',
+            name: 'Lavado Hidratante & Peinado Express',
+            price: 15000,
+            duration: 40,
+            description: 'Lavado con productos profesionales, secado y peinado express o brushing.',
+            adicionales: 'Perfecto para lucir impecable en tus días importantes',
+            recommendedFor: ['evento', 'turnos'],
+            image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
         }
     ],
 
@@ -530,6 +868,17 @@ const StorageHelper = {
                 console.error("Error updating appointment status", e);
             }
         }
+    },
+
+    // Servicios y Categorías
+    getServices: function() {
+        return mockData.services;
+    },
+    getCategories: function() {
+        return mockData.categories;
+    },
+    getServiceById: function(id) {
+        return mockData.services.find(s => s.id === id) || null;
     },
 
     // Professionals

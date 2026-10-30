@@ -713,7 +713,74 @@ function setupPersonalization() {
 
 // --- Eventos de Home ---
 function initHomeEvents() {
-    // Ya no hay perfiles dinámicos; el carrusel es estático.
+    if (window.lucide) lucide.createIcons();
+}
+
+window.agendarServicioDirecto = function(serviceId) {
+    window._preselectedServiceId = serviceId;
+    if (typeof AppRouter !== 'undefined') {
+        AppRouter.navigate('agendar');
+    }
+};
+
+function initServiciosEvents() {
+    if (window.lucide) lucide.createIcons();
+
+    const catChips = document.querySelectorAll('#services-page-filter-chips .service-cat-chip');
+    const cards = document.querySelectorAll('#services-catalog-grid .service-catalog-card');
+    const bannerTitle = document.getElementById('cat-banner-title');
+    const bannerDesc = document.getElementById('cat-banner-desc');
+
+    const catInfo = {
+        'all': {
+            title: '✨ Todos los Servicios',
+            desc: 'Explora nuestra carta completa de tratamientos para manos, pies, mirada, estética masculina y cabello.'
+        },
+        'manicura': {
+            title: '💅 Manicura',
+            desc: 'Más que uñas, es un momento para ti. Técnicas avanzadas en esmaltado permanente, ruber base, kapping y extensiones poly gel.'
+        },
+        'pedicure': {
+            title: '🦶 Pedicure • Cuida tus pasos',
+            desc: 'Pies felices, mujeres más libres. Cuidarte también es amor propio con exfoliaciones, hidratación y pedicure spa premium.'
+        },
+        'pestanas-cejas': {
+            title: '👁️ Pestañas & Cejas • Miradas que inspiran',
+            desc: 'Realza tu belleza natural. Lifting coreano, laminado y extensiones clásicas y tecnológicas de máxima retención.'
+        },
+        'depilacion': {
+            title: '✂️ Depilación Masculina • Cera de miel natural',
+            desc: 'Estética masculina profesional con cera caliente de miel de abeja natural. Procedimientos higiénicos con materiales 100% descartables.'
+        },
+        'capilar': {
+            title: '💆‍♀️ Cabello & Tratamientos Capilares',
+            desc: 'Nutrición intensiva, botox capilar reconstructor, alisados antifrizz y peinados express para potenciar tu estilo.'
+        }
+    };
+
+    catChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            catChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            const filter = chip.getAttribute('data-filter');
+
+            if (bannerTitle && bannerDesc && catInfo[filter]) {
+                bannerTitle.innerText = catInfo[filter].title;
+                bannerDesc.innerText = catInfo[filter].desc;
+            }
+
+            cards.forEach(card => {
+                const cardCat = card.getAttribute('data-category');
+                if (filter === 'all' || cardCat === filter) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            if (window.lucide) lucide.createIcons();
+        });
+    });
 }
 
 // --- Eventos de Agendamiento ---
@@ -745,18 +812,57 @@ function initAgendarEvents() {
         });
     };
 
-    // Step 1: Services
+    // Step 1: Services y Filtros por Categoría
     const serviceCards = document.querySelectorAll('.service-select-card');
     const btnNext1 = document.getElementById('btn-next-1');
+    const bookingCatChips = document.querySelectorAll('#booking-step-1 .service-cat-chip');
+
+    bookingCatChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            bookingCatChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            const cat = chip.getAttribute('data-filter');
+
+            serviceCards.forEach(card => {
+                const cardCat = card.getAttribute('data-category');
+                if (cat === 'all' || cardCat === cat) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
 
     serviceCards.forEach(card => {
         card.addEventListener('click', () => {
-            serviceCards.forEach(c => c.style.borderColor = 'transparent');
+            serviceCards.forEach(c => {
+                c.style.borderColor = 'transparent';
+                c.style.background = 'white';
+            });
             card.style.borderColor = 'var(--clr-rose-gold)';
+            card.style.background = '#FFFDFB';
             bookingState.serviceId = card.getAttribute('data-service-id');
-            btnNext1.disabled = false;
+            if (btnNext1) btnNext1.disabled = false;
         });
     });
+
+    // Si viene un servicio preseleccionado (ej: desde Servicios o Home)
+    if (window._preselectedServiceId) {
+        const targetCard = document.querySelector(`.service-select-card[data-service-id="${window._preselectedServiceId}"]`);
+        if (targetCard) {
+            const cardCat = targetCard.getAttribute('data-category');
+            const targetChip = document.querySelector(`#booking-step-1 .service-cat-chip[data-filter="${cardCat}"]`);
+            if (targetChip) {
+                targetChip.click();
+            }
+            targetCard.click();
+            setTimeout(() => {
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+        window._preselectedServiceId = null;
+    }
 
     btnNext1?.addEventListener('click', () => {
         // Re-render prof-grid just in case data loaded late
@@ -1393,8 +1499,8 @@ function initAdminEvents() {
             formFicha.reset();
             document.querySelectorAll('.ficha-prod-qty').forEach(input => input.disabled = true);
 
-            // Mostrar campos dinámicos si es de la categoría 'mirada' (pestañas)
-            if (service && service.categoryId === 'mirada') {
+            // Mostrar campos dinámicos si es de la categoría 'mirada' o 'pestanas-cejas' (pestañas)
+            if (service && (service.categoryId === 'mirada' || service.categoryId === 'pestanas-cejas')) {
                 dynFields.style.display = 'block';
                 dynFields.innerHTML = `
                     <h4 style="margin-bottom:10px; font-size:1rem;">Mapping de Pestañas</h4>

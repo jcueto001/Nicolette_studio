@@ -986,4 +986,45 @@ button {
     flex-shrink: 0;
 }
 
-
+
+
+/* --- Chips de Categorías de Servicios y Agendar --- */
+.service-cat-chip {
+    padding: 9px 18px;
+    border-radius: var(--radius-pill);
+    border: 1px solid #ddd;
+    background: #ffffff;
+    color: var(--clr-neutral-gray);
+    font-size: 0.92rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.service-cat-chip:hover {
+    border-color: var(--clr-rose-gold);
+    color: var(--clr-rose-gold-dark);
+    transform: translateY(-1px);
+}
+
+.service-cat-chip.active {
+    background: var(--clr-rose-gold);
+    color: #ffffff;
+    border-color: var(--clr-rose-gold);
+    box-shadow: 0 3px 10px rgba(182, 141, 93, 0.35);
+    font-weight: 600;
+}
+
+.service-card-item {
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.service-card-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}

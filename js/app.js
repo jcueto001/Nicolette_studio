@@ -7,6 +7,7 @@ const AppRouter = {
     currentRoute: 'home',
     routes: {
         'home': renderHomeView,
+        'servicios': renderServiciosView,
         'galeria': renderGaleriaView,
         'agendar': renderAgendarView,
         'perfil': renderPerfilView,
@@ -91,6 +92,7 @@ const AppRouter = {
 
                 // Ejecutar scripts específicos de la vista si existen
                 if (route === 'home') initHomeEvents();
+                if (route === 'servicios') initServiciosEvents();
                 if (route === 'galeria') initGaleriaEvents();
                 if (route === 'agendar') initAgendarEvents();
                 if (route === 'admin') initAdminEvents();
@@ -175,22 +177,34 @@ function renderHomeView() {
             <div class="container">
                 <div class="section-header">
                     <h2 class="section-title">Nuestros Servicios</h2>
-                    <p class="section-subtitle">Explora algunos de los servicios favoritos de nuestras clientas.</p>
+                    <p class="section-subtitle">Explora nuestra carta completa de servicios con precios transparentes.</p>
                 </div>
                 
                 <div class="carousel-container" style="display: flex; overflow-x: auto; gap: 20px; padding-bottom: 20px; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--clr-rose-gold) var(--clr-nude-light);">
-                    ${mockData.services.map(s => `
-                        <div class="card" style="min-width: 300px; max-width: 300px; flex: 0 0 auto; scroll-snap-align: start; padding: 0; overflow: hidden; border: none; box-shadow: var(--shadow-medium);">
-                            <img src="${s.image}" alt="${s.name}" style="width: 100%; height: 250px; object-fit: cover;">
-                            <div style="padding: 20px;">
-                                <h3 style="font-size: 1.2rem; margin-bottom: 10px;">${s.name}</h3>
-                                <div style="display:flex; justify-content: space-between; align-items:center;">
-                                    <span style="color: var(--clr-rose-gold-dark); font-weight: bold; font-size:1.1rem;">$${s.price.toLocaleString('es-CL')}</span>
-                                    <button class="btn btn-primary btn-sm" style="padding: 5px 10px;" onclick="AppRouter.navigate('agendar')">Agendar</button>
+                    ${mockData.services.slice(0, 10).map(s => `
+                        <div class="card" style="min-width: 300px; max-width: 300px; flex: 0 0 auto; scroll-snap-align: start; padding: 0; overflow: hidden; border: none; box-shadow: var(--shadow-medium); display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <img src="${s.image}" alt="${s.name}" style="width: 100%; height: 220px; object-fit: cover;">
+                                <div style="padding: 18px 20px 10px;">
+                                    <span style="font-size: 0.72rem; text-transform: uppercase; background: var(--clr-nude-light); color: var(--clr-rose-gold-dark); padding: 3px 8px; border-radius: 10px; font-weight: 600; display: inline-block; margin-bottom: 6px;">
+                                        ${s.categoryId === 'manicura' ? 'Manicura' : (s.categoryId === 'pedicure' ? 'Pedicure' : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas' : (s.categoryId === 'depilacion' ? 'Depilación' : 'Cabello')))}
+                                    </span>
+                                    <h3 style="font-size: 1.15rem; margin-bottom: 6px; color: var(--clr-neutral-dark);">${s.name}</h3>
+                                    ${s.description ? `<p style="font-size: 0.85rem; color: var(--clr-neutral-gray); margin-bottom: 10px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${s.description}</p>` : ''}
                                 </div>
+                            </div>
+                            <div style="padding: 0 20px 20px; display:flex; justify-content: space-between; align-items:center;">
+                                <span style="color: var(--clr-rose-gold-dark); font-weight: bold; font-size:1.15rem;">$${s.price.toLocaleString('es-CL')}</span>
+                                <button class="btn btn-primary btn-sm" style="padding: 6px 14px;" onclick="window.agendarServicioDirecto('${s.id}')">Agendar</button>
                             </div>
                         </div>
                     `).join('')}
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn btn-primary" onclick="AppRouter.navigate('servicios')" style="padding: 14px 32px; font-size: 1.05rem; display: inline-flex; align-items: center; gap: 8px;">
+                        <i data-lucide="sparkles"></i> Ver Todos los Servicios & Lista de Precios
+                    </button>
                 </div>
             </div>
         </section>
@@ -239,6 +253,151 @@ function renderHomeView() {
                             referrerpolicy="no-referrer-when-downgrade">
                         </iframe>
                     </div>
+                </div>
+            </div>
+        </section>
+    `;
+}
+
+function renderServiciosView() {
+    const services = mockData.services;
+
+    return `
+        <!-- Services Section Header -->
+        <section class="section" style="padding: 60px 0 30px; background: linear-gradient(180deg, var(--clr-nude-light) 0%, #ffffff 100%);">
+            <div class="container">
+                <div class="section-header" style="max-width: 820px; margin: 0 auto 30px; text-align: center;">
+                    <div style="display:inline-flex; align-items:center; gap:8px; background:white; padding:6px 16px; border-radius:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); margin-bottom:15px;">
+                        <i data-lucide="sparkles" style="color:var(--clr-rose-gold); width:16px; height:16px;"></i>
+                        <span style="font-size:0.88rem; font-weight:600; color:var(--clr-rose-gold-dark); text-transform:uppercase; letter-spacing:0.5px;">Lista Oficial de Precios</span>
+                    </div>
+                    <h1 class="section-title" style="margin-bottom: 12px; font-size: 2.8rem;">Nuestros Servicios & Precios</h1>
+                    <p class="section-subtitle" style="font-size: 1.15rem; color: var(--clr-neutral-gray); margin-bottom: 25px;">
+                        Descubre todos nuestros servicios organizados por categoría. Precios transparentes y procedimientos profesionales en Buin.
+                    </p>
+                    
+                    <!-- Chips de Categorías -->
+                    <div id="services-page-filter-chips" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px;">
+                        <button type="button" class="service-cat-chip active" data-filter="all">✨ Todos (${services.length})</button>
+                        <button type="button" class="service-cat-chip" data-filter="manicura">💅 Manicura (${services.filter(s => s.categoryId === 'manicura').length})</button>
+                        <button type="button" class="service-cat-chip" data-filter="pedicure">🦶 Pedicure (${services.filter(s => s.categoryId === 'pedicure').length})</button>
+                        <button type="button" class="service-cat-chip" data-filter="pestanas-cejas">👁️ Pestañas & Cejas (${services.filter(s => s.categoryId === 'pestanas-cejas').length})</button>
+                        <button type="button" class="service-cat-chip" data-filter="depilacion">✂️ Depilación Masculina (${services.filter(s => s.categoryId === 'depilacion').length})</button>
+                        <button type="button" class="service-cat-chip" data-filter="capilar">💆‍♀️ Cabello (${services.filter(s => s.categoryId === 'capilar').length})</button>
+                    </div>
+                </div>
+
+                <!-- Banner Informativo Dinámico de Categoría -->
+                <div id="service-cat-banner" class="card" style="margin-bottom: 35px; padding: 22px 28px; background: linear-gradient(135deg, #FFF9F5 0%, #FFFFFF 100%); border-left: 5px solid var(--clr-rose-gold); box-shadow: 0 4px 15px rgba(0,0,0,0.04);">
+                    <h3 id="cat-banner-title" style="margin:0 0 6px 0; font-size: 1.35rem; color: var(--clr-rose-gold-dark);">
+                        ✨ Todos los Servicios
+                    </h3>
+                    <p id="cat-banner-desc" style="margin:0; color: var(--clr-neutral-gray); font-size: 0.98rem; line-height: 1.6;">
+                        Explora nuestra carta completa de tratamientos para manos, pies, mirada, estética masculina y cabello.
+                    </p>
+                </div>
+
+                <!-- Grilla de Servicios -->
+                <div id="services-catalog-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 25px; margin-bottom: 50px;">
+                    ${services.map(s => {
+                        const catLabel = s.categoryId === 'manicura' ? 'Manicura'
+                            : (s.categoryId === 'pedicure' ? 'Pedicure'
+                            : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas'
+                            : (s.categoryId === 'depilacion' ? 'Depilación Masculina'
+                            : 'Cabello & Capilar')));
+
+                        return `
+                        <div class="card service-catalog-card" data-category="${s.categoryId}" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; border: 1px solid #f0eae4; border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.04); transition: transform 0.25s, box-shadow 0.25s;">
+                            <div style="position: relative; height: 200px; overflow: hidden; background: #fdfbf7;">
+                                <img src="${s.image}" alt="${s.name}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;">
+                                <div style="position: absolute; top: 12px; left: 12px; background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(4px); padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; color: var(--clr-rose-gold-dark); text-transform: uppercase;">
+                                    ${catLabel}
+                                </div>
+                                <div style="position: absolute; bottom: 12px; right: 12px; background: rgba(0,0,0,0.65); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
+                                    <i data-lucide="clock" style="width:13px; height:13px;"></i> ${s.duration} min
+                                </div>
+                            </div>
+                            
+                            <div style="padding: 22px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                                <div>
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px;">
+                                        <h3 style="font-size: 1.25rem; margin: 0; color: var(--clr-neutral-dark); line-height: 1.3;">${s.name}</h3>
+                                        <div style="text-align: right; white-space: nowrap;">
+                                            <span style="font-weight: 800; font-size: 1.35rem; color: var(--clr-rose-gold-dark);">$${s.price.toLocaleString('es-CL')}</span>
+                                        </div>
+                                    </div>
+                                    <p style="font-size: 0.92rem; color: var(--clr-neutral-gray); margin-bottom: 12px; line-height: 1.5;">
+                                        ${s.description || 'Procedimiento profesional con productos de calidad.'}
+                                    </p>
+                                    ${s.adicionales ? `
+                                        <div style="background: var(--clr-nude-light); border-radius: 6px; padding: 8px 10px; margin-bottom: 15px; font-size: 0.8rem; color: var(--clr-rose-gold-dark);">
+                                            <strong><i data-lucide="info" style="width:13px; height:13px; display:inline; vertical-align:middle;"></i> Nota:</strong> ${s.adicionales}
+                                        </div>
+                                    ` : ''}
+                                </div>
+
+                                <div style="padding-top: 15px; border-top: 1px solid #f5ede6; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 0.82rem; color: var(--clr-neutral-gray);">
+                                        Abono Flow: $5.000
+                                    </span>
+                                    <button class="btn btn-primary btn-sm" onclick="window.agendarServicioDirecto('${s.id}')" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-weight: 600;">
+                                        <i data-lucide="calendar" style="width:15px; height:15px;"></i> Agendar Cita
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                <!-- Sección Informativa de Adicionales & Garantías (Inspirado en los Flyers Oficiales) -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 50px;">
+                    <div class="card" style="padding: 24px; border: 1px solid var(--clr-nude); background: white;">
+                        <h4 style="color: var(--clr-rose-gold-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="sparkles"></i> Adicionales Uñas & Pies
+                        </h4>
+                        <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.92rem; color: var(--clr-neutral-gray); line-height: 1.8;">
+                            <li>• <strong>Francesa o Degradé:</strong> +$5.000 (+ 2 diseños simples)</li>
+                            <li>• <strong>Diseños Aparte / Extras:</strong> $1.000 el par</li>
+                            <li>• Kapping en tamaños M, L, XL tienen valor adicional.</li>
+                            <li>• Extensiones en tamaños L, XL tienen valor adicional.</li>
+                        </ul>
+                    </div>
+
+                    <div class="card" style="padding: 24px; border: 1px solid var(--clr-nude); background: white;">
+                        <h4 style="color: var(--clr-rose-gold-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="eye"></i> Cuidado de Pestañas
+                        </h4>
+                        <p style="font-size: 0.92rem; color: var(--clr-neutral-gray); line-height: 1.6; margin: 0 0 10px 0;">
+                            Para garantizar la máxima adherencia y duración de tus extensiones o lifting:
+                        </p>
+                        <div style="background: var(--clr-nude-light); padding: 10px 12px; border-radius: var(--radius-sm); font-size: 0.88rem; color: var(--clr-neutral-dark); font-weight: 500;">
+                            ✨ Se pide llegar con pestañas limpias, sin residuos de maquillaje <strong>24 horas antes</strong> de la postura.
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding: 24px; border: 1px solid var(--clr-nude); background: white;">
+                        <h4 style="color: var(--clr-rose-gold-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="shield-check"></i> Nuestra Garantía de Calidad
+                        </h4>
+                        <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.92rem; color: var(--clr-neutral-gray); line-height: 1.8;">
+                            <li>💎 <strong>Productos Premium:</strong> Insumos testeados y seguros.</li>
+                            <li>👩‍⚕️ <strong>Profesionales Certificadas:</strong> En constante capacitación.</li>
+                            <li>🌿 <strong>Higiene y Seguridad:</strong> Materiales descartables y esterilización.</li>
+                            <li>☕ <strong>Ambiente Relajante:</strong> Espacio kids friendly y sin presiones.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Call to Action Banner -->
+                <div class="card" style="text-align: center; padding: 45px 25px; background: linear-gradient(135deg, var(--clr-nude-light) 0%, #fff4ec 100%); border: 1px solid var(--clr-rose-gold); border-radius: var(--radius-lg);">
+                    <h2 style="font-size: 2.2rem; color: var(--clr-rose-gold-dark); margin-bottom: 12px;">¿Lista para reservar tu momento de autocuidado?</h2>
+                    <p style="font-size: 1.1rem; color: var(--clr-neutral-gray); max-width: 650px; margin: 0 auto 25px;">
+                        Selecciona tu profesional favorita, elige la fecha y hora que más te acomode y asegura tu cita abonando $5.000 con Flow.
+                    </p>
+                    <button class="btn btn-primary" onclick="AppRouter.navigate('agendar')" style="font-size: 1.1rem; padding: 14px 35px;">
+                        <i data-lucide="calendar"></i> Agendar Mi Cita Ahora
+                    </button>
                 </div>
             </div>
         </section>
@@ -340,19 +499,49 @@ function renderAgendarView() {
 
                 <!-- Step 1: Services -->
                 <div id="booking-step-1" class="booking-step">
-                    <h3 style="margin-bottom: 20px;">1. Selecciona un Servicio</h3>
-                    <div style="display: flex; flex-direction: column; gap: 15px;">
-                        ${mockData.services.map(s => `
-                            <div class="service-select-card card" data-service-id="${s.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; cursor: pointer; border: 2px solid transparent;">
-                                <div>
-                                    <h4 style="font-size: 1.1rem; margin-bottom: 5px;">${s.name}</h4>
-                                    <p style="font-size: 0.9rem; color: var(--clr-neutral-gray);"><i data-lucide="clock" style="width:14px; height:14px; display:inline; vertical-align:middle;"></i> ${s.duration} min</p>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom: 20px;">
+                        <h3 style="margin:0;">1. Selecciona un Servicio</h3>
+                        <a href="#" data-route="servicios" style="color:var(--clr-rose-gold-dark); font-size:0.9rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            <i data-lucide="eye" style="width:15px; height:15px;"></i> Ver lista de precios completa
+                        </a>
+                    </div>
+
+                    <!-- Filtros por categoría en Agendar -->
+                    <div class="service-cat-filter-container" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:12px; margin-bottom:20px; -webkit-overflow-scrolling:touch;">
+                        <button type="button" class="service-cat-chip active" data-filter="all">Todos</button>
+                        <button type="button" class="service-cat-chip" data-filter="manicura">💅 Manicura</button>
+                        <button type="button" class="service-cat-chip" data-filter="pedicure">🦶 Pedicure</button>
+                        <button type="button" class="service-cat-chip" data-filter="pestanas-cejas">👁️ Pestañas & Cejas</button>
+                        <button type="button" class="service-cat-chip" data-filter="depilacion">✂️ Depilación</button>
+                        <button type="button" class="service-cat-chip" data-filter="capilar">💆‍♀️ Cabello</button>
+                    </div>
+
+                    <div id="booking-services-grid" style="display: flex; flex-direction: column; gap: 14px; max-height: 520px; overflow-y: auto; padding-right: 6px;">
+                        ${mockData.services.map(s => {
+                            const catLabel = s.categoryId === 'manicura' ? 'Manicura'
+                                : (s.categoryId === 'pedicure' ? 'Pedicure'
+                                : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas'
+                                : (s.categoryId === 'depilacion' ? 'Depilación'
+                                : 'Cabello')));
+                            return `
+                            <div class="service-select-card card" data-service-id="${s.id}" data-category="${s.categoryId}" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;">
+                                <div style="flex: 1; padding-right: 15px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                        <h4 style="font-size: 1.1rem; margin: 0; color: var(--clr-neutral-dark);">${s.name}</h4>
+                                        <span style="font-size: 0.72rem; text-transform: uppercase; background: var(--clr-nude-light); color: var(--clr-rose-gold-dark); padding: 2px 8px; border-radius: 10px; font-weight: 600;">
+                                            ${catLabel}
+                                        </span>
+                                    </div>
+                                    ${s.description ? `<p style="font-size: 0.88rem; color: var(--clr-neutral-gray); margin: 0 0 5px 0; line-height: 1.4;">${s.description}</p>` : ''}
+                                    <p style="font-size: 0.82rem; color: var(--clr-neutral-gray); margin: 0;"><i data-lucide="clock" style="width:13px; height:13px; display:inline; vertical-align:middle;"></i> ${s.duration} min</p>
                                 </div>
-                                <div style="font-weight: 600; color: var(--clr-rose-gold-dark);">
-                                    $${s.price.toLocaleString('es-CL')}
+                                <div style="text-align: right; white-space: nowrap;">
+                                    <div style="font-weight: 700; font-size: 1.25rem; color: var(--clr-rose-gold-dark);">$${s.price.toLocaleString('es-CL')}</div>
+                                    <small style="color: var(--clr-neutral-gray); font-size: 0.75rem;">Abono: $5.000</small>
                                 </div>
                             </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                     <div style="margin-top: 30px; text-align: right;">
                         <button class="btn btn-primary" id="btn-next-1" disabled>Siguiente <i data-lucide="chevron-right"></i></button>
