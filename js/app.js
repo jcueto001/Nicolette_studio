@@ -83,24 +83,44 @@ const AppRouter = {
             contentArea.style.opacity = '0';
 
             this._navTimeout = setTimeout(() => {
-                // Inyectar HTML de la nueva vista
-                contentArea.innerHTML = this.routes[route]();
+                try {
+                    // Inyectar HTML de la nueva vista
+                    contentArea.innerHTML = this.routes[route]();
+                } catch (renderErr) {
+                    console.error("Error al renderizar vista " + route + ":", renderErr);
+                    contentArea.innerHTML = `
+                        <div class="container section text-center" style="padding: 60px 20px;">
+                            <div class="card" style="max-width:520px; margin:0 auto; padding:35px 25px; box-shadow:var(--shadow-medium); border-radius:var(--radius-md);">
+                                <div style="width:56px; height:56px; border-radius:50%; background:#fef3c7; color:#d97706; display:inline-flex; align-items:center; justify-content:center; margin-bottom:15px;">
+                                    <i data-lucide="alert-triangle" style="width:28px; height:28px;"></i>
+                                </div>
+                                <h3 style="color:var(--clr-neutral-dark); margin-bottom:10px; font-size:1.3rem;">Hubo un inconveniente al cargar esta sección</h3>
+                                <p style="color:var(--clr-neutral-gray); font-size:0.9rem; margin-bottom:20px; line-height:1.5;">${renderErr.message || 'Por favor recarga la página o vuelve al inicio.'}</p>
+                                <button class="btn btn-primary" onclick="AppRouter.navigate('home')">Volver al Inicio</button>
+                            </div>
+                        </div>
+                    `;
+                }
 
                 // Re-inicializar iconos de Lucide para los nuevos elementos inyectados
                 if (window.lucide) {
-                    window.lucide.createIcons();
+                    try { window.lucide.createIcons(); } catch(e){}
                 }
 
                 // Ejecutar scripts específicos de la vista si existen
-                if (route === 'home') initHomeEvents();
-                if (route === 'servicios') initServiciosEvents();
-                if (route === 'cuidados') initCuidadosEvents();
-                if (route === 'galeria') initGaleriaEvents();
-                if (route === 'agendar') initAgendarEvents();
-                if (route === 'admin') initAdminEvents();
-                if (route === 'perfil') initPerfilEvents();
+                try {
+                    if (route === 'home') initHomeEvents();
+                    if (route === 'servicios') initServiciosEvents();
+                    if (route === 'cuidados') initCuidadosEvents();
+                    if (route === 'galeria') initGaleriaEvents();
+                    if (route === 'agendar') initAgendarEvents();
+                    if (route === 'admin') initAdminEvents();
+                    if (route === 'perfil') initPerfilEvents();
+                } catch (eventErr) {
+                    console.error("Error al inicializar eventos de " + route + ":", eventErr);
+                }
 
-                // Animación de entrada
+                // Animación de entrada SIEMPRE se ejecuta para evitar pantalla en blanco
                 contentArea.style.transition = 'opacity 0.3s ease';
                 contentArea.style.opacity = '1';
 
@@ -1099,18 +1119,39 @@ function renderAgendarView() {
 
 function renderAdminView() {
     const auth = StorageHelper.getAuth();
-    if (!auth.loggedIn) {
+    if (!auth || !auth.loggedIn || !auth.user) {
         return `
-            <div class="container section" style="padding: 70px 20px; max-width: 440px; margin: 0 auto;">
-                <div class="card" style="padding: 40px 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.07); border-radius: var(--radius-md); border-top: 4px solid var(--clr-rose-gold); background: white;">
-                    <div style="text-align: center; margin-bottom: 25px;">
-                        <div style="width: 64px; height: 64px; background: var(--clr-nude-light); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px; color: var(--clr-rose-gold-dark);">
+            <div class="container section" style="padding: 50px 20px; max-width: 480px; margin: 0 auto;">
+                <div class="card" style="padding: 36px 30px; box-shadow: var(--shadow-medium); border-radius: var(--radius-lg); border-top: 4px solid var(--clr-rose-gold); background: white;">
+                    <div style="text-align: center; margin-bottom: 22px;">
+                        <div style="width: 64px; height: 64px; background: var(--clr-nude-light); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; color: var(--clr-rose-gold-dark);">
                             <i data-lucide="shield" style="width: 32px; height: 32px;"></i>
                         </div>
-                        <h2 style="font-size: 1.6rem; color: var(--clr-neutral-dark); margin-bottom: 8px;">Portal de Administración</h2>
+                        <h2 style="font-size: 1.6rem; color: var(--clr-neutral-dark); margin-bottom: 6px;">Portal de Administración</h2>
                         <p style="color: var(--clr-neutral-gray); font-size: 0.9rem; margin: 0;">
-                            Acceso para Administradora y Trabajadoras
+                            Acceso privado para Administradora y Especialistas
                         </p>
+                    </div>
+
+                    <!-- Botones de Acceso Rápido por Rol -->
+                    <div style="background: var(--clr-nude-light); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 20px; border: 1px solid rgba(219, 137, 160, 0.25);">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: var(--clr-rose-gold-dark); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px; text-align: center;">
+                            ⚡ Seleccionar cuenta rápida:
+                        </span>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <button type="button" class="btn-quick-login" data-email="nicolette@gmail.com" data-pass="admin123" style="background: white; border: 1px solid var(--clr-rose-gold); color: var(--clr-neutral-dark); text-align: left; padding: 8px 12px; border-radius: 6px; font-size: 0.84rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s;">
+                                <span>👑 <strong>Administradora</strong> (Nicolett)</span>
+                                <span style="font-size: 0.75rem; color: var(--clr-rose-gold-dark); font-weight: 600;">Usar cuenta →</span>
+                            </button>
+                            <button type="button" class="btn-quick-login" data-email="camila@gmail.com" data-pass="123456" style="background: white; border: 1px solid #dcd3cb; color: var(--clr-neutral-dark); text-align: left; padding: 8px 12px; border-radius: 6px; font-size: 0.84rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s;">
+                                <span>💅 <strong>Trabajadora</strong> (Camila - Manicura)</span>
+                                <span style="font-size: 0.75rem; color: var(--clr-rose-gold-dark); font-weight: 600;">Usar cuenta →</span>
+                            </button>
+                            <button type="button" class="btn-quick-login" data-email="priscila@gmail.com" data-pass="123456" style="background: white; border: 1px solid #dcd3cb; color: var(--clr-neutral-dark); text-align: left; padding: 8px 12px; border-radius: 6px; font-size: 0.84rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s;">
+                                <span>🦶 <strong>Trabajadora</strong> (Priscila - Podología)</span>
+                                <span style="font-size: 0.75rem; color: var(--clr-rose-gold-dark); font-weight: 600;">Usar cuenta →</span>
+                            </button>
+                        </div>
                     </div>
                     
                     <form id="admin-login-form" style="display: flex; flex-direction: column; gap: 16px;">
@@ -1150,7 +1191,7 @@ function renderAdminView() {
         `;
     }
 
-    const isAdmin = auth.user.role === 'admin';
+    const isAdmin = !!(auth.user && auth.user.role === 'admin');
     const appointments = StorageHelper.getAppointments();
     const inventory = StorageHelper.getInventory();
     const professionals = StorageHelper.getProfessionals();
@@ -1160,7 +1201,7 @@ function renderAdminView() {
     // Filtramos la agenda según el rol
     let myAppointments = appointments;
     if (!isAdmin) {
-        myAppointments = appointments.filter(a => (a.profesional === auth.user.name) || (a.profId === auth.user.id));
+        myAppointments = appointments.filter(a => (a.profesional === auth.user?.name) || (a.profId === auth.user?.id));
     }
 
     // Tabla de Agenda
@@ -1230,7 +1271,7 @@ function renderAdminView() {
     if (!isAdmin) {
         myFichas = fichas.filter(f => {
             const appointment = appointments.find(a => a.id === f.appointmentId);
-            return appointment && (appointment.profesional === auth.user.name || appointment.profId === auth.user.id);
+            return appointment && (appointment.profesional === auth.user?.name || appointment.profId === auth.user?.id);
         });
     }
 
@@ -1291,7 +1332,7 @@ function renderAdminView() {
     // Tabla Trabajadoras
     let profRows = '';
     professionals.forEach(p => {
-        const isSelf = p.id === auth.user.id || (p.email && auth.user.email && p.email.toLowerCase() === auth.user.email.toLowerCase());
+        const isSelf = p.id === auth.user?.id || (p.email && auth.user?.email && p.email.toLowerCase() === auth.user?.email.toLowerCase());
         profRows += `
             <tr style="border-bottom: 1px solid var(--clr-nude);">
                 <td style="padding: 15px; display:flex; align-items:center; gap:12px;">
@@ -1388,7 +1429,7 @@ function renderAdminView() {
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     <div style="font-weight:bold; color:var(--clr-rose-gold-dark); background:var(--clr-nude-light); padding:7px 16px; border-radius:20px; font-size:0.9rem; display:inline-flex; align-items:center; gap:6px;">
                         <i data-lucide="user" style="width:14px; height:14px;"></i>
-                        ${auth.user.name || (isAdmin ? 'Administradora' : 'Trabajadora')}
+                        ${auth.user?.name || (isAdmin ? 'Administradora' : 'Trabajadora')}
                     </div>
                     <button type="button" id="btn-open-change-password" class="btn btn-outline" style="border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); padding:7px 16px; font-size:0.88rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:white; font-weight:600; border-radius:20px; transition:all 0.2s;" title="Crear o cambiar la contraseña de tu cuenta">
                         <i data-lucide="key-round" style="width:15px; height:15px;"></i> Cambiar Mi Contraseña
@@ -1562,7 +1603,7 @@ function renderAdminView() {
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                         <div>
                             <h3 style="margin:0; font-size:1.35rem; color:var(--clr-rose-gold-dark); display:flex; align-items:center; gap:8px;">
-                                <i data-lucide="camera" style="width:22px; height:22px;"></i> Galería de Trabajos • ${auth.user.name || (isAdmin ? 'Administración' : 'Especialista')}
+                                <i data-lucide="camera" style="width:22px; height:22px;"></i> Galería de Trabajos • ${auth.user?.name || (isAdmin ? 'Administración' : 'Especialista')}
                             </h3>
                             <p style="margin:6px 0 0; color:var(--clr-neutral-gray); font-size:0.92rem;">
                                 Saca fotos de tus atenciones con la cámara o sube imágenes de trabajos. Las fotos vinculadas a una clienta se reflejarán en su perfil y en la galería del salón.
@@ -1575,7 +1616,7 @@ function renderAdminView() {
                 </div>
 
                 <div class="card" style="margin-bottom:20px; padding:20px;">
-                    <h3 style="margin-bottom:15px;">Subir Archivo de Foto a Galería (${isAdmin ? 'Administración' : (auth.user.name || 'Trabajadora')})</h3>
+                    <h3 style="margin-bottom:15px;">Subir Archivo de Foto a Galería (${isAdmin ? 'Administración' : (auth.user?.name || 'Trabajadora')})</h3>
                     <form id="form-upload-gallery" style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">
                         <div style="flex: 1; min-width: 200px;">
                             <label style="display:block; margin-bottom:5px; font-weight:bold;">Título / Servicio</label>
@@ -1671,6 +1712,7 @@ function renderAdminView() {
                     <div id="admin-gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px;">
                         ${allGal.map(img => {
                             const isClientRelated = (img.source === 'client') || !!img.clientEmail || !!img.clientName;
+                            const isClient = isClientRelated;
                             const isApproved = !img.source || img.source !== 'client' || img.approved === true || img.status === 'approved';
                             const statusKey = isClientRelated ? (isApproved ? 'approved' : 'pending') : 'studio';
                             const belongsToMe = isMyImage(img);
@@ -2026,7 +2068,7 @@ function renderAdminView() {
                         </div>
                         <div>
                             <h3 style="margin:0; font-size:1.25rem;">Seguridad de la Cuenta</h3>
-                            <p style="margin:0; font-size:0.82rem; color:var(--clr-neutral-gray);" id="label-change-pass-email">${auth.user.email || 'tu-cuenta'}</p>
+                            <p style="margin:0; font-size:0.82rem; color:var(--clr-neutral-gray);" id="label-change-pass-email">${auth.user?.email || 'tu-cuenta'}</p>
                         </div>
                     </div>
 

@@ -854,11 +854,11 @@ const StorageHelper = {
                     // Si ya estamos en admin, refrescar la vista para mostrar los datos
                     this._refreshAdminIfSafe();
                 } else {
-                    localStorage.setItem('nicolett_auth', JSON.stringify({ loggedIn: false, user: null }));
-                    
-                    if(window.location.hash.includes('admin') && typeof AppRouter !== 'undefined') {
-                        AppRouter.navigate('home');
+                    const currentAuth = this.getAuth();
+                    if (!currentAuth || !currentAuth.loggedIn) {
+                        localStorage.setItem('nicolett_auth', JSON.stringify({ loggedIn: false, user: null }));
                     }
+                    // NOTA: NO forzar redirección a 'home' para que el usuario pueda ver el formulario de login del portal
                 }
                 if (typeof window.updateNavAuthVisibility === 'function') {
                     window.updateNavAuthVisibility();

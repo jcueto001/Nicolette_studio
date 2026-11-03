@@ -263,15 +263,17 @@ window.updateNavAuthVisibility = function() {
         try { pers = JSON.parse(persStr); } catch(e){}
     }
 
-    if (authData && authData.loggedIn) {
+    if (authData && authData.loggedIn && authData.user) {
         if (btnLogout) {
             btnLogout.style.display = 'inline-block';
             btnLogout.title = 'Cerrar sesión del portal (' + (authData.user?.name || '') + ')';
         }
         if (navAdmin) {
-            navAdmin.style.display = 'inline-block';
+            navAdmin.style.display = 'inline-flex';
             const isAdm = authData.user?.role === 'admin';
-            navAdmin.textContent = isAdm ? 'Portal Administradora' : `Portal Trabajadora (${authData.user?.name || 'Equipo'})`;
+            navAdmin.innerHTML = isAdm 
+                ? '<i data-lucide="shield-check" style="width:14px; height:14px; margin-right:4px;"></i> <span>Portal Administradora</span>' 
+                : `<i data-lucide="user-check" style="width:14px; height:14px; margin-right:4px;"></i> <span>Portal Trabajadora (${authData.user?.name || 'Equipo'})</span>`;
         }
         if (navStaffDoor) navStaffDoor.style.display = 'none';
         if (navPerfil) navPerfil.style.display = 'none';
@@ -280,8 +282,11 @@ window.updateNavAuthVisibility = function() {
             btnLogout.style.display = 'inline-block';
             btnLogout.title = 'Cerrar sesión de mi perfil';
         }
-        if (navAdmin) navAdmin.style.display = 'none';
-        if (navStaffDoor) navStaffDoor.style.display = 'inline-flex';
+        if (navAdmin) {
+            navAdmin.style.display = 'inline-flex';
+            navAdmin.innerHTML = '<i data-lucide="shield" style="width:14px; height:14px; margin-right:4px;"></i> <span>Portal Equipo</span>';
+        }
+        if (navStaffDoor) navStaffDoor.style.display = 'none';
         if (navPerfil) {
             navPerfil.style.display = 'inline-block';
             const firstName = (pers.name || '').trim().split(' ')[0];
@@ -289,13 +294,17 @@ window.updateNavAuthVisibility = function() {
         }
     } else {
         if (btnLogout) btnLogout.style.display = 'none';
-        if (navAdmin) navAdmin.style.display = 'none';
-        if (navStaffDoor) navStaffDoor.style.display = 'inline-flex';
+        if (navAdmin) {
+            navAdmin.style.display = 'inline-flex';
+            navAdmin.innerHTML = '<i data-lucide="shield" style="width:14px; height:14px; margin-right:4px;"></i> <span>Portal Equipo</span>';
+        }
+        if (navStaffDoor) navStaffDoor.style.display = 'none';
         if (navPerfil) {
             navPerfil.style.display = 'inline-block';
             navPerfil.textContent = 'Mi Perfil';
         }
     }
+    if (window.lucide) lucide.createIcons();
 };
 
 window.logoutStaff = async function() {
@@ -310,7 +319,7 @@ window.logoutStaff = async function() {
         }
         window.updateNavAuthVisibility();
         if (typeof AppRouter !== 'undefined') {
-            AppRouter.navigate('home');
+            AppRouter.navigate('admin');
         }
     }
 };
@@ -489,7 +498,9 @@ function setupPersonalization() {
                 const isLocalValid = StorageHelper.verifyStaffPassword(cleanEmail, cleanPass);
                 const profs = StorageHelper.getProfessionals();
                 const localFound = profs.find(p => p.email && p.email.toLowerCase() === cleanEmail) ||
-                                   (cleanEmail === 'nicolette@gmail.com' ? { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin' } : null);
+                                   (cleanEmail.includes('nicolette') || cleanEmail.includes('admin') ? { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin' } : null) ||
+                                   (cleanEmail.includes('camila') ? { id: 'p2', name: 'Camila', email: 'camila@gmail.com', role: 'profesional' } : null) ||
+                                   (cleanEmail.includes('priscila') ? { id: 'p3', name: 'Priscila Villarreal', email: 'priscila@gmail.com', role: 'profesional' } : null);
 
                 if (isLocalValid && localFound) {
                     prof = {
@@ -509,7 +520,9 @@ function setupPersonalization() {
             const isLocalValid = StorageHelper.verifyStaffPassword(cleanEmail, cleanPass);
             const profs = StorageHelper.getProfessionals();
             const localFound = profs.find(p => p.email && p.email.toLowerCase() === cleanEmail) ||
-                               (cleanEmail === 'nicolette@gmail.com' ? { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin' } : null);
+                               (cleanEmail.includes('nicolette') || cleanEmail.includes('admin') ? { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin' } : null) ||
+                               (cleanEmail.includes('camila') ? { id: 'p2', name: 'Camila', email: 'camila@gmail.com', role: 'profesional' } : null) ||
+                               (cleanEmail.includes('priscila') ? { id: 'p3', name: 'Priscila Villarreal', email: 'priscila@gmail.com', role: 'profesional' } : null);
             if (isLocalValid && localFound) {
                 prof = {
                     id: localFound.id || 'p_local',
@@ -1310,10 +1323,24 @@ function initAdminEvents() {
     if (window.lucide) window.lucide.createIcons();
 
     const auth = StorageHelper.getAuth();
-    if (!auth.loggedIn) {
+    if (!auth || !auth.loggedIn || !auth.user) {
         // Enlazar formulario de login integrado directamente en la página (sin popups)
         const loginForm = document.getElementById('admin-login-form');
         if (loginForm) {
+            // Botones de autocompletado rápido por rol
+            document.querySelectorAll('.btn-quick-login').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const email = btn.getAttribute('data-email');
+                    const pass = btn.getAttribute('data-pass');
+                    const emailInp = document.getElementById('admin-login-email');
+                    const passInp = document.getElementById('admin-login-password');
+                    if (emailInp) emailInp.value = email;
+                    if (passInp) passInp.value = pass;
+                    const errEl = document.getElementById('admin-login-error');
+                    if (errEl) errEl.style.display = 'none';
+                });
+            });
+
             // Toggle ver/ocultar contraseña
             const btnTogglePass = document.getElementById('btn-toggle-admin-password');
             const passInput = document.getElementById('admin-login-password');
