@@ -67,6 +67,8 @@ const AppRouter = {
     navigate: function (route) {
         const contentArea = document.getElementById('app-content');
         if (this.routes[route]) {
+            const isSameRouteRefresh = (this.currentRoute === route);
+            const prevScrollY = (typeof window !== 'undefined' && isSameRouteRefresh) ? window.scrollY : 0;
             this.currentRoute = route;
             if (this._navTimeout) clearTimeout(this._navTimeout);
 
@@ -79,8 +81,12 @@ const AppRouter = {
                 }
             });
 
-            // Animación de salida (opcional)
-            contentArea.style.opacity = '0';
+            // Animación de salida (si es recarga del mismo apartado se omite para evitar parpadeos)
+            if (!isSameRouteRefresh) {
+                contentArea.style.opacity = '0';
+            }
+
+            const navDelay = isSameRouteRefresh ? 0 : 200;
 
             this._navTimeout = setTimeout(() => {
                 try {
@@ -104,7 +110,7 @@ const AppRouter = {
 
                 // Re-inicializar iconos de Lucide para los nuevos elementos inyectados
                 if (window.lucide) {
-                    try { window.lucide.createIcons(); } catch(e){}
+                    try { window.lucide.createIcons(); } catch (e) { }
                 }
 
                 // Ejecutar scripts específicos de la vista si existen
@@ -121,12 +127,16 @@ const AppRouter = {
                 }
 
                 // Animación de entrada SIEMPRE se ejecuta para evitar pantalla en blanco
-                contentArea.style.transition = 'opacity 0.3s ease';
+                contentArea.style.transition = 'opacity 0.25s ease';
                 contentArea.style.opacity = '1';
 
-                // Scroll top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }, 300);
+                // Mantener scroll si es actualización interna o volver arriba si cambia de pantalla
+                if (isSameRouteRefresh) {
+                    window.scrollTo({ top: prevScrollY, behavior: 'instant' });
+                } else {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }, navDelay);
         }
     }
 };
@@ -161,14 +171,20 @@ function renderHomeView() {
         <!-- About Us Section -->
         <section class="section" id="sobre-nosotros" style="background-color: transparent;">
             <div class="container">
-                <div class="about-flex" style="display: flex; flex-wrap: wrap; align-items: center; gap: 50px;">
-                    <div class="about-image-wrap" style="flex: 1; min-width: 300px; max-width: 480px; position: relative;">
+                <div class="about-flex">
+                    <div class="about-image-wrap">
                         <!-- Imagen de las instalaciones del estudio -->
-                        <img src="img/sobre-nosotros.jpg?v=15" 
+                        <img src="img/sobre-nosotros.jpg?v=18" 
                              alt="Instalaciones Nicolett Studio Fantasy" 
-                             style="width: 100%; border-radius: var(--radius-lg); box-shadow: var(--shadow-medium); position: relative; z-index: 2; object-fit: cover; aspect-ratio: 3/4; max-height: 540px;">
+                             class="about-image"
+                             onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80';">
                         <!-- Fondo decorativo -->
-                        <div class="about-decorative-border" style="position: absolute; top: 20px; left: -20px; right: 20px; bottom: -20px; border: 2px solid var(--clr-rose-gold); border-radius: var(--radius-lg); z-index: 1;"></div>
+                        <div class="about-decorative-border"></div>
+                        <!-- Badge estético de ubicación -->
+                        <div class="about-image-badge">
+                            <i data-lucide="sparkles" style="width:14px; height:14px;"></i>
+                            <span>Nuestro Espacio en Buin</span>
+                        </div>
                     </div>
                     <div class="about-text" style="flex: 1; min-width: 300px;">
                         <h2 class="section-title" style="text-align: left; margin-bottom: 10px;">Sobre Nosotros</h2>
@@ -206,7 +222,7 @@ function renderHomeView() {
                     ${mockData.services.slice(0, 10).map(s => `
                         <div class="card" style="min-width: 300px; max-width: 300px; flex: 0 0 auto; scroll-snap-align: start; padding: 0; overflow: hidden; border: none; box-shadow: var(--shadow-medium); display: flex; flex-direction: column; justify-content: space-between;">
                             <div>
-                                <img src="${s.image}" alt="${s.name}" style="width: 100%; height: 220px; object-fit: cover;">
+                                <img src="${s.image}" alt="${s.name}" style="width: 100%; height: 220px; object-fit: cover;" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80';">
                                 <div style="padding: 18px 20px 10px;">
                                     <span style="font-size: 0.72rem; text-transform: uppercase; background: var(--clr-nude-light); color: var(--clr-rose-gold-dark); padding: 3px 8px; border-radius: 10px; font-weight: 600; display: inline-block; margin-bottom: 6px;">
                                         ${s.categoryId === 'capilar' ? 'Cabello' : (s.categoryId === 'manicura' ? 'Manicura' : (s.categoryId === 'pedicure' ? 'Pedicure' : (s.categoryId === 'podologia' ? 'Podología' : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas' : (s.categoryId === 'depilacion-femenina' ? 'Depilación Fem.' : (s.categoryId === 'depilacion' ? 'Depilación Masc.' : 'Servicio'))))))}
@@ -324,19 +340,19 @@ function renderServiciosView() {
                 <!-- Grilla de Servicios -->
                 <div id="services-catalog-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 25px; margin-bottom: 50px;">
                     ${services.map(s => {
-                        const catLabel = s.categoryId === 'capilar' ? 'Cabello & Capilar'
-                            : (s.categoryId === 'manicura' ? 'Manicura'
-                            : (s.categoryId === 'pedicure' ? 'Pedicure'
-                            : (s.categoryId === 'podologia' ? 'Podología Clínica'
-                            : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas'
+        const catLabel = s.categoryId === 'capilar' ? 'Cabello & Capilar'
+            : (s.categoryId === 'manicura' ? 'Manicura'
+                : (s.categoryId === 'pedicure' ? 'Pedicure'
+                    : (s.categoryId === 'podologia' ? 'Podología Clínica'
+                        : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas'
                             : (s.categoryId === 'depilacion-femenina' ? 'Depilación Femenina'
-                            : (s.categoryId === 'depilacion' ? 'Depilación Masculina'
-                            : 'Servicio'))))));
+                                : (s.categoryId === 'depilacion' ? 'Depilación Masculina'
+                                    : 'Servicio'))))));
 
-                        return `
+        return `
                         <div class="card service-catalog-card" data-category="${s.categoryId}" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; border: 1px solid #f0eae4; border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.04); transition: transform 0.25s, box-shadow 0.25s;">
                             <div style="position: relative; height: 200px; overflow: hidden; background: #fdfbf7;">
-                                <img src="${s.image}" alt="${s.name}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;">
+                                <img src="${s.image}" alt="${s.name}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80';">
                                 <div style="position: absolute; top: 12px; left: 12px; background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(4px); padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; color: var(--clr-rose-gold-dark); text-transform: uppercase;">
                                     ${catLabel}
                                 </div>
@@ -374,7 +390,7 @@ function renderServiciosView() {
                             </div>
                         </div>
                         `;
-                    }).join('')}
+    }).join('')}
                 </div>
 
                 <!-- Sección Informativa de Adicionales & Garantías (Inspirado en los Flyers Oficiales) -->
@@ -735,26 +751,26 @@ function renderGaleriaView() {
                     Todas (${images.length})
                 </button>
                 ${professionals.map(p => {
-                    const count = images.filter(img => {
-                        const pName = (img.profesional || '').toLowerCase();
-                        const pId = (img.profId || '').toLowerCase();
-                        return pName.includes(p.name.toLowerCase()) || pId === p.id.toLowerCase();
-                    }).length;
-                    return `
+        const count = images.filter(img => {
+            const pName = (img.profesional || '').toLowerCase();
+            const pId = (img.profId || '').toLowerCase();
+            return pName.includes(p.name.toLowerCase()) || pId === p.id.toLowerCase();
+        }).length;
+        return `
                         <button type="button" class="btn btn-outline btn-sm public-gal-filter" data-filter="${p.name.toLowerCase()}" style="border-radius:20px; padding:8px 20px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
                             <i data-lucide="sparkles" style="width:13px; height:13px;"></i> ${p.name} (${count})
                         </button>
                     `;
-                }).join('')}
+    }).join('')}
             </div>
             
             <div class="gallery-container" id="public-gallery-grid" style="display: flex; overflow-x: auto; gap: 30px; padding: 20px 0 40px; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--clr-rose-gold) var(--clr-nude-light);">
                 ${images.length === 0 ? '<p style="text-align:center; width:100%; padding:40px; color:var(--clr-neutral-gray);">Aún no hay fotos públicas en la galería.</p>' : ''}
                 ${images.map(img => {
-                    const profName = img.profesional || 'Nicolett Studio';
-                    const isClient = img.source === 'client';
+        const profName = img.profesional || 'Nicolett Studio';
+        const isClient = img.source === 'client';
 
-                    return `
+        return `
                     <div class="gallery-item public-gallery-card" data-prof="${profName.toLowerCase()}" style="width: 85vw; max-width: 520px; flex: 0 0 auto; scroll-snap-align: center; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; aspect-ratio: 1/1; background:#000;">
                         <img src="${img.src}" alt="${img.title || 'Trabajo'}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
                         
@@ -774,7 +790,7 @@ function renderGaleriaView() {
                         </div>
                     </div>
                     `;
-                }).join('')}
+    }).join('')}
             </div>
 
             <div style="text-align: center; margin-top: 10px; padding: 30px 20px; border-top: 1px solid var(--clr-nude);">
@@ -834,15 +850,15 @@ function renderAgendarView() {
 
                     <div id="booking-services-grid" style="display: flex; flex-direction: column; gap: 14px; max-height: 520px; overflow-y: auto; padding-right: 6px;">
                         ${mockData.services.map(s => {
-                            const catLabel = s.categoryId === 'capilar' ? 'Cabello'
-                                : (s.categoryId === 'manicura' ? 'Manicura'
-                                : (s.categoryId === 'pedicure' ? 'Pedicure'
-                                : (s.categoryId === 'podologia' ? 'Podología'
-                                : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas'
-                                : (s.categoryId === 'depilacion-femenina' ? 'Depilación Fem.'
+        const catLabel = s.categoryId === 'capilar' ? 'Cabello'
+            : (s.categoryId === 'manicura' ? 'Manicura'
+                : (s.categoryId === 'pedicure' ? 'Pedicure'
+                    : (s.categoryId === 'podologia' ? 'Podología'
+                        : (s.categoryId === 'pestanas-cejas' ? 'Pestañas & Cejas'
+                            : (s.categoryId === 'depilacion-femenina' ? 'Depilación Fem.'
                                 : (s.categoryId === 'depilacion' ? 'Depilación Masc.'
-                                : 'Servicio'))))));
-                            return `
+                                    : 'Servicio'))))));
+        return `
                             <div class="service-select-card card" data-service-id="${s.id}" data-category="${s.categoryId}" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;">
                                 <div style="flex: 1; padding-right: 15px;">
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
@@ -860,7 +876,7 @@ function renderAgendarView() {
                                 </div>
                             </div>
                             `;
-                        }).join('')}
+    }).join('')}
                     </div>
                     <div style="margin-top: 30px; text-align: right;">
                         <button class="btn btn-primary" id="btn-next-1" disabled>Siguiente <i data-lucide="chevron-right"></i></button>
@@ -1119,8 +1135,8 @@ function renderAgendarView() {
 
 function renderAdminView() {
     const auth = StorageHelper.getAuth();
-    if (!auth || !auth.loggedIn || !auth.user) {
-        return `
+        if (!auth || !auth.loggedIn || !auth.user) {
+            return `
             <div class="container section" style="padding: 50px 20px; max-width: 480px; margin: 0 auto;">
                 <div class="card" style="padding: 36px 30px; box-shadow: var(--shadow-medium); border-radius: var(--radius-lg); border-top: 4px solid var(--clr-rose-gold); background: white;">
                     <div style="text-align: center; margin-bottom: 22px;">
@@ -1131,27 +1147,6 @@ function renderAdminView() {
                         <p style="color: var(--clr-neutral-gray); font-size: 0.9rem; margin: 0;">
                             Acceso privado para Administradora y Especialistas
                         </p>
-                    </div>
-
-                    <!-- Botones de Acceso Rápido por Rol -->
-                    <div style="background: var(--clr-nude-light); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 20px; border: 1px solid rgba(219, 137, 160, 0.25);">
-                        <span style="font-size: 0.78rem; font-weight: 700; color: var(--clr-rose-gold-dark); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px; text-align: center;">
-                            ⚡ Seleccionar cuenta rápida:
-                        </span>
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <button type="button" class="btn-quick-login" data-email="nicolette@gmail.com" data-pass="admin123" style="background: white; border: 1px solid var(--clr-rose-gold); color: var(--clr-neutral-dark); text-align: left; padding: 8px 12px; border-radius: 6px; font-size: 0.84rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s;">
-                                <span>👑 <strong>Administradora</strong> (Nicolett)</span>
-                                <span style="font-size: 0.75rem; color: var(--clr-rose-gold-dark); font-weight: 600;">Usar cuenta →</span>
-                            </button>
-                            <button type="button" class="btn-quick-login" data-email="camila@gmail.com" data-pass="123456" style="background: white; border: 1px solid #dcd3cb; color: var(--clr-neutral-dark); text-align: left; padding: 8px 12px; border-radius: 6px; font-size: 0.84rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s;">
-                                <span>💅 <strong>Trabajadora</strong> (Camila - Manicura)</span>
-                                <span style="font-size: 0.75rem; color: var(--clr-rose-gold-dark); font-weight: 600;">Usar cuenta →</span>
-                            </button>
-                            <button type="button" class="btn-quick-login" data-email="priscila@gmail.com" data-pass="123456" style="background: white; border: 1px solid #dcd3cb; color: var(--clr-neutral-dark); text-align: left; padding: 8px 12px; border-radius: 6px; font-size: 0.84rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s;">
-                                <span>🦶 <strong>Trabajadora</strong> (Priscila - Podología)</span>
-                                <span style="font-size: 0.75rem; color: var(--clr-rose-gold-dark); font-weight: 600;">Usar cuenta →</span>
-                            </button>
-                        </div>
                     </div>
                     
                     <form id="admin-login-form" style="display: flex; flex-direction: column; gap: 16px;">
@@ -1189,50 +1184,50 @@ function renderAdminView() {
                 </div>
             </div>
         `;
-    }
+        }
 
-    const isAdmin = !!(auth.user && auth.user.role === 'admin');
-    const appointments = StorageHelper.getAppointments();
-    const inventory = StorageHelper.getInventory();
-    const professionals = StorageHelper.getProfessionals();
-    const fichas = StorageHelper.getFichas();
-    const clientsList = StorageHelper.getClients();
+        const isAdmin = !!(auth.user && auth.user.role === 'admin');
+        const appointments = StorageHelper.getAppointments();
+        const inventory = StorageHelper.getInventory();
+        const professionals = StorageHelper.getProfessionals();
+        const fichas = StorageHelper.getFichas();
+        const clientsList = StorageHelper.getClients();
 
-    // Filtramos la agenda según el rol
-    let myAppointments = appointments;
-    if (!isAdmin) {
-        myAppointments = appointments.filter(a => (a.profesional === auth.user?.name) || (a.profId === auth.user?.id));
-    }
+        // Filtramos la agenda según el rol
+        let myAppointments = appointments;
+        if (!isAdmin) {
+            myAppointments = appointments.filter(a => (a.profesional === auth.user?.name) || (a.profId === auth.user?.id));
+        }
 
-    // Tabla de Agenda
-    let agendaRows = '';
-    if (myAppointments.length === 0) {
-        agendaRows = `<tr><td colspan="6" class="text-center" style="padding: 20px;">No hay citas para mostrar.</td></tr>`;
-    } else {
-        myAppointments.forEach(app => {
-            const serviceName = app.servicio || mockData.services.find(s => s.id === app.serviceId)?.name || 'Servicio';
-            const profName = app.profesional || professionals.find(p => p.id === app.profId)?.name || 'Prof.';
-            const isFichaDone = fichas.some(f => f.appointmentId === app.id);
-            
-            let needsHtml = '';
-            if (app.needs) {
-                const tags = [];
-                if (app.needs.kids) tags.push('Ir con Niños');
-                if (app.needs.time) tags.push('Poco tiempo');
-                if (app.needs.event) tags.push('Evento especial');
-                if (tags.length > 0) {
-                    needsHtml = `<div style="margin-top: 5px; display: flex; gap: 5px; flex-wrap: wrap;">
+        // Tabla de Agenda
+        let agendaRows = '';
+        if (myAppointments.length === 0) {
+            agendaRows = `<tr><td colspan="6" class="text-center" style="padding: 20px;">No hay citas para mostrar.</td></tr>`;
+        } else {
+            myAppointments.forEach(app => {
+                const serviceName = app.servicio || mockData.services.find(s => s.id === app.serviceId)?.name || 'Servicio';
+                const profName = app.profesional || professionals.find(p => p.id === app.profId)?.name || 'Prof.';
+                const isFichaDone = fichas.some(f => f.appointmentId === app.id);
+
+                let needsHtml = '';
+                if (app.needs) {
+                    const tags = [];
+                    if (app.needs.kids) tags.push('Ir con Niños');
+                    if (app.needs.time) tags.push('Poco tiempo');
+                    if (app.needs.event) tags.push('Evento especial');
+                    if (tags.length > 0) {
+                        needsHtml = `<div style="margin-top: 5px; display: flex; gap: 5px; flex-wrap: wrap;">
                         ${tags.map(t => `<span style="background: var(--clr-nude-light); color: var(--clr-rose-gold-dark); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">${t}</span>`).join('')}
                     </div>`;
+                    }
                 }
-            }
 
-            let notesHtml = '';
-            if (app.notes && app.notes.trim() !== '') {
-                notesHtml = `<div style="margin-top: 5px; font-size: 0.8rem; color: var(--clr-neutral-gray); font-style: italic; border-left: 2px solid var(--clr-rose-gold); padding-left: 5px;">"${app.notes}"</div>`;
-            }
+                let notesHtml = '';
+                if (app.notes && app.notes.trim() !== '') {
+                    notesHtml = `<div style="margin-top: 5px; font-size: 0.8rem; color: var(--clr-neutral-gray); font-style: italic; border-left: 2px solid var(--clr-rose-gold); padding-left: 5px;">"${app.notes}"</div>`;
+                }
 
-            agendaRows += `
+                agendaRows += `
                 <tr style="border-bottom: 1px solid var(--clr-nude);">
                     <td style="padding: 15px;">${app.date} <br><strong style="color: var(--clr-rose-gold-dark);">${app.time}</strong></td>
                     <td style="padding: 15px;"><strong>${app.clientName || 'Cliente'}</strong><br><small>${app.clientPhone}</small></td>
@@ -1263,24 +1258,24 @@ function renderAdminView() {
                     </td>
                 </tr>
             `;
-        });
-    }
+            });
+        }
 
-    // Tabla de Fichas
-    let myFichas = fichas;
-    if (!isAdmin) {
-        myFichas = fichas.filter(f => {
-            const appointment = appointments.find(a => a.id === f.appointmentId);
-            return appointment && (appointment.profesional === auth.user?.name || appointment.profId === auth.user?.id);
-        });
-    }
+        // Tabla de Fichas
+        let myFichas = fichas;
+        if (!isAdmin) {
+            myFichas = fichas.filter(f => {
+                const appointment = appointments.find(a => a.id === f.appointmentId);
+                return appointment && (appointment.profesional === auth.user?.name || appointment.profId === auth.user?.id);
+            });
+        }
 
-    let fichasRows = '';
-    if (myFichas.length === 0) {
-        fichasRows = `<tr><td colspan="5" class="text-center" style="padding: 20px;">No hay fichas de clientas registradas.</td></tr>`;
-    } else {
-        myFichas.forEach(f => {
-            fichasRows += `
+        let fichasRows = '';
+        if (myFichas.length === 0) {
+            fichasRows = `<tr><td colspan="5" class="text-center" style="padding: 20px;">No hay fichas de clientas registradas.</td></tr>`;
+        } else {
+            myFichas.forEach(f => {
+                fichasRows += `
                 <tr style="border-bottom: 1px solid var(--clr-nude);">
                     <td style="padding: 15px;">${f.date}</td>
                     <td style="padding: 15px;"><strong>${f.clientName}</strong></td>
@@ -1291,28 +1286,28 @@ function renderAdminView() {
                     </td>
                 </tr>
             `;
-        });
-    }
+            });
+        }
 
-    // Dashboard Metrics (Solo $5.000 del abono de la clienta, ya que el resto se paga presencial)
-    let totalEarnings = 0;
-    let completedAppointmentsCount = 0;
-    const ABONO_MONTO = 5000;
-    
-    if (isAdmin) {
-        appointments.forEach(a => {
-            if (a.status === 'completada' || a.status === 'confirmada' || a.status === 'Pago Reportado') {
-                totalEarnings += (a.depositAmount || ABONO_MONTO);
-                completedAppointmentsCount++;
-            }
-        });
-    }
+        // Dashboard Metrics (Solo $5.000 del abono de la clienta, ya que el resto se paga presencial)
+        let totalEarnings = 0;
+        let completedAppointmentsCount = 0;
+        const ABONO_MONTO = 5000;
 
-    // Tabla de Inventario
-    let invRows = '';
-    inventory.forEach(p => {
-        const isLowStock = p.stock <= 5;
-        invRows += `
+        if (isAdmin) {
+            appointments.forEach(a => {
+                if (a.status === 'completada' || a.status === 'confirmada' || a.status === 'Pago Reportado') {
+                    totalEarnings += (a.depositAmount || ABONO_MONTO);
+                    completedAppointmentsCount++;
+                }
+            });
+        }
+
+        // Tabla de Inventario
+        let invRows = '';
+        inventory.forEach(p => {
+            const isLowStock = p.stock <= 5;
+            invRows += `
             <tr style="border-bottom: 1px solid var(--clr-nude); ${isLowStock ? 'background-color: #ffebee;' : ''}">
                 <td style="padding: 15px;">
                     ${p.name}
@@ -1327,13 +1322,13 @@ function renderAdminView() {
                 </td>
             </tr>
         `;
-    });
+        });
 
-    // Tabla Trabajadoras
-    let profRows = '';
-    professionals.forEach(p => {
-        const isSelf = p.id === auth.user?.id || (p.email && auth.user?.email && p.email.toLowerCase() === auth.user?.email.toLowerCase());
-        profRows += `
+        // Tabla Trabajadoras
+        let profRows = '';
+        professionals.forEach(p => {
+            const isSelf = p.id === auth.user?.id || (p.email && auth.user?.email && p.email.toLowerCase() === auth.user?.email.toLowerCase());
+            profRows += `
             <tr style="border-bottom: 1px solid var(--clr-nude);">
                 <td style="padding: 15px; display:flex; align-items:center; gap:12px;">
                     <div style="position:relative;">
@@ -1373,15 +1368,15 @@ function renderAdminView() {
                 </td>
             </tr>
         `;
-    });
+        });
 
-    // Tabla Clientas
-    let clientRows = '';
-    if (clientsList.length === 0) {
-        clientRows = `<tr><td colspan="4" class="text-center" style="padding: 20px;">No hay clientas en el directorio.</td></tr>`;
-    } else {
-        clientsList.forEach(c => {
-            clientRows += `
+        // Tabla Clientas
+        let clientRows = '';
+        if (clientsList.length === 0) {
+            clientRows = `<tr><td colspan="4" class="text-center" style="padding: 20px;">No hay clientas en el directorio.</td></tr>`;
+        } else {
+            clientsList.forEach(c => {
+                clientRows += `
                 <tr style="border-bottom: 1px solid var(--clr-nude);">
                     <td style="padding: 15px;">
                         <a href="#" class="open-crm" data-clientid="${c.id}" style="color: var(--clr-rose-gold-dark); text-decoration: underline; font-weight: bold; cursor: pointer;">${c.name}</a><br>
@@ -1394,35 +1389,35 @@ function renderAdminView() {
                     </td>
                 </tr>
             `;
-        });
-    }
-
-    // Persistencia de pestaña activa en panel admin/trabajadora
-    let activeTab = 'tab-agenda';
-    try {
-        const savedTab = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('nicolett_active_admin_tab') : null;
-        const allowedTabs = isAdmin 
-            ? ['tab-agenda', 'tab-fichas', 'tab-galeria', 'tab-finanzas', 'tab-clientas', 'tab-inventario', 'tab-profs', 'tab-flow']
-            : ['tab-agenda', 'tab-fichas', 'tab-galeria'];
-        if (savedTab && allowedTabs.includes(savedTab)) {
-            activeTab = savedTab;
-        } else if (savedTab && !allowedTabs.includes(savedTab)) {
-            if (typeof sessionStorage !== 'undefined') {
-                sessionStorage.setItem('nicolett_active_admin_tab', 'tab-agenda');
-            }
+            });
         }
-    } catch (e) {
-        console.warn('Error reading active admin tab:', e);
-    }
 
-    const getTabBtnStyle = (tabId) => {
-        const isActive = (activeTab === tabId);
-        return `background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid ${isActive ? 'var(--clr-rose-gold)' : 'transparent'}; font-weight:${isActive ? 'bold' : 'normal'}; color:${isActive ? 'var(--clr-neutral-dark)' : 'var(--clr-neutral-gray)'}; flex-shrink: 0;`;
-    };
-    const getTabBtnClass = (tabId) => `admin-tab ${activeTab === tabId ? 'active' : ''}`;
-    const getTabPaneStyle = (tabId) => `display: ${activeTab === tabId ? 'block' : 'none'};`;
+        // Persistencia de pestaña activa en panel admin/trabajadora
+        let activeTab = 'tab-agenda';
+        try {
+            const savedTab = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('nicolett_active_admin_tab') : null;
+            const allowedTabs = isAdmin
+                ? ['tab-agenda', 'tab-fichas', 'tab-galeria', 'tab-finanzas', 'tab-clientas', 'tab-inventario', 'tab-profs', 'tab-flow']
+                : ['tab-agenda', 'tab-fichas', 'tab-galeria'];
+            if (savedTab && allowedTabs.includes(savedTab)) {
+                activeTab = savedTab;
+            } else if (savedTab && !allowedTabs.includes(savedTab)) {
+                if (typeof sessionStorage !== 'undefined') {
+                    sessionStorage.setItem('nicolett_active_admin_tab', 'tab-agenda');
+                }
+            }
+        } catch (e) {
+            console.warn('Error reading active admin tab:', e);
+        }
 
-    return `
+        const getTabBtnStyle = (tabId) => {
+            const isActive = (activeTab === tabId);
+            return `background:none; border:none; padding:10px 20px; cursor:pointer; border-bottom:3px solid ${isActive ? 'var(--clr-rose-gold)' : 'transparent'}; font-weight:${isActive ? 'bold' : 'normal'}; color:${isActive ? 'var(--clr-neutral-dark)' : 'var(--clr-neutral-gray)'}; flex-shrink: 0;`;
+        };
+        const getTabBtnClass = (tabId) => `admin-tab ${activeTab === tabId ? 'active' : ''}`;
+        const getTabPaneStyle = (tabId) => `display: ${activeTab === tabId ? 'block' : 'none'};`;
+
+        return `
         <div class="container section">
             <div class="section-header" style="margin-bottom: 30px; display:flex; justify-content: space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                 <h2 class="section-title" style="text-align: left; margin:0;">Portal ${isAdmin ? 'Administrador' : 'Trabajadora'}</h2>
@@ -1634,32 +1629,32 @@ function renderAdminView() {
                 </div>
 
                 ${(() => {
-                    const allGal = StorageHelper.getGallery();
-                    const workerName = (auth.user?.name || '').trim();
-                    const workerId = (auth.user?.id || '').trim();
+                const allGal = StorageHelper.getGallery();
+                const workerName = (auth.user?.name || '').trim();
+                const workerId = (auth.user?.id || '').trim();
 
-                    // Función para determinar si una imagen pertenece a la trabajadora conectada
-                    const isMyImage = (img) => {
-                        if (!workerName && !workerId) return false;
-                        const pName = (img.profesional || '').trim().toLowerCase();
-                        const pId = (img.profId || '').trim().toLowerCase();
-                        if (workerId && pId && pId === workerId.toLowerCase()) return true;
-                        if (workerName && pName) {
-                            return pName === workerName.toLowerCase() || pName.includes(workerName.toLowerCase()) || workerName.toLowerCase().includes(pName);
-                        }
-                        return false;
-                    };
+                // Función para determinar si una imagen pertenece a la trabajadora conectada
+                const isMyImage = (img) => {
+                    if (!workerName && !workerId) return false;
+                    const pName = (img.profesional || '').trim().toLowerCase();
+                    const pId = (img.profId || '').trim().toLowerCase();
+                    if (workerId && pId && pId === workerId.toLowerCase()) return true;
+                    if (workerName && pName) {
+                        return pName === workerName.toLowerCase() || pName.includes(workerName.toLowerCase()) || workerName.toLowerCase().includes(pName);
+                    }
+                    return false;
+                };
 
-                    const myPhotos = allGal.filter(g => isMyImage(g));
-                    const myClientPhotos = myPhotos.filter(g => g.source === 'client' || !!g.clientEmail || !!g.clientName);
-                    const myPendingList = myClientPhotos.filter(g => !g.approved && g.status !== 'approved');
+                const myPhotos = allGal.filter(g => isMyImage(g));
+                const myClientPhotos = myPhotos.filter(g => g.source === 'client' || !!g.clientEmail || !!g.clientName);
+                const myPendingList = myClientPhotos.filter(g => !g.approved && g.status !== 'approved');
 
-                    const pendingList = allGal.filter(g => g.source === 'client' && !g.approved && g.status !== 'approved');
-                    const approvedClientList = allGal.filter(g => (g.source === 'client' || !!g.clientEmail || !!g.clientName) && (g.approved === true || g.status === 'approved'));
-                    const studioList = allGal.filter(g => g.source !== 'client' && !g.clientEmail && !g.clientName);
-                    const publicTotal = studioList.length + approvedClientList.length;
+                const pendingList = allGal.filter(g => g.source === 'client' && !g.approved && g.status !== 'approved');
+                const approvedClientList = allGal.filter(g => (g.source === 'client' || !!g.clientEmail || !!g.clientName) && (g.approved === true || g.status === 'approved'));
+                const studioList = allGal.filter(g => g.source !== 'client' && !g.clientEmail && !g.clientName);
+                const publicTotal = studioList.length + approvedClientList.length;
 
-                    return `
+                return `
                     <!-- Barra de Moderación y Filtros de Galería -->
                     <div style="background:#fff; border:1px solid #e7ded4; border-radius:var(--radius-md); padding:16px 20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
                         <div style="display:flex; gap:8px; flex-wrap:wrap;" id="gallery-filter-chips">
@@ -1693,13 +1688,13 @@ function renderAdminView() {
                                     Estudio (${studioList.length})
                                 </button>
                                 ${professionals.map(p => {
-                                    const pCount = allGal.filter(g => (g.profesional && g.profesional.toLowerCase().includes(p.name.toLowerCase())) || (g.profId && g.profId === p.id)).length;
-                                    return `
+                    const pCount = allGal.filter(g => (g.profesional && g.profesional.toLowerCase().includes(p.name.toLowerCase())) || (g.profId && g.profId === p.id)).length;
+                    return `
                                         <button type="button" class="gallery-filter-chip" data-filter="prof-${p.name.toLowerCase()}">
                                             <i data-lucide="user" style="width:13px; height:13px;"></i> ${p.name} (${pCount})
                                         </button>
                                     `;
-                                }).join('')}
+                }).join('')}
                             `}
                         </div>
 
@@ -1711,14 +1706,14 @@ function renderAdminView() {
 
                     <div id="admin-gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px;">
                         ${allGal.map(img => {
-                            const isClientRelated = (img.source === 'client') || !!img.clientEmail || !!img.clientName;
-                            const isClient = isClientRelated;
-                            const isApproved = !img.source || img.source !== 'client' || img.approved === true || img.status === 'approved';
-                            const statusKey = isClientRelated ? (isApproved ? 'approved' : 'pending') : 'studio';
-                            const belongsToMe = isMyImage(img);
-                            const profName = img.profesional || 'Nicolett Studio';
+                    const isClientRelated = (img.source === 'client') || !!img.clientEmail || !!img.clientName;
+                    const isClient = isClientRelated;
+                    const isApproved = !img.source || img.source !== 'client' || img.approved === true || img.status === 'approved';
+                    const statusKey = isClientRelated ? (isApproved ? 'approved' : 'pending') : 'studio';
+                    const belongsToMe = isMyImage(img);
+                    const profName = img.profesional || 'Nicolett Studio';
 
-                            return `
+                    return `
                             <div class="admin-gallery-item" 
                                 data-source="${isClientRelated ? 'client' : 'admin'}" 
                                 data-status="${statusKey}" 
@@ -1804,11 +1799,11 @@ function renderAdminView() {
                                 </div>
                             </div>
                             `;
-                        }).join('')}
+                }).join('')}
                         ${allGal.length === 0 ? '<p style="grid-column: 1/-1; text-align:center; padding:30px; color:var(--clr-neutral-gray);">No hay imágenes en la galería.</p>' : ''}
                     </div>
                     `;
-                })()}
+            })()}
             </div>
             
             ${isAdmin ? `
@@ -2310,12 +2305,12 @@ function renderAdminView() {
             </div>
         </div>
     `;
-}
+    }
 
-function renderPerfilView() {
-    const persStr = localStorage.getItem('nicolett_personalization');
-    if (!persStr) {
-        return `
+    function renderPerfilView() {
+        const persStr = localStorage.getItem('nicolett_personalization');
+        if (!persStr) {
+            return `
             <div class="container section text-center" style="padding: 70px 20px;">
                 <div class="card" style="max-width: 520px; margin: 0 auto; padding: 40px 32px; background: #ffffff; box-shadow: var(--shadow-medium); border-radius: var(--radius-lg); text-align: center;">
                     <div style="width: 70px; height: 70px; border-radius: 50%; background: var(--clr-nude-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--clr-rose-gold);">
@@ -2358,32 +2353,32 @@ function renderPerfilView() {
                 </div>
             </div>
         `;
-    }
+        }
 
-    let pers;
-    try {
-        pers = JSON.parse(persStr);
-    } catch(e) {
-        return `<div class="container section text-center"><p>Error al cargar el perfil.</p></div>`;
-    }
+        let pers;
+        try {
+            pers = JSON.parse(persStr);
+        } catch (e) {
+            return `<div class="container section text-center"><p>Error al cargar el perfil.</p></div>`;
+        }
 
-    // Filtrar citas de la clienta por su correo o teléfono registrado de forma segura y normalizada
-    const userAppointments = StorageHelper.getClientAppointments ? StorageHelper.getClientAppointments(pers.email, pers.phone) : [];
-    
-    // Obtener fotos que esta clienta ha subido
-    const clientPhotos = StorageHelper.getClientGallery ? StorageHelper.getClientGallery(pers.email) : [];
+        // Filtrar citas de la clienta por su correo o teléfono registrado de forma segura y normalizada
+        const userAppointments = StorageHelper.getClientAppointments ? StorageHelper.getClientAppointments(pers.email, pers.phone) : [];
 
-    let historyHtml = '';
-    if (userAppointments.length > 0) {
-        historyHtml = '<div style="display:grid; gap:16px; max-width:680px; margin: 0 auto; text-align:left;">';
-        userAppointments.forEach(appt => {
-            const hasDeposit = appt.abono || appt.depositAmount || appt.paymentStatus === 'pagado' || appt.status === 'confirmada';
-            const depAmount = appt.depositAmount || 5000;
-            const statusLabel = (appt.status || 'confirmada').toUpperCase();
-            const statusBg = appt.status === 'cancelada' ? '#ffebee' : (appt.status === 'completada' ? '#e3f2fd' : '#e8f5e9');
-            const statusColor = appt.status === 'cancelada' ? '#c62828' : (appt.status === 'completada' ? '#1565c0' : '#2e7d32');
+        // Obtener fotos que esta clienta ha subido
+        const clientPhotos = StorageHelper.getClientGallery ? StorageHelper.getClientGallery(pers.email) : [];
 
-            historyHtml += `
+        let historyHtml = '';
+        if (userAppointments.length > 0) {
+            historyHtml = '<div style="display:grid; gap:16px; max-width:680px; margin: 0 auto; text-align:left;">';
+            userAppointments.forEach(appt => {
+                const hasDeposit = appt.abono || appt.depositAmount || appt.paymentStatus === 'pagado' || appt.status === 'confirmada';
+                const depAmount = appt.depositAmount || 5000;
+                const statusLabel = (appt.status || 'confirmada').toUpperCase();
+                const statusBg = appt.status === 'cancelada' ? '#ffebee' : (appt.status === 'completada' ? '#e3f2fd' : '#e8f5e9');
+                const statusColor = appt.status === 'cancelada' ? '#c62828' : (appt.status === 'completada' ? '#1565c0' : '#2e7d32');
+
+                historyHtml += `
                 <div class="card" style="padding:22px 24px; border-left: 5px solid var(--clr-rose-gold); background: #ffffff; box-shadow: var(--shadow-soft); border-radius: var(--radius-md);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                         <div style="display:flex; align-items:center; gap:10px;">
@@ -2402,10 +2397,10 @@ function renderPerfilView() {
                     ${hasDeposit ? `<p style="margin:6px 0 0 0; font-size:0.85rem; color:#28a745; font-weight:500;">✓ Abono verificado: $${depAmount.toLocaleString('es-CL')}</p>` : ''}
                 </div>
             `;
-        });
-        historyHtml += '</div>';
-    } else {
-        historyHtml = `
+            });
+            historyHtml += '</div>';
+        } else {
+            historyHtml = `
             <div class="card" style="padding:40px 30px; max-width:680px; margin: 0 auto; background: #ffffff; box-shadow: var(--shadow-soft); text-align:center; border-radius: var(--radius-md);">
                 <div style="width:65px; height:65px; border-radius:50%; background:var(--clr-nude-light); display:flex; align-items:center; justify-content:center; margin:0 auto 15px; color:var(--clr-rose-gold);">
                     <i data-lucide="sparkles" style="width:30px; height:30px;"></i>
@@ -2419,10 +2414,10 @@ function renderPerfilView() {
                 </button>
             </div>
         `;
-    }
+        }
 
-    // Galería de resultados de la clienta (fotos tomadas por su especialista)
-    let clientGalleryHtml = `
+        // Galería de resultados de la clienta (fotos tomadas por su especialista)
+        let clientGalleryHtml = `
         <div style="max-width:680px; margin:40px auto 0; text-align:left;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
                 <div>
@@ -2481,7 +2476,7 @@ function renderPerfilView() {
         </div>
     `;
 
-    return `
+        return `
         <div class="container section text-center" style="padding: 60px 20px;">
             <div style="max-width: 680px; margin: 0 auto 28px; text-align: center;">
                 <h2 class="section-title" style="margin-bottom: 8px;">Hola, ${pers.name}</h2>
@@ -2513,5 +2508,5 @@ function renderPerfilView() {
             ` : ''}
         </div>
     `;
-}
+    }
 

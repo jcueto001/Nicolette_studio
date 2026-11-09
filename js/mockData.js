@@ -147,7 +147,7 @@ const mockData = {
             description: 'Define, ordena y da forma a tus cejas. Acabado prolijo y natural.',
             adicionales: 'Llegar con cejas y pestañas limpias sin residuos de maquillaje 24h antes',
             recommendedFor: ['ejecutiva', 'evento'],
-            image: 'https://images.unsplash.com/photo-1588510849202-3866299d6d84?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+            image: 'https://images.unsplash.com/photo-1597225244660-1cd128c64284?auto=format&fit=crop&w=800&q=80'
         },
         {
             id: 's3',
@@ -159,7 +159,7 @@ const mockData = {
             description: 'Realza tu mirada de forma natural, levanta y define tus pestañas con técnica coreana avanzada.',
             adicionales: 'Se pide llegar con pestañas limpias sin maquillaje 24h antes para mejor retención',
             recommendedFor: ['mama', 'ejecutiva'],
-            image: 'https://th.bing.com/th/id/OIP.2pIe9UC-BXmhjwRBZtYmDAHaE2?w=305&h=200&c=7&r=0&o=7&pid=1.7&rm=3'
+            image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=800&q=80'
         },
         {
             id: 's_pest_clasica',
@@ -195,7 +195,7 @@ const mockData = {
             description: 'Desde $35.000. Una mirada impactante, densa y personalizada.',
             adicionales: 'Se pide llegar con pestañas limpias sin maquillaje 24h antes',
             recommendedFor: ['evento'],
-            image: 'https://images.unsplash.com/photo-1588510849202-3866299d6d84?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+            image: 'https://images.unsplash.com/photo-1583001809873-a128495da465?auto=format&fit=crop&w=800&q=80'
         },
 
         // --- DEPILACIÓN MASCULINA (Cera Caliente Miel de Abeja) ---
@@ -741,7 +741,7 @@ const mockData = {
             description: 'Limpieza y perfilado de cejas con cera hipoalergénica.',
             adicionales: 'Enmarca tu mirada de forma natural',
             recommendedFor: ['bienestar'],
-            image: 'https://images.unsplash.com/photo-1588510849202-3866299d6d84?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+            image: 'https://images.unsplash.com/photo-1597225244660-1cd128c64284?auto=format&fit=crop&w=800&q=80'
         },
         {
             id: 's_dep_fem_nariz',
@@ -828,7 +828,7 @@ const StorageHelper = {
             localStorage.setItem('nicolett_appointments', JSON.stringify([]));
         }
         await this.loadAppointmentsCache();
-        
+
         if (!localStorage.getItem('nicolett_user')) {
             localStorage.setItem('nicolett_user', JSON.stringify({
                 name: 'Cliente Prueba',
@@ -847,25 +847,25 @@ const StorageHelper = {
                     const profs = this.getProfessionals();
                     const prof = profs.find(p => p.email === user.email) || { id: 'p_unknown', name: 'Admin', role: 'admin' };
                     localStorage.setItem('nicolett_auth', JSON.stringify({ loggedIn: true, user: prof }));
-                    
+
                     const btnLogout = document.getElementById('btn-logout');
                     if (btnLogout) btnLogout.style.display = 'block';
-                    
+
                     // Si ya estamos en admin, refrescar la vista para mostrar los datos
                     this._refreshAdminIfSafe();
                 } else {
-                    const currentAuth = this.getAuth();
-                    if (!currentAuth || !currentAuth.loggedIn) {
-                        localStorage.setItem('nicolett_auth', JSON.stringify({ loggedIn: false, user: null }));
+                        const currentAuth = this.getAuth();
+                        if (!currentAuth || !currentAuth.loggedIn) {
+                            localStorage.setItem('nicolett_auth', JSON.stringify({ loggedIn: false, user: null }));
+                        }
+                        // NOTA: NO forzar redirección a 'home' para que el usuario pueda ver el formulario de login del portal
                     }
-                    // NOTA: NO forzar redirección a 'home' para que el usuario pueda ver el formulario de login del portal
-                }
-                if (typeof window.updateNavAuthVisibility === 'function') {
-                    window.updateNavAuthVisibility();
-                }
-            });
+                    if (typeof window.updateNavAuthVisibility === 'function') {
+                        window.updateNavAuthVisibility();
+                    }
+                });
         }
-        
+
         if (!localStorage.getItem('nicolett_gallery_v2')) {
             localStorage.setItem('nicolett_gallery_v2', JSON.stringify(mockData.gallery));
         }
@@ -874,13 +874,13 @@ const StorageHelper = {
         }
     },
 
-    _refreshAdminIfSafe: function() {
+    _refreshAdminIfSafe: function () {
         if (typeof AppRouter !== 'undefined' && AppRouter.currentRoute === 'admin') {
             AppRouter.refresh();
         }
     },
 
-    _getAppointmentKey: function(appt) {
+    _getAppointmentKey: function (appt) {
         if (!appt) return null;
         if (appt.flowOrder) return `flow_order_${appt.flowOrder}`;
         if (appt.flowToken) return `flow_token_${appt.flowToken}`;
@@ -943,9 +943,9 @@ const StorageHelper = {
         return matches;
     },
 
-    loadAppointmentsCache: async function() {
-        if(typeof db === 'undefined') return;
-        
+    loadAppointmentsCache: async function () {
+        if (typeof db === 'undefined') return;
+
         try {
             const querySnapshot = await db.collection("Citas").get();
             const appointments = [];
@@ -977,8 +977,8 @@ const StorageHelper = {
                     });
                 });
             }
-        } catch(e) { console.error("Error cargando appointments:", e); }
-        
+        } catch (e) { console.error("Error cargando appointments:", e); }
+
         try {
             let fichasSnapshot = await db.collection("FichasClientas").get();
             // Fallback si la colección anterior FichasClinicas contiene datos históricos
@@ -986,15 +986,15 @@ const StorageHelper = {
                 try {
                     const legacySnap = await db.collection("FichasClinicas").get();
                     if (!legacySnap.empty) fichasSnapshot = legacySnap;
-                } catch(err) {}
+                } catch (err) { }
             }
             const fichas = [];
             fichasSnapshot.forEach((doc) => {
                 fichas.push({ id: doc.id, ...doc.data() });
             });
             this._fichasCache = fichas;
-        } catch(e) { console.error("Error cargando fichas clientas:", e); }
-        
+        } catch (e) { console.error("Error cargando fichas clientas:", e); }
+
         try {
             const profsSnapshot = await db.collection("Profesionales").get();
             const profs = [];
@@ -1008,11 +1008,11 @@ const StorageHelper = {
                     this._professionalsCache.push(dp);
                 }
             });
-        } catch(e) { 
-            console.error("Error cargando profesionales:", e); 
-            if(this._professionalsCache.length === 0) this._professionalsCache = mockData.professionals;
+        } catch (e) {
+            console.error("Error cargando profesionales:", e);
+            if (this._professionalsCache.length === 0) this._professionalsCache = mockData.professionals;
         }
-        
+
         try {
             const invSnapshot = await db.collection("Inventario").get();
             const inv = [];
@@ -1027,12 +1027,12 @@ const StorageHelper = {
                     delete docData.id;
                     try {
                         await db.collection("Inventario").doc(item.id).set(docData);
-                    } catch(err) { console.error("Error inicializando inventario en FB:", err); }
+                    } catch (err) { console.error("Error inicializando inventario en FB:", err); }
                 }
             }
-        } catch(e) { 
-            console.error("Error cargando inventario:", e); 
-            if(this._inventoryCache.length === 0) this._inventoryCache = mockData.inventory;
+        } catch (e) {
+            console.error("Error cargando inventario:", e);
+            if (this._inventoryCache.length === 0) this._inventoryCache = mockData.inventory;
         }
 
         try {
@@ -1056,7 +1056,7 @@ const StorageHelper = {
                     localStorage.setItem('nicolett_gallery_v2', JSON.stringify(currentGallery));
                 }
             }
-        } catch(e) {
+        } catch (e) {
             console.warn("Firestore Galeria (usando fallback local):", e);
         }
 
@@ -1066,33 +1066,33 @@ const StorageHelper = {
                 this._flowConfigCache = flowDoc.data();
                 localStorage.setItem('nicolett_flow_config', JSON.stringify(this._flowConfigCache));
             }
-        } catch(e) {
+        } catch (e) {
             console.warn("Firestore Configuracion Flow:", e);
         }
 
         this._refreshAdminIfSafe();
     },
 
-    getAvailableTimeSlots: async function(date, profId) {
-        if(typeof db === 'undefined') return mockData.timeSlots;
+    getAvailableTimeSlots: async function (date, profId) {
+        if (typeof db === 'undefined') return mockData.timeSlots;
 
         try {
             const querySnapshot = await db.collection("Citas")
                 .where("date", "==", date)
                 .get();
-            
+
             const bookedTimes = [];
             querySnapshot.forEach(doc => {
                 const data = doc.data();
                 // Bloquear si pertenece a la profesional (o a cualquier si es un bloqueo general, pero por simplicidad al profId o profName)
                 // Chequeo laxo por profId o profName
-                if (data.profId === profId || data.profesional === profId || data.profesional === this.getProfessionals().find(p=>p.id===profId)?.name) {
+                if (data.profId === profId || data.profesional === profId || data.profesional === this.getProfessionals().find(p => p.id === profId)?.name) {
                     if (data.status !== 'cancelada' && data.status !== 'no asiste') {
                         bookedTimes.push(data.time);
                     }
                 }
             });
-            
+
             return mockData.timeSlots.filter(t => !bookedTimes.includes(t));
         } catch (e) {
             console.error("Error obteniendo horas de Firebase:", e);
@@ -1117,7 +1117,7 @@ const StorageHelper = {
             }
         }
 
-        if(typeof db !== 'undefined') {
+        if (typeof db !== 'undefined') {
             try {
                 // 2. Verificar en Firestore si ya existe un documento previo con la misma orden, token o slot
                 let existingDocId = null;
@@ -1145,8 +1145,8 @@ const StorageHelper = {
                         const d = doc.data();
                         const matchProf = (d.profId === appointment.profId) || (d.profesional === appointment.profesional);
                         const matchClient = (d.clientEmail && d.clientEmail === appointment.clientEmail) ||
-                                            (d.clientPhone && d.clientPhone === appointment.clientPhone) ||
-                                            (d.clientName && d.clientName === appointment.clientName);
+                            (d.clientPhone && d.clientPhone === appointment.clientPhone) ||
+                            (d.clientName && d.clientName === appointment.clientName);
                         if (matchProf && matchClient && d.status !== 'cancelada') {
                             existingDocId = doc.id;
                         }
@@ -1203,45 +1203,45 @@ const StorageHelper = {
     },
 
     // Auth
-    getAuth: function() {
+    getAuth: function () {
         return JSON.parse(localStorage.getItem('nicolett_auth') || '{"loggedIn": false, "user": null}');
     },
-    setAuth: function(authData) {
+    setAuth: function (authData) {
         localStorage.setItem('nicolett_auth', JSON.stringify(authData));
     },
 
     // Inventory
-    getInventory: function() {
+    getInventory: function () {
         return this._inventoryCache;
     },
-    updateProductStock: async function(productId, amountUsed) {
+    updateProductStock: async function (productId, amountUsed) {
         const inv = this.getInventory();
         const p = inv.find(x => x.id === productId);
-        if(p && typeof db !== 'undefined') {
+        if (p && typeof db !== 'undefined') {
             p.stock = Math.max(0, p.stock - amountUsed);
             try {
                 const docData = { ...p };
                 delete docData.id;
                 await db.collection("Inventario").doc(productId).set(docData, { merge: true });
-            } catch(e) { console.error("Error updating stock", e); }
+            } catch (e) { console.error("Error updating stock", e); }
         }
     },
-    updateProductStockDirect: async function(productId, newStock) {
+    updateProductStockDirect: async function (productId, newStock) {
         const inv = this.getInventory();
         const p = inv.find(x => x.id === productId);
-        if(p) {
+        if (p) {
             p.stock = parseInt(newStock) || 0;
-            if(typeof db !== 'undefined') {
+            if (typeof db !== 'undefined') {
                 try {
                     const docData = { ...p };
                     delete docData.id;
                     await db.collection("Inventario").doc(productId).set(docData, { merge: true });
-                } catch(e) { console.error("Error updating stock", e); }
+                } catch (e) { console.error("Error updating stock", e); }
             }
         }
     },
-    addProduct: async function(product) {
-        if(typeof db !== 'undefined') {
+    addProduct: async function (product) {
+        if (typeof db !== 'undefined') {
             try {
                 const docRef = await db.collection("Inventario").add(product);
                 product.id = docRef.id;
@@ -1251,8 +1251,8 @@ const StorageHelper = {
         }
     },
 
-    updateAppointmentStatus: async function(id, newStatus) {
-        if(typeof db !== 'undefined') {
+    updateAppointmentStatus: async function (id, newStatus) {
+        if (typeof db !== 'undefined') {
             try {
                 await db.collection("Citas").doc(id).update({ status: newStatus });
                 const appIdx = this._appointmentsCache.findIndex(a => a.id === id);
@@ -1266,21 +1266,21 @@ const StorageHelper = {
     },
 
     // Servicios y Categorías
-    getServices: function() {
+    getServices: function () {
         return mockData.services;
     },
-    getCategories: function() {
+    getCategories: function () {
         return mockData.categories;
     },
-    getServiceById: function(id) {
+    getServiceById: function (id) {
         return mockData.services.find(s => s.id === id) || null;
     },
 
     // Professionals
-    getProfessionals: function() {
+    getProfessionals: function () {
         return this._professionalsCache;
     },
-    addProfessional: async function(prof) {
+    addProfessional: async function (prof) {
         if (!prof.id) {
             prof.id = 'p_' + Date.now();
         }
@@ -1295,10 +1295,10 @@ const StorageHelper = {
         this._professionalsCache.push(prof);
         try {
             localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache));
-        } catch(e) {}
+        } catch (e) { }
         return prof;
     },
-    updateProfessional: async function(id, data) {
+    updateProfessional: async function (id, data) {
         const profIdx = this._professionalsCache.findIndex(p => p.id === id);
         if (profIdx > -1) {
             this._professionalsCache[profIdx] = { ...this._professionalsCache[profIdx], ...data };
@@ -1312,11 +1312,11 @@ const StorageHelper = {
         }
         try {
             localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache));
-        } catch(e) {}
+        } catch (e) { }
         return this._professionalsCache[profIdx];
     },
-    deleteProfessional: async function(id) {
-        if(typeof db !== 'undefined') {
+    deleteProfessional: async function (id) {
+        if (typeof db !== 'undefined') {
             try {
                 await db.collection("Profesionales").doc(id).delete();
             } catch (e) { console.error("Error deleting professional", e); }
@@ -1324,26 +1324,26 @@ const StorageHelper = {
         this._professionalsCache = this._professionalsCache.filter(p => p.id !== id);
         try {
             localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache));
-        } catch(e) {}
+        } catch (e) { }
     },
 
     // Staff Passwords Storage (para soporte offline y creación local de contraseñas)
-    getStaffPasswords: function() {
+    getStaffPasswords: function () {
         try {
             return JSON.parse(localStorage.getItem('nicolett_staff_passwords') || '{}');
-        } catch(e) {
+        } catch (e) {
             return {};
         }
     },
-    setStaffPassword: function(email, password) {
+    setStaffPassword: function (email, password) {
         if (!email || !password) return;
         const passes = this.getStaffPasswords();
         passes[email.trim().toLowerCase()] = password;
         try {
             localStorage.setItem('nicolett_staff_passwords', JSON.stringify(passes));
-        } catch(e) {}
+        } catch (e) { }
     },
-    verifyStaffPassword: function(email, password) {
+    verifyStaffPassword: function (email, password) {
         if (!email || !password) return false;
         const normEmail = email.trim().toLowerCase();
         const passes = this.getStaffPasswords();
@@ -1354,7 +1354,7 @@ const StorageHelper = {
     },
 
     // --- Gallery ---
-    getGallery: function() {
+    getGallery: function () {
         const stored = localStorage.getItem('nicolett_gallery_v2');
         if (stored) {
             try {
@@ -1375,9 +1375,9 @@ const StorageHelper = {
                     localStorage.setItem('nicolett_gallery_v2', JSON.stringify(list));
                 }
                 return list;
-            } catch(e) {}
+            } catch (e) { }
         }
-        
+
         // Inicializar con fotos aprobadas por defecto del estudio
         const initial = mockData.gallery.map(g => ({
             ...g,
@@ -1390,7 +1390,7 @@ const StorageHelper = {
     },
 
     // Galería pública (solo fotos del estudio o fotos de clientas APROBADAS)
-    getPublicGallery: function() {
+    getPublicGallery: function () {
         const gallery = this.getGallery();
         return gallery.filter(img => {
             // Si es de clienta, solo si está aprobada
@@ -1402,7 +1402,7 @@ const StorageHelper = {
         });
     },
 
-    getClientGallery: function(email) {
+    getClientGallery: function (email) {
         const gallery = this.getGallery();
         if (!email) return [];
         const normEmail = email.trim().toLowerCase();
@@ -1411,7 +1411,7 @@ const StorageHelper = {
     },
 
     // Obtener fotos asociadas a una trabajadora específica (por nombre o id)
-    getProfessionalGallery: function(profNameOrId) {
+    getProfessionalGallery: function (profNameOrId) {
         if (!profNameOrId) return [];
         const norm = profNameOrId.toString().trim().toLowerCase();
         const gallery = this.getGallery();
@@ -1422,7 +1422,7 @@ const StorageHelper = {
         });
     },
 
-    addGalleryImage: async function(imageObj) {
+    addGalleryImage: async function (imageObj) {
         const gallery = this.getGallery();
         imageObj.id = imageObj.id || ('g' + Date.now());
         imageObj.timestamp = imageObj.timestamp || Date.now();
@@ -1453,13 +1453,13 @@ const StorageHelper = {
                     approved: imageObj.approved,
                     status: imageObj.status,
                     date: imageObj.date,
-                    createdAt: (typeof firebase !== 'undefined' && firebase.firestore) 
-                        ? firebase.firestore.FieldValue.serverTimestamp() 
+                    createdAt: (typeof firebase !== 'undefined' && firebase.firestore)
+                        ? firebase.firestore.FieldValue.serverTimestamp()
                         : new Date().toISOString()
                 };
                 const docRef = await db.collection("Galeria").add(docData);
                 imageObj.fbId = docRef.id;
-            } catch(e) {
+            } catch (e) {
                 console.warn("Firestore Galeria add error (usando local):", e);
             }
         }
@@ -1468,7 +1468,7 @@ const StorageHelper = {
     },
 
     // Aprobar o Desaprobar/Ocultar foto en Galería Pública (Solo Administradora)
-    setGalleryImageApproval: async function(id, approved) {
+    setGalleryImageApproval: async function (id, approved) {
         const gallery = this.getGallery();
         const img = gallery.find(item => item.id === id || item.fbId === id);
         if (!img) return null;
@@ -1486,14 +1486,14 @@ const StorageHelper = {
                         status: img.status
                     }, { merge: true });
                 }
-            } catch(e) {
+            } catch (e) {
                 console.warn("Firestore Galeria update approval error:", e);
             }
         }
         return img;
     },
 
-    deleteGalleryImage: async function(id) {
+    deleteGalleryImage: async function (id) {
         let gallery = this.getGallery();
         const imgToDelete = gallery.find(img => img.id === id || img.fbId === id);
         gallery = gallery.filter(img => img.id !== id && img.fbId !== id);
@@ -1512,11 +1512,11 @@ const StorageHelper = {
     },
 
     // Fichas Clientas
-    getFichas: function() {
+    getFichas: function () {
         return this._fichasCache || [];
     },
-    saveFicha: async function(ficha) {
-        if(typeof db !== 'undefined') {
+    saveFicha: async function (ficha) {
+        if (typeof db !== 'undefined') {
             try {
                 ficha.createdAt = firebase.firestore.FieldValue.serverTimestamp();
                 const docRef = await db.collection("FichasClientas").add(ficha);
@@ -1535,11 +1535,11 @@ const StorageHelper = {
             this._fichasCache.push(ficha);
         }
     },
-    deleteFicha: async function(id) {
-        if(typeof db !== 'undefined') {
+    deleteFicha: async function (id) {
+        if (typeof db !== 'undefined') {
             try {
                 await db.collection("FichasClientas").doc(id).delete();
-                try { await db.collection("FichasClinicas").doc(id).delete(); } catch(err){}
+                try { await db.collection("FichasClinicas").doc(id).delete(); } catch (err) { }
                 this._fichasCache = this._fichasCache.filter(f => f.id !== id);
             } catch (e) {
                 console.error("Error eliminando ficha clienta:", e);
@@ -1550,13 +1550,13 @@ const StorageHelper = {
     },
 
     // --- Clientas Globales y CRM ---
-    getClients: function() {
+    getClients: function () {
         return JSON.parse(localStorage.getItem('nicolett_clients') || '[]');
     },
-    saveClients: function(clients) {
+    saveClients: function (clients) {
         localStorage.setItem('nicolett_clients', JSON.stringify(clients));
     },
-    addClient: function(client) {
+    addClient: function (client) {
         const clients = this.getClients();
         const normEmail = (client.email || '').toString().trim().toLowerCase();
         const cleanPhone = (client.phone || '').toString().replace(/\D/g, '');
@@ -1583,22 +1583,22 @@ const StorageHelper = {
         this.saveClients(clients);
         return client;
     },
-    updateClient: function(updatedClient) {
+    updateClient: function (updatedClient) {
         let clients = this.getClients();
         const index = clients.findIndex(c => c.id === updatedClient.id);
-        if(index !== -1) {
+        if (index !== -1) {
             clients[index] = updatedClient;
             this.saveClients(clients);
         }
     },
-    deleteClient: function(id) {
+    deleteClient: function (id) {
         let clients = this.getClients();
         clients = clients.filter(c => c.id !== id);
         this.saveClients(clients);
     },
 
     // --- Gestión de Perfil de Clienta (Autenticación e Historial) ---
-    getOrCreateClientProfile: async function(rawEmail, rawName, rawPhone) {
+    getOrCreateClientProfile: async function (rawEmail, rawName, rawPhone) {
         const email = (rawEmail || '').toString().trim().toLowerCase();
         let name = (rawName || '').toString().trim();
         let phone = (rawPhone || '').toString().trim();
@@ -1654,7 +1654,7 @@ const StorageHelper = {
 
                 try {
                     await db.collection('perfil_cliente').doc(existingDocId).set(updates, { merge: true });
-                } catch(e) {}
+                } catch (e) { }
             }
 
             const profile = {
@@ -1694,13 +1694,13 @@ const StorageHelper = {
                     name: finalName,
                     email: email,
                     phone: finalPhone,
-                    createdAt: (typeof firebase !== 'undefined' && firebase.firestore) 
-                        ? firebase.firestore.FieldValue.serverTimestamp() 
+                    createdAt: (typeof firebase !== 'undefined' && firebase.firestore)
+                        ? firebase.firestore.FieldValue.serverTimestamp()
                         : new Date().toISOString()
                 });
                 newDocId = newDocRef.id;
                 console.log(`[StorageHelper] Nuevo perfil_cliente creado en Firestore con ID: ${newDocId} para ${email}.`);
-            } catch(err) {
+            } catch (err) {
                 console.error('[StorageHelper] Error creando perfil_cliente:', err);
             }
         }
@@ -1723,7 +1723,7 @@ const StorageHelper = {
     },
 
     // --- Configuración de Flow (Pasarela de Pago de Abonos) ---
-    getFlowConfig: function() {
+    getFlowConfig: function () {
         if (this._flowConfigCache) return this._flowConfigCache;
         const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:');
         const defaultBackend = isLocal ? 'http://localhost:3000' : (typeof window !== 'undefined' ? window.location.origin : '');
@@ -1749,19 +1749,19 @@ const StorageHelper = {
             } else {
                 this._flowConfigCache = def;
             }
-        } catch(e) {
+        } catch (e) {
             this._flowConfigCache = def;
         }
         return this._flowConfigCache;
     },
 
-    saveFlowConfig: async function(cfg) {
+    saveFlowConfig: async function (cfg) {
         this._flowConfigCache = cfg;
         localStorage.setItem('nicolett_flow_config', JSON.stringify(cfg));
         if (typeof db !== 'undefined') {
             try {
                 await db.collection("Configuracion").doc("flow").set(cfg, { merge: true });
-            } catch(e) {
+            } catch (e) {
                 console.error("Error guardando configuración de Flow en Firestore:", e);
             }
         }
