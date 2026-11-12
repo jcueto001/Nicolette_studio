@@ -78,6 +78,93 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Helper para construir parámetros robustos para EmailJS con múltiples alias compatibles
+function buildAppointmentEmailParams(app) {
+    const bal = app.balanceDue !== undefined ? app.balanceDue : (app.totalPrice ? Math.max(0, app.totalPrice - 5000) : 0);
+    return {
+        // Destinatario (cubre cualquier variable de destinatario configurada en EmailJS)
+        to_email: app.clientEmail || '',
+        email: app.clientEmail || '',
+        client_email: app.clientEmail || '',
+        reply_to: app.clientEmail || '',
+        user_email: app.clientEmail || '',
+        recipient: app.clientEmail || '',
+
+        // Nombre de la clienta
+        to_name: app.clientName || 'Estimada clienta',
+        client_name: app.clientName || 'Estimada clienta',
+        nombre: app.clientName || 'Estimada clienta',
+        name: app.clientName || 'Estimada clienta',
+
+        // Servicio
+        service: app.servicio || '',
+        servicio: app.servicio || '',
+
+        // Fecha y Hora
+        date: app.date || '',
+        fecha: app.date || '',
+        time: app.time || '',
+        hora: app.time || '',
+
+        // Profesional
+        profesional: app.profesional || 'Profesional de Nicolett Studio',
+        professional: app.profesional || 'Profesional de Nicolett Studio',
+
+        // Abono y Saldo
+        deposit: '$5.000 (Vía Flow)',
+        abono: '$5.000 (Vía Flow)',
+        balance: "$" + Number(bal).toLocaleString('es-CL'),
+        saldo: "$" + Number(bal).toLocaleString('es-CL'),
+
+        // Teléfono y notas
+        phone: app.clientPhone || '',
+        telefono: app.clientPhone || '',
+        notes: app.notes || ''
+    };
+}
+
+// Función global para reenviar correo de confirmación desde el panel admin con feedback inmediato
+window.resendAppointmentEmail = async function (appId) {
+    if (typeof emailjs === 'undefined') {
+        alert('⚠️ El servicio de correo (EmailJS) no está cargado. Por favor recarga la página.');
+        return;
+    }
+    const app = StorageHelper.getAppointments().find(a => a.id === appId);
+    if (!app) {
+        alert('⚠️ No se encontró la información de la cita.');
+        return;
+    }
+    if (!app.clientEmail) {
+        alert('⚠️ Esta cita no tiene un correo electrónico registrado.');
+        return;
+    }
+
+    const btn = document.querySelector(`.btn-resend-email[data-appid="${appId}"]`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader" class="lucide-spin" style="width:13px; height:13px;"></i> Enviando...';
+        if (window.lucide) lucide.createIcons();
+    }
+
+    try {
+        const params = buildAppointmentEmailParams(app);
+        console.log('[EmailJS Reenviar] Enviando parámetros:', params);
+        const res = await emailjs.send("service_rmc9mu9", "template_2h2ya38", params);
+        console.log('[EmailJS Reenviar] Respuesta exitosa:', res);
+        alert(`✉️ ¡Correo de confirmación enviado exitosamente a:\n${app.clientEmail}\n\nRevisa la bandeja de entrada o la carpeta de Spam / Correo no deseado.`);
+    } catch (err) {
+        console.error('[EmailJS Reenviar] Error:', err);
+        const errDetail = err?.text || err?.message || JSON.stringify(err);
+        alert(`⚠️ No se pudo enviar el correo a ${app.clientEmail}:\n\n${errDetail}\n\nVerifica que tu cuenta de EmailJS esté activa y conectada a tu correo.`);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="mail" style="width:13px; height:13px;"></i> Reenviar';
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+};
+
 // Variable de bloqueo para evitar que checkFlowPaymentReturn se ejecute simultáneamente
 let isProcessingFlowReturn = false;
 
@@ -139,18 +226,12 @@ async function checkFlowPaymentReturn() {
             // Enviar confirmación por EmailJS si está configurado
             if (typeof emailjs !== 'undefined' && app.clientEmail) {
                 try {
-                    await emailjs.send("service_rmc9mu9", "template_2h2ya38", {
-                        to_name: app.clientName,
-                        to_email: app.clientEmail,
-                        service: app.servicio,
-                        date: app.date,
-                        time: app.time,
-                        profesional: app.profesional,
-                        deposit: '$5.000 (Vía Flow)',
-                        balance: "$" + (app.balanceDue || 0).toLocaleString('es-CL')
-                    });
+                    const templateParams = buildAppointmentEmailParams(app);
+                    console.log('[EmailJS Flow] Enviando correo a:', app.clientEmail, templateParams);
+                    const emailRes = await emailjs.send("service_rmc9mu9", "template_2h2ya38", templateParams);
+                    console.log("[EmailJS Flow] Correo de confirmación enviado exitosamente:", emailRes.status, emailRes.text);
                 } catch (err) {
-                    console.log("EmailJS error:", err);
+                    console.error("[EmailJS Flow] Error al enviar confirmación de cita:", err);
                 }
             }
 
@@ -1498,16 +1579,18 @@ window.handleGlobalLogout = function () {
                         const app = StorageHelper.getAppointments().find(a => a.id === appId);
                         if (app && app.clientEmail) {
                             try {
-                                // NOTA: Reemplaza "TEMPLATE_ID_CONFIRMACION" con el ID de la plantilla que crees
-                                await emailjs.send("service_rmc9mu9", "template_pcxbtx3", {
-                                    to_name: app.clientName,
-                                    to_email: app.clientEmail,
-                                    service: app.servicio,
-                                    date: app.date,
-                                    time: app.time
-                                });
+                                const templateParams = buildAppointmentEmailParams(app);
+                                console.log('[EmailJS Status Change] Enviando confirmación a:', app.clientEmail);
+                                const emailRes = await emailjs.send("service_rmc9mu9", "template_2h2ya38", templateParams);
+                                console.log("[EmailJS Status Change] Correo enviado exitosamente:", emailRes.status, emailRes.text);
                             } catch (err) {
-                                console.log("EmailJS no configurado o falló: ", err);
+                                console.warn("[EmailJS Status Change] Error enviando con template_2h2ya38, reintentando con template_pcxbtx3:", err);
+                                try {
+                                    const templateParams = buildAppointmentEmailParams(app);
+                                    await emailjs.send("service_rmc9mu9", "template_pcxbtx3", templateParams);
+                                } catch (err2) {
+                                    console.error("[EmailJS Status Change] Error enviando correo de confirmación:", err2);
+                                }
                             }
                         }
                     }

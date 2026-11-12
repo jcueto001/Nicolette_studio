@@ -1254,6 +1254,11 @@ function renderAdminView() {
                             <button type="button" class="btn btn-outline btn-sm btn-worker-take-photo" data-appid="${app.id}" data-clientname="${app.clientName || 'Cliente'}" data-clientemail="${app.clientEmail || ''}" data-servicename="${serviceName}" data-profname="${profName}" data-profid="${app.profId || ''}" style="border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Sacar foto del trabajo para esta clienta">
                                 <i data-lucide="camera" style="width:14px; height:14px;"></i> Sacar Foto
                             </button>
+                            ${app.clientEmail ? `
+                            <button type="button" class="btn btn-outline btn-sm btn-resend-email" onclick="window.resendAppointmentEmail('${app.id}')" data-appid="${app.id}" style="border-color:#1b75bb; color:#1b75bb; display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Reenviar comprobante por correo a ${app.clientEmail}">
+                                <i data-lucide="mail" style="width:14px; height:14px;"></i> Reenviar Correo
+                            </button>
+                            ` : ''}
                         </div>
                     </td>
                 </tr>
