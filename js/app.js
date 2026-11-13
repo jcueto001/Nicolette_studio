@@ -2059,24 +2059,25 @@ function renderAdminView() {
             </div>
 
             <!-- Modal Cambiar / Crear Mi Contraseña (Para la usuaria activa: Trabajadora o Admin) -->
-            <div id="modal-change-my-password" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px); z-index: 2000; align-items:center; justify-content:center; padding:15px;">
-                <div class="card" style="max-width: 420px; width: 100%; position:relative; background:white; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.2); padding:24px;">
-                    <button id="close-modal-change-my-password" type="button" style="position:absolute; top:16px; right:16px; background:none; border:none; cursor:pointer; color:var(--clr-neutral-gray); padding:4px;"><i data-lucide="x"></i></button>
-                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
-                        <div style="width:38px; height:38px; border-radius:50%; background:var(--clr-nude-light); color:var(--clr-rose-gold-dark); display:flex; align-items:center; justify-content:center;">
-                            <i data-lucide="key-round" style="width:20px; height:20px;"></i>
+            <div id="modal-change-my-password" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(43,35,32,0.65); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index: 2500; align-items:center; justify-content:center; padding:20px; box-sizing: border-box;">
+                <div class="custom-dialog-card" style="max-width: 440px; width: 100%; position:relative; padding:32px 28px 26px; text-align: left; border-top: 4px solid var(--clr-rose-gold);">
+                    <button id="close-modal-change-my-password" type="button" style="position:absolute; top:16px; right:16px; background:#FAF7F5; border:1px solid #E5DCD5; cursor:pointer; color:var(--clr-neutral-gray); width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; padding:0; outline:none; transition:all 0.2s;" onmouseover="this.style.background='#F0E8E2'; this.style.color='var(--clr-neutral-dark)';" onmouseout="this.style.background='#FAF7F5'; this.style.color='var(--clr-neutral-gray)';" title="Cerrar">
+                        <i data-lucide="x" style="width:18px; height:18px; pointer-events:none;"></i>
+                    </button>
+                    
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div class="custom-dialog-icon info" style="margin: 0 auto 12px; width: 60px; height: 60px; background: linear-gradient(135deg, #FFF1EE 0%, #FFE2D8 100%); color: var(--clr-rose-gold-dark); box-shadow: 0 8px 24px rgba(181, 69, 90, 0.18);">
+                            <i data-lucide="shield-check" style="width:28px; height:28px;"></i>
                         </div>
-                        <div>
-                            <h3 style="margin:0; font-size:1.25rem;">Seguridad de la Cuenta</h3>
-                            <p style="margin:0; font-size:0.82rem; color:var(--clr-neutral-gray);" id="label-change-pass-email">${auth.user?.email || 'tu-cuenta'}</p>
-                        </div>
+                        <h3 class="custom-dialog-title" style="margin:0 0 4px; font-size:1.45rem;">Seguridad de la Cuenta</h3>
+                        <p style="margin:0; font-size:0.86rem; color:var(--clr-neutral-gray);" id="label-change-pass-email">${auth.user?.email || 'tu-cuenta'}</p>
                     </div>
 
                     <form id="form-change-my-password">
                         <div style="margin-bottom: 14px;">
-                            <label style="display:block; margin-bottom:5px; font-weight:600; font-size:0.88rem;">Nueva Contraseña:</label>
+                            <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.88rem; color:var(--clr-neutral-dark);">Nueva Contraseña:</label>
                             <div class="input-password-wrapper">
-                                <input type="password" id="my-new-password" required minlength="6" placeholder="Mínimo 6 caracteres" autocomplete="new-password" style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                                <input type="password" id="my-new-password" required minlength="6" placeholder="Mínimo 6 caracteres" autocomplete="new-password" style="width:100%; padding:11px 40px 11px 12px; border:1.5px solid #dcd3c9; border-radius:12px; font-size:0.95rem; font-family: inherit;">
                                 <button type="button" class="btn-toggle-pass" id="btn-toggle-my-new-password" title="Mostrar/Ocultar" tabindex="-1">
                                     <i data-lucide="eye" style="width:16px; height:16px;"></i>
                                 </button>
@@ -2094,24 +2095,24 @@ function renderAdminView() {
                             </div>
                         </div>
 
-                        <div style="margin-bottom: 16px;">
-                            <label style="display:block; margin-bottom:5px; font-weight:600; font-size:0.88rem;">Confirmar Nueva Contraseña:</label>
+                        <div style="margin-bottom: 18px;">
+                            <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.88rem; color:var(--clr-neutral-dark);">Confirmar Nueva Contraseña:</label>
                             <div class="input-password-wrapper">
-                                <input type="password" id="my-confirm-password" required minlength="6" placeholder="Repite la contraseña" autocomplete="new-password" style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
+                                <input type="password" id="my-confirm-password" required minlength="6" placeholder="Repite la contraseña" autocomplete="new-password" style="width:100%; padding:11px 40px 11px 12px; border:1.5px solid #dcd3c9; border-radius:12px; font-size:0.95rem; font-family: inherit;">
                                 <button type="button" class="btn-toggle-pass" id="btn-toggle-my-confirm-password" title="Mostrar/Ocultar" tabindex="-1">
                                     <i data-lucide="eye" style="width:16px; height:16px;"></i>
                                 </button>
                             </div>
-                            <div id="my-pass-match-hint" class="pass-match-hint" style="font-size:0.78rem; margin-top:4px; display:none; align-items:center; gap:4px;"></div>
+                            <div id="my-pass-match-hint" class="pass-match-hint" style="font-size:0.8rem; margin-top:5px; display:none; align-items:center; gap:4px;"></div>
                         </div>
 
-                        <div id="change-my-password-error" class="auth-error-box" style="display:none; margin-bottom:12px;"></div>
-                        <div id="change-my-password-success" style="display:none; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:10px 14px; border-radius:var(--radius-sm); font-size:0.88rem; margin-bottom:12px; align-items:center; gap:8px;">
+                        <div id="change-my-password-error" class="auth-error-box" style="display:none; margin-bottom:14px;"></div>
+                        <div id="change-my-password-success" style="display:none; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:12px 14px; border-radius:12px; font-size:0.88rem; margin-bottom:14px; align-items:center; gap:8px;">
                             <i data-lucide="check-circle" style="width:18px; height:18px; flex-shrink:0;"></i>
                             <span>¡Contraseña actualizada exitosamente!</span>
                         </div>
 
-                        <button type="submit" class="btn btn-primary btn-block" id="btn-submit-change-my-pass" style="padding:12px; font-weight:600; font-size:0.95rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <button type="submit" class="custom-dialog-btn-confirm" id="btn-submit-change-my-pass" style="width:100%; padding:13px; font-size:0.95rem;">
                             <i data-lucide="lock" style="width:18px; height:18px;"></i> Guardar Nueva Contraseña
                         </button>
                     </form>
