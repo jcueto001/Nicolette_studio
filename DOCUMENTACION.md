@@ -79,25 +79,33 @@ El sistema utiliza una arquitectura desacoplada: un **Frontend SPA** estático c
 
 ## 3. Estructura del Proyecto y Archivos
 
+El sistema está estructurado bajo una **arquitectura modular orientada a requerimientos de software (Sprints del Capstone)**:
+
 ```text
 Nicolette_studio/
+├── css/
+│   └── styles.css            # Hoja de estilos global, variables CSS, responsive design (RNF-01, RNF-02)
+├── img/                      # Recursos gráficos estáticos y fotografías del local
+├── js/
+│   ├── firebase-config.js    # Inicialización y credenciales del cliente Firebase (Firestore & Auth)
+│   ├── mockData.js           # Capa StorageHelper, estado local y datos semilla
+│   ├── modules/              # MÓDULOS DE NEGOCIO SEGÚN PLAN DE TRABAJO (CAPSTONE)
+│   │   ├── citas.js          # [Sprint 1] Módulo Citas, Horarios (09:00-17:00), Sobrecupos y Abonos ($5.000) (RF-03 a RF-06)
+│   │   ├── clientas.js       # [Sprint 2] Módulo Clientas, Fichas Técnicas y Mapeo de Pestañas (Mapping 9-13) (RF-07, RF-08)
+│   │   ├── inventario.js     # [Sprint 3] Módulo Inventario, Alertas de Stock Crítico y Catálogo Informativo (RF-09, RF-10)
+│   │   ├── auth.js           # [Sprint 4] Módulo Autenticación, Roles (Admin vs Trabajadora) y Seguridad (RF-01, RF-02, RNF-04)
+│   │   └── ui.js             # [Sprint 5] Módulo UI, Diálogos de Confirmación y Notificaciones Toast (RNF-01, RNF-03)
+│   ├── app.js                # Router SPA y funciones que renderizan el HTML de cada vista
+│   └── main.js               # Controladores de eventos, lógica de formularios y CRM
 ├── backend/
 │   ├── package.json          # Dependencias del backend (express, cors, transbank-sdk)
 │   ├── package-lock.json     # Bloqueo de versiones de paquetes de node
-│   ├── server.js             # API REST de integración con Webpay Plus
+│   ├── server.js             # API REST de integración con Webpay Plus y Flow.cl
 │   └── README.md             # Guía de ejecución y despliegue del backend en Render
-├── css/
-│   └── styles.css            # Hoja de estilos global, variables CSS y responsive design
-├── img/                      # Recursos gráficos estáticos y fotografías del local
-├── js/
-│   ├── app.js                # Router SPA y funciones que renderizan el HTML de cada vista
-│   ├── firebase-config.js    # Inicialización y credenciales del cliente Firebase
-│   ├── main.js               # Controladores de eventos, lógica de formularios y CRM
-│   └── mockData.js           # Capa StorageHelper, estado local y datos semilla
 ├── index.html                # Contenedor raíz, barra de navegación, modales y scripts CDN
-├── test.html                 # Archivo auxiliar de prueba para validar conexión con Firebase
+├── reset-password.html       # Portal seguro y personalizado para restablecimiento de contraseñas
 ├── DOCUMENTACION.md          # Este documento
-└── README.md                 # Resumen inicial del repositorio
+└── README.md                 # Resumen ejecutivo del repositorio para evaluación
 ```
 
 ---
