@@ -542,14 +542,20 @@ function setupForgotPasswordModal() {
             btnSubmit.disabled = true;
             btnSubmit.innerHTML = '<span style="display:inline-block; width:15px; height:15px; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite;"></span> Enviando...';
 
-            const actionCodeSettings = {
-                url: window.location.origin + '/reset-password.html',
-                handleCodeInApp: true
-            };
-
             try {
                 if (typeof firebase !== 'undefined' && firebase.auth) {
-                    await firebase.auth().sendPasswordResetEmail(email, actionCodeSettings);
+                    try {
+                        const actionCodeSettings = {
+                            url: window.location.origin + '/reset-password.html',
+                            handleCodeInApp: true
+                        };
+                        await firebase.auth().sendPasswordResetEmail(email, actionCodeSettings);
+                    } catch (urlErr) {
+                        console.warn('[Firebase Reset] Intento con URL personalizada falló (' + (urlErr.code || urlErr.message) + '). Reintentando con envío directo oficial...');
+                        // Fallback infalible: Si el dominio no está en la lista blanca de continue-uri de Firebase (auth/unauthorized-continue-uri),
+                        // enviar el correo oficial de restablecimiento sin actionCodeSettings para que llegue con éxito.
+                        await firebase.auth().sendPasswordResetEmail(email);
+                    }
                 }
                 if (succBox) {
                     succBox.innerHTML = `
@@ -573,6 +579,8 @@ function setupForgotPasswordModal() {
                     errorMsg = 'No existe una cuenta registrada con este correo electrónico.';
                 } else if (err.code === 'auth/invalid-email') {
                     errorMsg = 'El formato del correo electrónico ingresado no es válido.';
+                } else if (err.code === 'auth/too-many-requests') {
+                    errorMsg = 'Demasiados intentos seguidos. Por seguridad, espera unos minutos antes de volver a solicitar un enlace.';
                 }
 
                 if (errBox) {
