@@ -2,6 +2,157 @@
  * Inicialización principal y manejo de eventos específicos por vista
  */
 
+// ==========================================
+// SISTEMA DE MODALES Y DIÁLOGOS PERSONALIZADOS
+// ==========================================
+
+// Guardar referencias nativas
+window._nativeAlert = window.alert ? window.alert.bind(window) : null;
+window._nativeConfirm = window.confirm ? window.confirm.bind(window) : null;
+
+window.showCustomConfirm = function (options = {}) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-confirm-modal');
+        if (!modal) {
+            const fallback = window._nativeConfirm ? window._nativeConfirm(options.message || '') : true;
+            return resolve(fallback);
+        }
+
+        const iconEl = document.getElementById('custom-confirm-icon');
+        const titleEl = document.getElementById('custom-confirm-title');
+        const messageEl = document.getElementById('custom-confirm-message');
+        const btnCancel = document.getElementById('custom-confirm-btn-cancel');
+        const btnConfirm = document.getElementById('custom-confirm-btn-confirm');
+
+        const title = options.title || '¿Estás segura?';
+        const message = options.message || '';
+        const confirmText = options.confirmText || 'Confirmar';
+        const cancelText = options.cancelText || 'Cancelar';
+        const isDanger = !!options.danger;
+        const iconType = options.iconType || (isDanger ? 'danger' : (options.icon === 'log-out' ? 'logout' : 'info'));
+        const iconName = options.icon || (isDanger ? 'trash-2' : (iconType === 'logout' ? 'log-out' : 'help-circle'));
+
+        if (titleEl) titleEl.textContent = title;
+        if (messageEl) messageEl.textContent = message;
+        if (btnConfirm) btnConfirm.textContent = confirmText;
+        if (btnCancel) btnCancel.textContent = cancelText;
+
+        if (iconEl) {
+            iconEl.className = `custom-dialog-icon ${iconType}`;
+            iconEl.innerHTML = `<i data-lucide="${iconName}" style="width:34px; height:34px;"></i>`;
+        }
+
+        if (btnConfirm) {
+            btnConfirm.className = isDanger ? 'custom-dialog-btn-confirm danger' : 'custom-dialog-btn-confirm';
+        }
+
+        if (window.lucide) {
+            try { lucide.createIcons(); } catch (e) { }
+        }
+
+        modal.classList.add('active');
+
+        const cleanup = () => {
+            modal.classList.remove('active');
+            if (btnConfirm) btnConfirm.removeEventListener('click', onConfirm);
+            if (btnCancel) btnCancel.removeEventListener('click', onCancel);
+            modal.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onKey);
+        };
+
+        const onConfirm = () => { cleanup(); resolve(true); };
+        const onCancel = () => { cleanup(); resolve(false); };
+        const onBackdrop = (e) => { if (e.target === modal) { cleanup(); resolve(false); } };
+        const onKey = (e) => { if (e.key === 'Escape') { cleanup(); resolve(false); } };
+
+        if (btnConfirm) btnConfirm.addEventListener('click', onConfirm);
+        if (btnCancel) btnCancel.addEventListener('click', onCancel);
+        modal.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onKey);
+    });
+};
+
+window.showCustomAlert = function (options = {}) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-alert-modal');
+        const message = typeof options === 'string' ? options : (options.message || '');
+        if (!modal) {
+            if (window._nativeAlert) window._nativeAlert(message);
+            return resolve();
+        }
+
+        const iconEl = document.getElementById('custom-alert-icon');
+        const titleEl = document.getElementById('custom-alert-title');
+        const messageEl = document.getElementById('custom-alert-message');
+        const btnOk = document.getElementById('custom-alert-btn-ok');
+
+        const type = (typeof options === 'object' && options.type) ? options.type : 'info';
+        const title = (typeof options === 'object' && options.title)
+            ? options.title
+            : (type === 'error' ? 'Atención' : (type === 'success' ? '¡Excelente!' : (type === 'warning' ? 'Aviso Importante' : 'Información')));
+        const btnText = (typeof options === 'object' && options.btnText) ? options.btnText : 'Entendido';
+
+        const iconMap = {
+            success: 'check-circle',
+            error: 'alert-circle',
+            warning: 'alert-triangle',
+            info: 'info'
+        };
+        const iconName = (typeof options === 'object' && options.icon) ? options.icon : (iconMap[type] || 'info');
+
+        if (titleEl) titleEl.textContent = title;
+        if (messageEl) messageEl.textContent = message;
+        if (btnOk) btnOk.textContent = btnText;
+
+        if (iconEl) {
+            iconEl.className = `custom-dialog-icon ${type}`;
+            iconEl.innerHTML = `<i data-lucide="${iconName}" style="width:34px; height:34px;"></i>`;
+        }
+
+        if (window.lucide) {
+            try { lucide.createIcons(); } catch (e) { }
+        }
+
+        modal.classList.add('active');
+
+        const cleanup = () => {
+            modal.classList.remove('active');
+            if (btnOk) btnOk.removeEventListener('click', onOk);
+            modal.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onKey);
+        };
+
+        const onOk = () => { cleanup(); resolve(); };
+        const onBackdrop = (e) => { if (e.target === modal) { cleanup(); resolve(); } };
+        const onKey = (e) => { if (e.key === 'Escape' || e.key === 'Enter') { cleanup(); resolve(); } };
+
+        if (btnOk) btnOk.addEventListener('click', onOk);
+        modal.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onKey);
+    });
+};
+
+// Reemplazo inteligente de window.alert para que todas las llamadas usen el modal elegante de Nicolett Studio
+window.alert = function (msg) {
+    const text = String(msg || '');
+    const lower = text.toLowerCase();
+    let type = 'info';
+    let title = 'Nicolett Studio';
+
+    if (lower.includes('éxito') || lower.includes('exitosamente') || lower.includes('bienvenida') || lower.includes('excelente') || lower.includes('aprobada')) {
+        type = 'success';
+        title = '¡Operación Exitosa!';
+    } else if (lower.includes('error') || lower.includes('falló') || lower.includes('no se pudo') || lower.includes('rechazado')) {
+        type = 'error';
+        title = 'Hubo un inconveniente';
+    } else if (lower.includes('por favor') || lower.includes('atención') || lower.includes('requerido') || lower.includes('selecciona') || lower.includes('aviso')) {
+        type = 'warning';
+        title = 'Atención';
+    }
+
+    window.showCustomAlert({ title, message: text, type });
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     // Inicializar Iconos
     if (window.lucide) {
@@ -389,7 +540,15 @@ window.updateNavAuthVisibility = function () {
 };
 
 window.logoutStaff = async function () {
-    if (confirm('¿Segura que deseas salir del panel de administración?')) {
+    const ok = await window.showCustomConfirm({
+        title: '¿Cerrar Sesión del Portal?',
+        message: '¿Estás segura de que deseas salir del panel de administración?\nTu sesión se cerrará de forma segura y podrás volver a ingresar cuando lo necesites.',
+        confirmText: 'Sí, Salir',
+        cancelText: 'Permanecer Conectada',
+        icon: 'log-out',
+        iconType: 'logout'
+    });
+    if (ok) {
         StorageHelper.setAuth({ loggedIn: false, user: null });
         try {
             sessionStorage.removeItem('nicolett_active_admin_tab');
@@ -406,23 +565,31 @@ window.logoutStaff = async function () {
 };
 
 window.handleGlobalLogout = function () {
-        const authData = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
-        if (authData && authData.loggedIn) {
-            window.logoutStaff();
-        } else if (localStorage.getItem('nicolett_personalization')) {
-            window.logoutClientProfile();
-        }
-    };
+    const authData = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
+    if (authData && authData.loggedIn) {
+        window.logoutStaff();
+    } else if (localStorage.getItem('nicolett_personalization')) {
+        window.logoutClientProfile();
+    }
+};
 
-    window.logoutClientProfile = function () {
-        if (confirm('¿Estás segura de que deseas cerrar sesión de tu perfil?')) {
-            localStorage.removeItem('nicolett_personalization');
-            window.updateNavAuthVisibility();
-            if (typeof AppRouter !== 'undefined') {
-                AppRouter.navigate('home');
-            }
+window.logoutClientProfile = async function () {
+    const ok = await window.showCustomConfirm({
+        title: '¿Cerrar Sesión de tu Perfil?',
+        message: '¿Estás segura de que deseas salir de tu perfil de clienta?\nPodrás volver a consultar tus citas y fotos en cualquier momento ingresando con tu correo.',
+        confirmText: 'Cerrar Sesión',
+        cancelText: 'Permanecer Conectada',
+        icon: 'log-out',
+        iconType: 'logout'
+    });
+    if (ok) {
+        localStorage.removeItem('nicolett_personalization');
+        window.updateNavAuthVisibility();
+        if (typeof AppRouter !== 'undefined') {
+            AppRouter.navigate('home');
         }
-    };
+    }
+};
 
     function setupPersonalization() {
         const modal = document.getElementById('personalize-modal');
@@ -1815,9 +1982,16 @@ window.handleGlobalLogout = function () {
 
             // Eliminar Ficha Clienta (Solo Admin)
             document.querySelectorAll('.btn-del-ficha').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if (confirm('¿Estás segura de eliminar esta ficha de clienta? Esta acción no se puede deshacer.')) {
-                        StorageHelper.deleteFicha(btn.getAttribute('data-fichaid'));
+                btn.addEventListener('click', async () => {
+                    const ok = await window.showCustomConfirm({
+                        title: '¿Eliminar Ficha de Clienta?',
+                        message: '¿Estás segura de eliminar esta ficha clínica?\nEsta acción no se puede deshacer.',
+                        confirmText: 'Sí, Eliminar',
+                        cancelText: 'Conservar Ficha',
+                        danger: true
+                    });
+                    if (ok) {
+                        await StorageHelper.deleteFicha(btn.getAttribute('data-fichaid'));
                         AppRouter.refresh();
                     }
                 });
@@ -1825,9 +1999,16 @@ window.handleGlobalLogout = function () {
 
             // Eliminar Profesional (Solo Admin)
             document.querySelectorAll('.btn-del-prof').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if (confirm('¿Estás segura de eliminar a esta trabajadora del sistema?')) {
-                        StorageHelper.deleteProfessional(btn.getAttribute('data-profid'));
+                btn.addEventListener('click', async () => {
+                    const ok = await window.showCustomConfirm({
+                        title: '¿Eliminar Especialista?',
+                        message: '¿Estás segura de eliminar a esta profesional del sistema?\nYa no tendrá acceso al portal ni aparecerá en la agenda de citas.',
+                        confirmText: 'Sí, Eliminar',
+                        cancelText: 'Cancelar',
+                        danger: true
+                    });
+                    if (ok) {
+                        await StorageHelper.deleteProfessional(btn.getAttribute('data-profid'));
                         AppRouter.refresh();
                     }
                 });
@@ -2033,7 +2214,14 @@ window.handleGlobalLogout = function () {
             // Eliminar Ficha
             document.querySelectorAll('.btn-del-ficha').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    if (confirm('¿Estás segura de eliminar permanentemente esta ficha?')) {
+                    const ok = await window.showCustomConfirm({
+                        title: '¿Eliminar Permanentemente?',
+                        message: '¿Estás segura de eliminar permanentemente esta ficha de clienta?\nTodos los datos y fotografías adjuntas se borrarán.',
+                        confirmText: 'Sí, Eliminar',
+                        cancelText: 'Cancelar',
+                        danger: true
+                    });
+                    if (ok) {
                         await StorageHelper.deleteFicha(btn.getAttribute('data-fichaid'));
                         if (typeof AppRouter !== 'undefined') AppRouter.refresh();
                     }
@@ -2116,7 +2304,14 @@ window.handleGlobalLogout = function () {
                 btn.addEventListener('click', async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (confirm('¿Estás segura de eliminar permanentemente esta foto?')) {
+                    const ok = await window.showCustomConfirm({
+                        title: '¿Eliminar Fotografía?',
+                        message: '¿Estás segura de eliminar permanentemente esta foto del trabajo realizado?\nEsta acción no se puede revertir.',
+                        confirmText: 'Sí, Eliminar',
+                        cancelText: 'Conservar Foto',
+                        danger: true
+                    });
+                    if (ok) {
                         await StorageHelper.deleteGalleryImage(btn.getAttribute('data-id'));
                         if (typeof AppRouter !== 'undefined') AppRouter.refresh();
                     }
@@ -2991,9 +3186,16 @@ window.handleGlobalLogout = function () {
 
             // Eliminar Clienta
             document.querySelectorAll('.btn-del-client').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if (confirm('¿Estás segura de eliminar este registro del directorio de clientas?')) {
-                        StorageHelper.deleteClient(btn.getAttribute('data-id'));
+                btn.addEventListener('click', async () => {
+                    const ok = await window.showCustomConfirm({
+                        title: '¿Eliminar del Directorio?',
+                        message: '¿Estás segura de eliminar este registro del directorio de clientas?\nEsta acción no se puede deshacer.',
+                        confirmText: 'Sí, Eliminar',
+                        cancelText: 'Cancelar',
+                        danger: true
+                    });
+                    if (ok) {
+                        await StorageHelper.deleteClient(btn.getAttribute('data-id'));
                         if (typeof AppRouter !== 'undefined') AppRouter.refresh();
                     }
                 });

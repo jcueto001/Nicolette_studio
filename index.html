@@ -17,7 +17,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/styles.css?v=20">
+    <link rel="stylesheet" href="css/styles.css?v=22">
 </head>
 
 <body>
@@ -459,6 +459,35 @@
         </div>
     </div>
 
+    <!-- Modal Personalizado de Confirmación (Nicolett Studio Custom Confirm) -->
+    <div id="custom-confirm-modal" class="custom-dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="custom-confirm-title">
+        <div class="custom-dialog-card">
+            <div id="custom-confirm-icon" class="custom-dialog-icon logout">
+                <i data-lucide="log-out" style="width:34px; height:34px;"></i>
+            </div>
+            <h3 id="custom-confirm-title" class="custom-dialog-title">¿Cerrar Sesión?</h3>
+            <p id="custom-confirm-message" class="custom-dialog-message">¿Estás segura de que deseas salir?</p>
+            <div class="custom-dialog-actions">
+                <button type="button" id="custom-confirm-btn-cancel" class="custom-dialog-btn-cancel">Permanecer Conectada</button>
+                <button type="button" id="custom-confirm-btn-confirm" class="custom-dialog-btn-confirm">Cerrar Sesión</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Personalizado de Notificación / Alerta (Nicolett Studio Custom Alert) -->
+    <div id="custom-alert-modal" class="custom-dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="custom-alert-title">
+        <div class="custom-dialog-card">
+            <div id="custom-alert-icon" class="custom-dialog-icon info">
+                <i data-lucide="info" style="width:34px; height:34px;"></i>
+            </div>
+            <h3 id="custom-alert-title" class="custom-dialog-title">Información</h3>
+            <p id="custom-alert-message" class="custom-dialog-message">Mensaje del sistema</p>
+            <div class="custom-dialog-actions" style="justify-content: center;">
+                <button type="button" id="custom-alert-btn-ok" class="custom-dialog-btn-confirm" style="min-width: 140px; flex: initial;">Entendido</button>
+            </div>
+        </div>
+    </div>
+
     <!-- WhatsApp Floating Button -->
     <a href="https://wa.me/56940322551?text=Hola!%20Quisiera%20consultar%20por%20una%20cita%20en%20Nicolett%20Studio"
         target="_blank" rel="noopener noreferrer" class="whatsapp-float" aria-label="Contactar por WhatsApp"
@@ -482,9 +511,9 @@
             emailjs.init("tUxZAGW52juzs6H5Q");
         })();
     </script>
-    <script src="js/mockData.js?v=21"></script>
-    <script src="js/app.js?v=21"></script>
-    <script src="js/main.js?v=21"></script>
+    <script src="js/mockData.js?v=22"></script>
+    <script src="js/app.js?v=22"></script>
+    <script src="js/main.js?v=22"></script>
 </body>
 
 </html>
