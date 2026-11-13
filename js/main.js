@@ -547,7 +547,7 @@ function setupForgotPasswordModal() {
                     try {
                         const actionCodeSettings = {
                             url: window.location.origin + '/reset-password.html',
-                            handleCodeInApp: true
+                            handleCodeInApp: false
                         };
                         await firebase.auth().sendPasswordResetEmail(email, actionCodeSettings);
                     } catch (urlErr) {
