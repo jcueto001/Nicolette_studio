@@ -205,6 +205,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Iniciar Personalizacion
     setupPersonalization();
 
+    // Iniciar Modal de Recuperar Contraseña
+    setupForgotPasswordModal();
+
     // Iniciar Modal de Foto de Clienta
     setupClientPhotoModal();
 
@@ -481,6 +484,106 @@ window.closeForgotPasswordModal = function () {
         if (succBox) succBox.style.display = 'none';
     }
 };
+
+function setupForgotPasswordModal() {
+    const closeForgotModal = document.getElementById('close-forgot-modal');
+    if (closeForgotModal) {
+        closeForgotModal.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.closeForgotPasswordModal();
+        });
+    }
+
+    const btnBackToLogin = document.getElementById('btn-back-to-login');
+    if (btnBackToLogin) {
+        btnBackToLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.closeForgotPasswordModal();
+            if (typeof window.openAuthModal === 'function') window.openAuthModal();
+        });
+    }
+
+    const forgotModal = document.getElementById('modal-forgot-password');
+    if (forgotModal) {
+        forgotModal.addEventListener('click', (e) => {
+            if (e.target === forgotModal) {
+                window.closeForgotPasswordModal();
+            }
+        });
+    }
+
+    // Cerrar modal con tecla Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const fm = document.getElementById('modal-forgot-password');
+            if (fm && fm.style.display === 'flex') {
+                window.closeForgotPasswordModal();
+            }
+        }
+    });
+
+    const formForgotPass = document.getElementById('form-forgot-password');
+    if (formForgotPass) {
+        formForgotPass.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const emailInp = document.getElementById('forgot-email');
+            const email = (emailInp ? emailInp.value.trim() : '');
+            const errBox = document.getElementById('forgot-password-error');
+            const succBox = document.getElementById('forgot-password-success');
+            const btnSubmit = document.getElementById('btn-submit-forgot');
+
+            if (errBox) errBox.style.display = 'none';
+            if (succBox) succBox.style.display = 'none';
+
+            if (!email) return;
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<span style="display:inline-block; width:15px; height:15px; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite;"></span> Enviando...';
+
+            const actionCodeSettings = {
+                url: window.location.origin + '/reset-password.html',
+                handleCodeInApp: true
+            };
+
+            try {
+                if (typeof firebase !== 'undefined' && firebase.auth) {
+                    await firebase.auth().sendPasswordResetEmail(email, actionCodeSettings);
+                }
+                if (succBox) {
+                    succBox.innerHTML = `
+                    <i data-lucide="check-circle" style="width:18px;height:18px;flex-shrink:0;"></i>
+                    <div>
+                        <strong style="display:block;">¡Enlace enviado a ${email}!</strong>
+                        <span style="font-size:0.83rem;">Revisa tu bandeja de entrada o spam para crear tu nueva contraseña personalizada.</span>
+                    </div>
+                `;
+                    succBox.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                }
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i data-lucide="send" style="width:16px;height:16px;"></i> Reenviar Enlace';
+            } catch (err) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i data-lucide="send" style="width:16px;height:16px;"></i> Enviar Enlace de Recuperación';
+
+                let errorMsg = 'No pudimos procesar la solicitud: ' + (err.message || 'Verifica el correo ingresado.');
+                if (err.code === 'auth/user-not-found') {
+                    errorMsg = 'No existe una cuenta registrada con este correo electrónico.';
+                } else if (err.code === 'auth/invalid-email') {
+                    errorMsg = 'El formato del correo electrónico ingresado no es válido.';
+                }
+
+                if (errBox) {
+                    errBox.innerHTML = `<i data-lucide="alert-circle" style="width:16px;height:16px;flex-shrink:0;"></i><span>${errorMsg}</span>`;
+                    errBox.style.display = 'flex';
+                    if (window.lucide) lucide.createIcons();
+                }
+            }
+        });
+    }
+}
 
 // --- Control de Sesión y Visibilidad en Navegación ---
 window.updateNavAuthVisibility = function () {
@@ -855,82 +958,6 @@ window.logoutClientProfile = async function () {
                     e.preventDefault();
                     const targetEmail = emailInput ? emailInput.value.trim() : '';
                     window.openForgotPasswordModal(targetEmail);
-                });
-            }
-
-            // Manejo del Modal de Recuperación Personalizado
-            const closeForgotModal = document.getElementById('close-forgot-modal');
-            if (closeForgotModal) {
-                closeForgotModal.addEventListener('click', () => {
-                    window.closeForgotPasswordModal();
-                });
-            }
-
-            const btnBackToLogin = document.getElementById('btn-back-to-login');
-            if (btnBackToLogin) {
-                btnBackToLogin.addEventListener('click', () => {
-                    window.closeForgotPasswordModal();
-                    window.openAuthModal();
-                });
-            }
-
-            const formForgotPass = document.getElementById('form-forgot-password');
-            if (formForgotPass) {
-                formForgotPass.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const emailInp = document.getElementById('forgot-email');
-                    const email = (emailInp ? emailInp.value.trim() : '');
-                    const errBox = document.getElementById('forgot-password-error');
-                    const succBox = document.getElementById('forgot-password-success');
-                    const btnSubmit = document.getElementById('btn-submit-forgot');
-
-                    if (errBox) errBox.style.display = 'none';
-                    if (succBox) succBox.style.display = 'none';
-
-                    if (!email) return;
-
-                    btnSubmit.disabled = true;
-                    btnSubmit.innerHTML = '<span style="display:inline-block; width:15px; height:15px; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite;"></span> Enviando...';
-
-                    const actionCodeSettings = {
-                        url: window.location.origin + '/reset-password.html',
-                        handleCodeInApp: true
-                    };
-
-                    try {
-                        if (typeof firebase !== 'undefined' && firebase.auth) {
-                            await firebase.auth().sendPasswordResetEmail(email, actionCodeSettings);
-                        }
-                        if (succBox) {
-                            succBox.innerHTML = `
-                            <i data-lucide="check-circle" style="width:18px;height:18px;flex-shrink:0;"></i>
-                            <div>
-                                <strong style="display:block;">¡Enlace enviado a ${email}!</strong>
-                                <span style="font-size:0.83rem;">Revisa tu bandeja de entrada o spam para crear tu nueva contraseña personalizada.</span>
-                            </div>
-                        `;
-                            succBox.style.display = 'flex';
-                            if (window.lucide) lucide.createIcons();
-                        }
-                        btnSubmit.disabled = false;
-                        btnSubmit.innerHTML = '<i data-lucide="send" style="width:16px;height:16px;"></i> Reenviar Enlace';
-                    } catch (err) {
-                        btnSubmit.disabled = false;
-                        btnSubmit.innerHTML = '<i data-lucide="send" style="width:16px;height:16px;"></i> Enviar Enlace de Recuperación';
-
-                        let errorMsg = 'No pudimos procesar la solicitud: ' + (err.message || 'Verifica el correo ingresado.');
-                        if (err.code === 'auth/user-not-found') {
-                            errorMsg = 'No existe una cuenta registrada con este correo electrónico.';
-                        } else if (err.code === 'auth/invalid-email') {
-                            errorMsg = 'El formato del correo electrónico ingresado no es válido.';
-                        }
-
-                        if (errBox) {
-                            errBox.innerHTML = `<i data-lucide="alert-circle" style="width:16px;height:16px;flex-shrink:0;"></i><span>${errorMsg}</span>`;
-                            errBox.style.display = 'flex';
-                            if (window.lucide) lucide.createIcons();
-                        }
-                    }
                 });
             }
 

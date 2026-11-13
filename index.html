@@ -17,7 +17,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/styles.css?v=22">
+    <link rel="stylesheet" href="css/styles.css?v=23">
 </head>
 
 <body>
@@ -391,18 +391,22 @@
 
     <!-- Modal Recuperar Contraseña Personalizado (Nicolett Studio) -->
     <div id="modal-forgot-password"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(3px); z-index: 3100; align-items:center; justify-content:center;">
+        onclick="if (event.target === this) window.closeForgotPasswordModal()"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); z-index: 3100; align-items:center; justify-content:center; padding: 15px; box-sizing: border-box;">
         <div class="card"
-            style="max-width: 440px; width: 90%; background: white; border-top: 4px solid var(--clr-rose-gold); box-shadow: 0 15px 35px rgba(0,0,0,0.15); border-radius: var(--radius-md); padding: 24px;">
+            style="max-width: 440px; width: 100%; background: white; border-top: 4px solid var(--clr-rose-gold); box-shadow: 0 20px 50px rgba(0,0,0,0.2); border-radius: var(--radius-md); padding: 26px; position: relative;">
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3
                     style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px; color: var(--clr-neutral-dark); font-family: var(--font-heading);">
                     <i data-lucide="key-round" style="width: 20px; height: 20px; color: var(--clr-rose-gold);"></i>
                     Recuperar Contraseña
                 </h3>
-                <button type="button" id="close-forgot-modal"
-                    style="background:none; border:none; cursor:pointer; color: var(--clr-neutral-gray); padding: 4px;">
-                    <i data-lucide="x"></i>
+                <button type="button" id="close-forgot-modal" onclick="window.closeForgotPasswordModal()"
+                    style="background:#f5eee8; border:none; cursor:pointer; color:var(--clr-neutral-gray); width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; padding:0; outline:none; transition:all 0.2s; -webkit-tap-highlight-color: transparent;"
+                    onmouseover="this.style.background='#ebdcd2'; this.style.color='var(--clr-neutral-dark)';"
+                    onmouseout="this.style.background='#f5eee8'; this.style.color='var(--clr-neutral-gray)';"
+                    title="Cerrar ventana" aria-label="Cerrar ventana">
+                    <i data-lucide="x" style="width:18px; height:18px; pointer-events:none;"></i>
                 </button>
             </div>
             <p style="margin-bottom: 18px; color: var(--clr-neutral-gray); font-size: 0.88rem; line-height: 1.45;">
@@ -426,7 +430,7 @@
                 </button>
             </form>
             <div style="text-align: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid #f0eae1;">
-                <button type="button" id="btn-back-to-login"
+                <button type="button" id="btn-back-to-login" onclick="window.closeForgotPasswordModal()"
                     style="background: none; border: none; color: var(--clr-rose-gold-dark); font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
                     <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Volver a Iniciar Sesión
                 </button>
@@ -511,9 +515,9 @@
             emailjs.init("tUxZAGW52juzs6H5Q");
         })();
     </script>
-    <script src="js/mockData.js?v=22"></script>
-    <script src="js/app.js?v=22"></script>
-    <script src="js/main.js?v=22"></script>
+    <script src="js/mockData.js?v=23"></script>
+    <script src="js/app.js?v=23"></script>
+    <script src="js/main.js?v=23"></script>
 </body>
 
 </html>

@@ -1294,3 +1294,29 @@ button {
         padding: 13px 18px;
     }
 }
+
+/* Botones de cierre elegantes para todos los modales (sin borde negro por defecto) */
+button[id^="close-"],
+button.modal-close-btn,
+button#close-auth,
+button#close-ficha,
+button#close-worker,
+button#close-client,
+button#close-product,
+button#close-flow-modal {
+    outline: none !important;
+    cursor: pointer;
+    border-radius: 50%;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+button[id^="close-"]:focus,
+button[id^="close-"]:focus-visible,
+button#close-auth:focus,
+button#close-auth:focus-visible,
+button#close-forgot-modal:focus,
+button#close-forgot-modal:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 2px var(--clr-rose-gold) !important;
+}
