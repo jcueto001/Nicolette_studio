@@ -44,9 +44,22 @@ Nicolett_studio/
 │   └── package.json             # Dependencias del servidor backend
 ├── index.html                   # Contenedor raíz de la Single Page Application (SPA)
 ├── reset-password.html          # Portal exclusivo y personalizado para recuperación segura de contraseñas
+├── HANDOFF_TECNICO.md           # Informe técnico, estado del proyecto, changelog y tips de desarrollo
+├── DATABASE_SCHEMA.md           # Dossier completo de Firebase Firestore (esquemas JSON de 10 colecciones)
+├── AI_CONTEXT_PROMPT.md         # Prompt maestro listo para copiar y pegar en ChatGPT, Codex y Claude
 ├── DOCUMENTACION.md             # Manual técnico extendido de la arquitectura y base de datos
 └── README.md                    # Este documento
 ```
+
+---
+
+## 📚 Documentación Técnica y Dossiers para el Equipo
+
+Para facilitar el trabajo colaborativo en GitHub y la entrega final de Capstone, se crearon 3 documentos técnicos maestros:
+
+1. **[HANDOFF_TECNICO.md](HANDOFF_TECNICO.md):** Informe técnico integral, cumplimiento de la matriz de requerimientos (RF-01 al RF-10 y RNF-01 al RNF-05), bitácora cronológica de versiones (`?v=1` a `?v=30`), mejoras futuras y tips operativos de Git/PowerShell/Vercel.
+2. **[DATABASE_SCHEMA.md](DATABASE_SCHEMA.md):** Diccionario de datos de Firebase Firestore con los esquemas JSON de las 10 colecciones en la nube, reglas de seguridad (`firestore.rules`) y persistencia híbrida offline-first.
+3. **[AI_CONTEXT_PROMPT.md](AI_CONTEXT_PROMPT.md):** Prompt de contexto completo para copiar y pegar en **ChatGPT**, **OpenAI Codex** o **Claude**, asegurando que cualquier IA entienda el 100% del proyecto sin alucinaciones.
 
 ---
 
