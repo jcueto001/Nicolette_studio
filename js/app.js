@@ -174,7 +174,7 @@ function renderHomeView() {
                 <div class="about-flex">
                     <div class="about-image-wrap">
                         <!-- Imagen de las instalaciones del estudio -->
-                        <img src="img/sobre-nosotros.jpg?v=18" 
+                        <img src="img/sobre-nosotros.jpg?v=26" 
                              alt="Instalaciones Nicolett Studio Fantasy" 
                              class="about-image"
                              onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80';">
@@ -186,7 +186,7 @@ function renderHomeView() {
                             <span>Nuestro Espacio en Buin</span>
                         </div>
                     </div>
-                    <div class="about-text" style="flex: 1; min-width: 300px;">
+                    <div class="about-text">
                         <h2 class="section-title" style="text-align: left; margin-bottom: 10px;">Sobre Nosotros</h2>
                         <h3 style="color: var(--clr-rose-gold); margin-bottom: 20px; font-family: var(--font-heading); font-size: 1.5rem; font-style: italic;">Tu espacio seguro de belleza</h3>
                         <p style="font-size: 1.1rem; color: var(--clr-neutral-gray); margin-bottom: 20px; line-height: 1.8;">
