@@ -201,3 +201,4 @@ Antes de subir cambios que puedan romper la interfaz, ejecuta una validación r�
 node --check js/mockData.js; node --check js/app.js; node --check js/main.js
 ```
 Si el comando no emite texto y retorna código 0, la sintaxis es 100% limpia y segura para desplegar.
+

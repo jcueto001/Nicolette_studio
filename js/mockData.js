@@ -159,28 +159,17 @@ const StorageHelper = {
 
         // Sincronizar estado de autenticación con Firebase
         if (typeof firebase !== 'undefined' && firebase.auth) {
-            firebase.auth().onAuthStateChanged((user) => {
+            firebase.auth().onAuthStateChanged(async (user) => {
+                this._verifiedStaff = null;
+                this.setAuth({ loggedIn: false, user: null });
                 if (user) {
-                    const profs = this.getProfessionals();
-                    const prof = profs.find(p => p.email === user.email) || { id: 'p_unknown', name: 'Admin', role: 'admin' };
-                    localStorage.setItem('nicolett_auth', JSON.stringify({ loggedIn: true, user: prof }));
-
-                    const btnLogout = document.getElementById('btn-logout');
-                    if (btnLogout) btnLogout.style.display = 'block';
-
-                    // Si ya estamos en admin, refrescar la vista para mostrar los datos
-                    this._refreshAdminIfSafe();
-                } else {
-                        const currentAuth = this.getAuth();
-                        if (!currentAuth || !currentAuth.loggedIn) {
-                            localStorage.setItem('nicolett_auth', JSON.stringify({ loggedIn: false, user: null }));
-                        }
-                        // NOTA: NO forzar redirección a 'home' para que el usuario pueda ver el formulario de login del portal
-                    }
-                    if (typeof window.updateNavAuthVisibility === 'function') {
-                        window.updateNavAuthVisibility();
-                    }
-                });
+                    try {
+                        const staff = await this.resolveStaffUser(user);
+                        if (firebase.auth().currentUser?.uid === user.uid) this.setAuth({ loggedIn: true, user: staff });
+                    } catch (error) { console.warn('Cuenta sin autorización de personal.'); }
+                }
+                if (typeof window.updateNavAuthVisibility === 'function') window.updateNavAuthVisibility();
+            });
         }
 
         if (!localStorage.getItem('nicolett_gallery_v2')) {
@@ -378,15 +367,7 @@ const StorageHelper = {
             console.warn("Firestore Galeria (usando fallback local):", e);
         }
 
-        try {
-            const flowDoc = await db.collection("Configuracion").doc("flow").get();
-            if (flowDoc.exists) {
-                this._flowConfigCache = flowDoc.data();
-                localStorage.setItem('nicolett_flow_config', JSON.stringify(this._flowConfigCache));
-            }
-        } catch (e) {
-            console.warn("Firestore Configuracion Flow:", e);
-        }
+        localStorage.removeItem('nicolett_flow_config');
 
         // --- Sincronización de Servicios desde Firestore (Colección 'Servicios') ---
         try {
@@ -576,11 +557,28 @@ const StorageHelper = {
     },
 
     // Auth
+    _verifiedStaff: null,
+    resolveStaffUser: async function (user) {
+        if (!user) throw new Error('Sesión requerida.');
+        const snap = await firebase.firestore().collection('Usuarios').doc(user.uid).get();
+        const data = snap.exists ? snap.data() : null;
+        if (!data || data.activo === false || !['admin', 'Admin', 'profesional'].includes(data.rol)) {
+            throw new Error('Cuenta sin autorización de personal.');
+        }
+        if (firebase.auth().currentUser?.uid !== user.uid) throw new Error('Sesión cambiada.');
+        this._verifiedStaff = { id: user.uid, email: user.email, name: data.nombre || data.name || 'Personal', role: data.rol.toLowerCase() };
+        return this._verifiedStaff;
+    },
     getAuth: function () {
-        return JSON.parse(localStorage.getItem('nicolett_auth') || '{"loggedIn": false, "user": null}');
+        const current = typeof firebase !== 'undefined' && firebase.auth ? firebase.auth().currentUser : null;
+        return current && this._verifiedStaff?.id === current.uid
+            ? { loggedIn: true, user: this._verifiedStaff }
+            : { loggedIn: false, user: null };
     },
     setAuth: function (authData) {
-        localStorage.setItem('nicolett_auth', JSON.stringify(authData));
+        if (!authData?.loggedIn) this._verifiedStaff = null;
+        localStorage.removeItem('nicolett_auth');
+        localStorage.removeItem('nicolett_staff_passwords');
     },
 
     // Inventory
@@ -742,31 +740,9 @@ const StorageHelper = {
         } catch (e) { }
     },
 
-    // Staff Passwords Storage (para soporte offline y creación local de contraseñas)
-    getStaffPasswords: function () {
-        try {
-            return JSON.parse(localStorage.getItem('nicolett_staff_passwords') || '{}');
-        } catch (e) {
-            return {};
-        }
-    },
-    setStaffPassword: function (email, password) {
-        if (!email || !password) return;
-        const passes = this.getStaffPasswords();
-        passes[email.trim().toLowerCase()] = password;
-        try {
-            localStorage.setItem('nicolett_staff_passwords', JSON.stringify(passes));
-        } catch (e) { }
-    },
-    verifyStaffPassword: function (email, password) {
-        if (!email || !password) return false;
-        const normEmail = email.trim().toLowerCase();
-        const passes = this.getStaffPasswords();
-        const stored = passes[normEmail];
-        if (stored && stored === password) return true;
-        const validDefaults = ['admin123', '123456', 'Nicolett123!'];
-        return validDefaults.includes(password);
-    },
+    // Las contraseñas se gestionan exclusivamente con Firebase Auth.
+    verifyStaffPassword: function () { return false; },
+    setStaffPassword: function () { throw new Error('Contraseñas locales deshabilitadas.'); },
 
     // --- Gallery ---
     getGallery: function () {
@@ -1139,49 +1115,13 @@ const StorageHelper = {
 
     // --- Configuración de Flow (Pasarela de Pago de Abonos) ---
     getFlowConfig: function () {
-        if (this._flowConfigCache) return this._flowConfigCache;
-        const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:');
-        const defaultBackend = isLocal ? 'http://localhost:3000' : (typeof window !== 'undefined' ? window.location.origin : '');
-        const def = {
-            flowUrl: '',
-            apiKey: '',
-            secretKey: '',
-            backendUrl: defaultBackend,
-            isSandbox: true
-        };
-        try {
-            const stored = localStorage.getItem('nicolett_flow_config');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                if (parsed.flowUrl && parsed.flowUrl.includes('abono5000')) {
-                    parsed.flowUrl = '';
-                }
-                // Si estamos en Vercel/producción y quedó guardado localhost:3000, usar el dominio actual
-                if (!isLocal && (!parsed.backendUrl || parsed.backendUrl.includes('localhost') || parsed.backendUrl.includes('127.0.0.1'))) {
-                    parsed.backendUrl = defaultBackend;
-                }
-                this._flowConfigCache = { ...def, ...parsed };
-            } else {
-                this._flowConfigCache = def;
-            }
-        } catch (e) {
-            this._flowConfigCache = def;
-        }
-        return this._flowConfigCache;
+        localStorage.removeItem('nicolett_flow_config');
+        return { flowUrl: '', backendUrl: window.location.origin };
     },
-
-    saveFlowConfig: async function (cfg) {
-        this._flowConfigCache = cfg;
-        localStorage.setItem('nicolett_flow_config', JSON.stringify(cfg));
-        if (typeof db !== 'undefined') {
-            try {
-                await db.collection("Configuracion").doc("flow").set(cfg, { merge: true });
-            } catch (e) {
-                console.error("Error guardando configuración de Flow en Firestore:", e);
-            }
-        }
-        return cfg;
+    saveFlowConfig: async function () {
+        throw new Error('Configura Flow mediante variables de entorno del servidor.');
     }
+
 };
 
 StorageHelper.init();

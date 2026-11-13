@@ -74,3 +74,4 @@ El proyecto cuenta con 10 colecciones en Cloud Firestore:
 
 Por favor confirma que has cargado y comprendido todo este contexto respondiendo con un breve saludo a José y Benjamín, resumiendo el estado del proyecto y preguntando en qué funcionalidad o módulo desean trabajar hoy.
 ```
+

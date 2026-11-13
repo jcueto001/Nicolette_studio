@@ -53,7 +53,7 @@
         getCurrentUser: function () {
             if (typeof StorageHelper !== 'undefined') {
                 const auth = StorageHelper.getAuth();
-                if (auth && auth.isAuthenticated) {
+                if (auth && auth.loggedIn) {
                     return auth.user;
                 }
             }
@@ -104,65 +104,12 @@
          * @returns {Promise<Object>}
          */
         login: async function (email, password) {
-            const cleanEmail = (email || '').trim().toLowerCase();
-            const cleanPass = (password || '').trim();
-
-            if (!cleanEmail || !cleanPass) {
-                throw new Error("Ingresa correo y contraseña.");
+            if (typeof window.authenticateStaffUser !== 'function') {
+                throw new Error('Autenticación no disponible.');
             }
-
-            let userObj = null;
-
-            if (typeof firebase !== 'undefined' && firebase.auth) {
-                try {
-                    const cred = await firebase.auth().signInWithEmailAndPassword(cleanEmail, cleanPass);
-                    const uid = cred.user.uid;
-                    let role = ROLES.PROFESIONAL;
-                    let name = 'Especialista';
-
-                    try {
-                        const snap = await firebase.firestore().collection('Usuarios').doc(uid).get();
-                        if (snap.exists) {
-                            const u = snap.data();
-                            role = (u.rol === 'Admin' || u.rol === 'admin') ? ROLES.ADMIN : ROLES.PROFESIONAL;
-                            name = u.nombre || u.name || name;
-                        } else {
-                            if (cleanEmail.includes('nicolette') || cleanEmail.includes('admin')) {
-                                role = ROLES.ADMIN;
-                                name = 'Nicolett';
-                            }
-                        }
-                    } catch (e) {
-                        console.warn("[AuthModule] Firestore Usuarios:", e);
-                    }
-
-                    userObj = { id: uid, email: cleanEmail, name: name, role: role };
-                } catch (fbErr) {
-                    // Fallback con credenciales locales de respaldo
-                    if (typeof StorageHelper !== 'undefined') {
-                        const isValid = StorageHelper.verifyStaffPassword(cleanEmail, cleanPass);
-                        if (isValid) {
-                            const isAdm = cleanEmail.includes('nicolette') || cleanEmail.includes('admin');
-                            userObj = {
-                                id: isAdm ? 'p1' : 'local_worker',
-                                email: cleanEmail,
-                                name: isAdm ? 'Nicolett' : 'Trabajadora',
-                                role: isAdm ? ROLES.ADMIN : ROLES.PROFESIONAL
-                            };
-                        } else {
-                            throw fbErr;
-                        }
-                    } else {
-                        throw fbErr;
-                    }
-                }
-            }
-
-            if (userObj && typeof StorageHelper !== 'undefined') {
-                StorageHelper.setAuth(true, userObj);
-            }
-
-            return userObj;
+            const user = await window.authenticateStaffUser(email, password);
+            StorageHelper.setAuth({ loggedIn: true, user: user });
+            return user;
         },
 
         /**
@@ -173,7 +120,7 @@
                 try { firebase.auth().signOut(); } catch (e) {}
             }
             if (typeof StorageHelper !== 'undefined') {
-                StorageHelper.setAuth(false, null);
+                StorageHelper.setAuth({ loggedIn: false, user: null });
             }
             if (typeof AppRouter !== 'undefined') {
                 AppRouter.navigate('home');

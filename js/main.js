@@ -325,109 +325,26 @@ let isProcessingFlowReturn = false;
 // --- Manejo de Retorno de Pasarela Flow ---
 async function checkFlowPaymentReturn() {
     const params = new URLSearchParams(window.location.search);
-    const action = params.get('action');
-
-    if (action === 'flow-success') {
-        const token = params.get('token') || '';
-        const order = params.get('order') || '';
-        const tokenProcessedKey = `flow_done_${token || order || 'success'}`;
-
-        // Si ya se está procesando o ya fue procesado previamente (ej. recargas o doble navegación), salir inmediatamente
-        if (isProcessingFlowReturn || sessionStorage.getItem(tokenProcessedKey) || localStorage.getItem(tokenProcessedKey)) {
-            console.warn('[Flow] Retorno de pago ya procesado o en curso, llamada duplicada evitada.');
-            window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
-            return;
-        }
-
-        const pendingStr = sessionStorage.getItem('nicolett_pending_booking') || localStorage.getItem('nicolett_pending_booking');
-        if (!pendingStr) {
-            window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
-            return;
-        }
-
-        isProcessingFlowReturn = true;
-
-        // IMPORTANTE: Marcar de inmediato como procesado y limpiar los pendientes para evitar concurrencia
-        sessionStorage.setItem(tokenProcessedKey, 'true');
-        localStorage.setItem(tokenProcessedKey, 'true');
+    if (!params.get('action')?.startsWith('flow-')) return;
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+    const token = params.get('token');
+    const receipt = sessionStorage.getItem('nicolett_flow_receipt');
+    if (params.get('action') !== 'flow-success' || !token || !receipt) {
+        alert('Pago pendiente o no completado. No se ha confirmado ninguna cita.');
+        return;
+    }
+    try {
+        const response = await fetch('/api/flow/status/' + encodeURIComponent(token), {
+            headers: { 'X-Booking-Receipt': receipt }
+        });
+        const result = await response.json();
+        if (!response.ok || !result.paid) throw new Error('El servidor aún no confirma el pago.');
         sessionStorage.removeItem('nicolett_pending_booking');
         localStorage.removeItem('nicolett_pending_booking');
-
-        // Limpiar la URL de inmediato para evitar que un F5 reintente la acción
-        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
-
-        try {
-            const app = JSON.parse(pendingStr);
-            app.status = 'confirmada';
-            app.paymentStatus = 'pagado';
-            app.depositAmount = 5000;
-            app.flowToken = token;
-            app.flowOrder = order;
-            app.paymentMethod = app.paymentMethod || 'Flow (Webpay Plus)';
-
-            await StorageHelper.saveAppointment(app);
-
-            // Asegurar que el perfil de la clienta quede vinculado sin duplicados en Firestore
-            if (app.clientEmail && typeof StorageHelper.getOrCreateClientProfile === 'function') {
-                try {
-                    await StorageHelper.getOrCreateClientProfile(app.clientEmail, app.clientName, app.clientPhone);
-                    window.updateNavAuthVisibility();
-                } catch (profileErr) {
-                    console.warn('[Flow] Error vinculando perfil_cliente:', profileErr);
-                }
-            }
-
-            // Enviar confirmación por EmailJS si está configurado
-            if (typeof emailjs !== 'undefined' && app.clientEmail) {
-                try {
-                    const templateParams = buildAppointmentEmailParams(app);
-                    console.log('[EmailJS Flow] Enviando correo a:', app.clientEmail, templateParams);
-                    const emailRes = await emailjs.send("service_rmc9mu9", "template_2h2ya38", templateParams);
-                    console.log("[EmailJS Flow] Correo de confirmación enviado exitosamente:", emailRes.status, emailRes.text);
-                } catch (err) {
-                    console.error("[EmailJS Flow] Error al enviar confirmación de cita:", err);
-                }
-            }
-
-            // Mostrar modal de éxito
-            setTimeout(() => {
-                const balanceNotice = document.getElementById('success-balance-notice');
-                if (balanceNotice) {
-                    const bal = app.balanceDue || 0;
-                    balanceNotice.innerHTML = `
-                        <div style="font-weight:700; color:#1b5e20; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                            <i data-lucide="check-circle" style="width:18px; height:18px; color:#2e7d32;"></i>
-                            ¡Abono de $5.000 recibido exitosamente vía Flow!
-                        </div>
-                        <div style="font-size:0.88rem; color:#2e7d32; line-height:1.4;">
-                            Cita confirmada para <strong>${app.clientName}</strong> con <strong>${app.profesional}</strong> el <strong>${app.date}</strong> a las <strong>${app.time}</strong>.<br>
-                            Saldo restante en el estudio: <strong>$${bal.toLocaleString('es-CL')}</strong>.
-                        </div>
-                    `;
-                }
-                const successModal = document.getElementById('success-modal');
-                if (successModal) {
-                    successModal.style.display = 'flex';
-                    if (window.lucide) lucide.createIcons();
-                } else {
-                    alert(`✨ ¡Excelente! Tu abono de $5.000 vía Flow fue recibido con éxito.\nTu cita de ${app.servicio} para el ${app.date} a las ${app.time} ha quedado confirmada.`);
-                }
-            }, 400);
-        } catch (e) {
-            console.error("Error confirmando retorno Flow:", e);
-        } finally {
-            isProcessingFlowReturn = false;
-        }
-    } else if (action === 'flow-failed') {
-        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
-        setTimeout(() => {
-            alert('⚠️ El pago en Flow no fue completado o fue rechazado.\nPuedes volver a intentar reservar tu cita cuando lo desees.');
-        }, 400);
-    } else if (action === 'flow-cancelled') {
-        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
-        setTimeout(() => {
-            alert('ℹ️ Se canceló el proceso de pago en Flow.');
-        }, 400);
+        sessionStorage.removeItem('nicolett_flow_receipt');
+        alert('Pago verificado por el servidor. Tu cita está confirmada.');
+    } catch (error) {
+        alert('No se pudo verificar el pago. Conserva el comprobante y vuelve a consultar.');
     }
 }
 
@@ -806,97 +723,15 @@ window.logoutClientProfile = async function () {
 
         // --- Autenticación Compartida para Administradora y Trabajadoras ---
         window.authenticateStaffUser = async function (email, password) {
-            let prof = null;
-            const cleanEmail = (email || '').trim().toLowerCase();
-            const cleanPass = (password || '').trim();
-
-            if (!cleanEmail || !cleanPass) {
-                throw new Error("Por favor, ingresa tu correo y contraseña.");
+            if (typeof firebase === 'undefined' || !firebase.auth) throw new Error('Firebase no disponible.');
+            await firebase.auth().signInWithEmailAndPassword((email || '').trim().toLowerCase(), password || '');
+            try {
+                return await StorageHelper.resolveStaffUser(firebase.auth().currentUser);
+            } catch (error) {
+                await firebase.auth().signOut();
+                StorageHelper.setAuth({ loggedIn: false, user: null });
+                throw error;
             }
-
-            if (typeof firebase !== 'undefined' && firebase.auth) {
-                try {
-                    const userCredential = await firebase.auth().signInWithEmailAndPassword(cleanEmail, cleanPass);
-                    const uid = userCredential.user.uid;
-                    const userEmail = userCredential.user.email || cleanEmail;
-
-                    let role = 'profesional';
-                    let userName = 'Colaboradora';
-
-                    try {
-                        const db = firebase.firestore();
-                        const userDoc = await db.collection('Usuarios').doc(uid).get();
-                        if (userDoc.exists) {
-                            const uData = userDoc.data();
-                            const isAdm = (uData.rol === 'Admin' || uData.rol === 'admin');
-                            role = isAdm ? 'admin' : 'profesional';
-                            userName = uData.nombre || uData.name || (isAdm ? 'Nicolett' : 'Trabajadora');
-                        } else {
-                            const profs = StorageHelper.getProfessionals();
-                            const found = profs.find(p => p.email && p.email.toLowerCase() === userEmail.toLowerCase());
-                            if (found) {
-                                role = found.role || 'profesional';
-                                userName = found.name || 'Colaboradora';
-                            } else if (userEmail.toLowerCase().includes('nicolette') || userEmail.toLowerCase().includes('admin')) {
-                                role = 'admin';
-                                userName = 'Nicolett';
-                            }
-                        }
-                    } catch (docErr) {
-                        console.warn("No se pudo leer colección Usuarios:", docErr);
-                    }
-
-                    prof = {
-                        id: uid,
-                        name: userName,
-                        email: userEmail,
-                        role: role
-                    };
-                } catch (fbAuthErr) {
-                    console.warn("Firebase Auth falló, verificando si es usuario con clave guardada o local:", fbAuthErr);
-                    const isLocalValid = StorageHelper.verifyStaffPassword(cleanEmail, cleanPass);
-                    const profs = StorageHelper.getProfessionals();
-                    const localFound = profs.find(p => p.email && p.email.toLowerCase() === cleanEmail) ||
-                        (cleanEmail === 'nicolette@gmail.com' ? { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin' } : null);
-                    (cleanEmail.includes('nicolette') || cleanEmail.includes('admin') ? { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin' } : null) ||
-                        (cleanEmail.includes('camila') ? { id: 'p2', name: 'Camila', email: 'camila@gmail.com', role: 'profesional' } : null) ||
-                        (cleanEmail.includes('priscila') ? { id: 'p3', name: 'Priscila Villarreal', email: 'priscila@gmail.com', role: 'profesional' } : null);
-
-                    if (isLocalValid && localFound) {
-                        prof = {
-                            id: localFound.id || 'p_local',
-                            name: localFound.name,
-                            email: localFound.email,
-                            role: localFound.role || (cleanEmail.includes('nicolette') || cleanEmail.includes('admin') ? 'admin' : 'profesional')
-                        };
-                    } else {
-                        const friendlyMsg = window.getFriendlyAuthErrorMessage(fbAuthErr);
-                        const customErr = new Error(friendlyMsg);
-                        customErr.code = fbAuthErr.code;
-                        throw customErr;
-                    }
-                }
-            } else {
-                const isLocalValid = StorageHelper.verifyStaffPassword(cleanEmail, cleanPass);
-                const profs = StorageHelper.getProfessionals();
-                const localFound = profs.find(p => p.email && p.email.toLowerCase() === cleanEmail) ||
-                    (cleanEmail === 'nicolette@gmail.com' ? { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin' } : null);
-                (cleanEmail.includes('nicolette') || cleanEmail.includes('admin') ? { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin' } : null) ||
-                    (cleanEmail.includes('camila') ? { id: 'p2', name: 'Camila', email: 'camila@gmail.com', role: 'profesional' } : null) ||
-                    (cleanEmail.includes('priscila') ? { id: 'p3', name: 'Priscila Villarreal', email: 'priscila@gmail.com', role: 'profesional' } : null);
-                if (isLocalValid && localFound) {
-                    prof = {
-                        id: localFound.id || 'p_local',
-                        name: localFound.name,
-                        email: localFound.email,
-                        role: localFound.role || (cleanEmail.includes('nicolette') || cleanEmail.includes('admin') ? 'admin' : 'profesional')
-                    };
-                } else {
-                    throw new Error("El correo electrónico o la contraseña ingresados son incorrectos. Por favor, verifica tus datos e inténtalo de nuevo.");
-                }
-            }
-
-            return prof;
         };
 
         // Disparador 1: Enlace discreto en el pie de página (footer)
@@ -1543,19 +1378,10 @@ window.logoutClientProfile = async function () {
             backendUrl = backendUrl.replace(/\/api(\/.*)?$/, '');
 
             try {
-                console.log('[Flow] Solicitando orden de pago al backend:', `${backendUrl}/api/flow/create`);
-                const payload = {
-                    clientEmail: appointmentData.clientEmail || 'cliente@estudio.cl',
-                    clientName: appointmentData.clientName || 'Clienta',
-                    orderId: appointmentData.orderId,
-                    amount: 5000,
-                    isSandbox: (flowConfig.isSandbox !== undefined) ? flowConfig.isSandbox : true,
-                    returnUrl: window.location.href.split('?')[0]
-                };
-                if (flowConfig.apiKey) payload.apiKey = flowConfig.apiKey;
-                if (flowConfig.secretKey) payload.secretKey = flowConfig.secretKey;
+                console.log('[Flow] Solicitando orden de pago al backend:', '/api/flow/create');
+                const payload = { booking: appointmentData };
 
-                const response = await fetch(`${backendUrl}/api/flow/create`, {
+                const response = await fetch('/api/flow/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -1566,6 +1392,7 @@ window.logoutClientProfile = async function () {
                 if (data.success && data.redirectUrl) {
                     // Redirigir inmediatamente a la pasarela oficial de Flow
                     console.log('[Flow] ¡Orden creada exitosamente! Redirigiendo a:', data.redirectUrl);
+                    sessionStorage.setItem('nicolett_flow_receipt', data.receipt);
                     window.location.href = data.redirectUrl;
                     return; // Detiene la ejecución aquí; el usuario paga en Flow
                 } else {
@@ -2069,8 +1896,8 @@ window.logoutClientProfile = async function () {
                 }
 
                 if (urlInput) urlInput.value = flowCfg.flowUrl || '';
-                if (apiKeyInput) apiKeyInput.value = flowCfg.apiKey || '';
-                if (secretInput) secretInput.value = flowCfg.secretKey || '';
+                if (apiKeyInput) { apiKeyInput.value = ''; apiKeyInput.disabled = true; }
+                if (secretInput) { secretInput.value = ''; secretInput.disabled = true; }
                 if (backendInput) backendInput.value = activeBackend || defaultBackend;
                 if (sandboxInput) sandboxInput.checked = (flowCfg.isSandbox !== undefined) ? flowCfg.isSandbox : true;
 
@@ -2122,33 +1949,9 @@ window.logoutClientProfile = async function () {
                     });
                 }
 
-                formFlowCfg.addEventListener('submit', async (e) => {
+                formFlowCfg.addEventListener('submit', (e) => {
                     e.preventDefault();
-                    const btnSave = document.getElementById('btn-save-flow-cfg');
-                    if (btnSave) {
-                        btnSave.disabled = true;
-                        btnSave.innerHTML = 'Guardando...';
-                    }
-
-                    const cleanBackend = (backendInput?.value.trim() || defaultBackend).replace(/\/+$/, '').replace(/\/api(\/.*)?$/, '');
-                    if (backendInput) backendInput.value = cleanBackend;
-
-                    const updatedCfg = {
-                        flowUrl: urlInput?.value.trim() || '',
-                        apiKey: apiKeyInput?.value.trim() || '',
-                        secretKey: secretInput?.value.trim() || '',
-                        backendUrl: cleanBackend,
-                        isSandbox: sandboxInput ? sandboxInput.checked : true
-                    };
-
-                    await StorageHelper.saveFlowConfig(updatedCfg);
-                    alert('¡Configuración de Flow guardada exitosamente!');
-
-                    if (btnSave) {
-                        btnSave.disabled = false;
-                        btnSave.innerHTML = '<i data-lucide="save"></i> Guardar Configuración Flow';
-                        if (window.lucide) lucide.createIcons();
-                    }
+                    alert('La configuración de Flow se administra mediante variables de entorno del servidor.');
                 });
             }
 
@@ -2741,7 +2544,7 @@ window.logoutClientProfile = async function () {
                     const finalAvatarUrl = newWorkerCropper.getCroppedDataUrl(400);
 
                     // 1. Guardar la clave elegida localmente
-                    StorageHelper.setStaffPassword(email, password);
+
 
                     // 2. Crear cuenta en Firebase Auth y Firestore si está activo
                     let fbUid = null;
@@ -2947,12 +2750,12 @@ window.logoutClientProfile = async function () {
                                 if (fbErr.code === 'auth/requires-recent-login') {
                                     throw new Error("Por seguridad, debes cerrar sesión y volver a entrar antes de actualizar tu contraseña.");
                                 }
-                                console.warn("Aviso updatePassword en Firebase Auth:", fbErr);
+                                throw fbErr;
                             }
                         }
 
                         // Guardar en almacenamiento de claves
-                        StorageHelper.setStaffPassword(auth.user.email, newPass);
+                        if (!firebase.auth().currentUser) throw new Error('Debes iniciar sesión de nuevo.');
 
                         if (succBox) {
                             succBox.style.display = 'flex';
@@ -3049,7 +2852,7 @@ window.logoutClientProfile = async function () {
                     btnSubmit.disabled = true;
                     btnSubmit.innerText = 'Asignando...';
 
-                    StorageHelper.setStaffPassword(targetEmail, newPassword);
+                    throw new Error('Usa el restablecimiento de contraseña de Firebase para esta cuenta.');
 
                     if (succBox) {
                         succBox.style.display = 'flex';

@@ -323,3 +323,4 @@ Para asegurar que la aplicación nunca se quede "en blanco" si una clienta tiene
    - De inmediato, `StorageHelper.loadAppointmentsCache()` consulta en paralelo a Firestore (`db.collection("Servicios").get()`, etc.).
    - Cuando Firestore responde, actualiza la memoria viva (`mockData.services = servs`) y refresca la caché local.
    - Si hubo algún cambio de precio o servicio nuevo, la vista se re-renderiza fluidamente mediante `AppRouter.refresh()`.
+
