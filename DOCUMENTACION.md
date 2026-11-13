@@ -259,6 +259,42 @@ Colección indexada por el UID de Firebase Authentication (`user.uid`). Define l
 }
 ```
 
+### 7. Colección `Servicios`
+Catálogo oficial de servicios ofrecidos por Nicolett Studio Fantasy (61 servicios migrados a Firestore). Permite actualizar precios, duraciones y nombres directamente en la base de datos:
+```json
+{
+  "name": "Esmaltado Permanente 1 Tono",
+  "category": "manicura",
+  "price": 16000,
+  "duration": "1h 15m",
+  "description": "Limpieza de cutículas completa y aplicación de esmalte permanente a elección en 1 tono.",
+  "recommendedFor": ["turnos", "ejecutiva"],
+  "combo": false
+}
+```
+
+### 8. Colección `Categorias`
+Categorías principales de atención que organizan el catálogo y los filtros:
+```json
+{
+  "id": "manicura",
+  "label": "Manicura",
+  "icon": "sparkles",
+  "desc": "Uñas, esmaltados y extensiones"
+}
+```
+
+### 9. Colección `Perfiles`
+Arquetipos de usuarias/clientas utilizados por el motor de recomendaciones personalizadas:
+```json
+{
+  "id": "mama",
+  "label": "Mamá",
+  "icon": "baby",
+  "desc": "Espacios Kids Friendly"
+}
+```
+
 ---
 
 ## 6. Autenticación y Control de Accesos

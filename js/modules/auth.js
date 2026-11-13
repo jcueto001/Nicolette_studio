@@ -208,3 +208,4 @@
     window.NicolettModules.Auth = AuthModule;
 
 })(window);
+

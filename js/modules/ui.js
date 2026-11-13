@@ -78,3 +78,4 @@
     window.NicolettModules.UI = UIModule;
 
 })(window);
+

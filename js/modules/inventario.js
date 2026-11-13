@@ -138,3 +138,4 @@
     window.NicolettModules.Inventario = InventarioModule;
 
 })(window);
+

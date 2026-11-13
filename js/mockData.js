@@ -1,14 +1,39 @@
+// Sincronización dinámica de datos desde Firestore
+const _cachedServices = (function () {
+    try {
+        const raw = localStorage.getItem('nicolett_services_cache');
+        if (raw) return JSON.parse(raw);
+    } catch (e) { }
+    return null;
+})();
+
+const _cachedCategories = (function () {
+    try {
+        const raw = localStorage.getItem('nicolett_categories_cache');
+        if (raw) return JSON.parse(raw);
+    } catch (e) { }
+    return null;
+})();
+
+const _cachedProfiles = (function () {
+    try {
+        const raw = localStorage.getItem('nicolett_profiles_cache');
+        if (raw) return JSON.parse(raw);
+    } catch (e) { }
+    return null;
+})();
+
 const mockData = {
-    // Perfiles de usuarias para recomendaciones
-    profiles: [
+    // Perfiles de usuarias sincronizados con Firestore (Colección 'Perfiles')
+    profiles: _cachedProfiles || [
         { id: 'mama', label: 'Mamá', icon: 'baby', desc: 'Espacios Kids Friendly' },
         { id: 'turnos', label: 'Turnos Rotativos', icon: 'clock', desc: 'Horarios flexibles y extendidos' },
         { id: 'ejecutiva', label: 'Ejecutiva', icon: 'briefcase', desc: 'Puntualidad y combos express' },
         { id: 'evento', label: 'Ocasión Especial', icon: 'star', desc: 'Producción completa' }
     ],
 
-    // Categorías de Servicios
-    categories: [
+    // Categorías de Servicios sincronizadas con Firestore (Colección 'Categorias')
+    categories: _cachedCategories || [
         { id: 'capilar', label: 'Cabello & Capilar', icon: 'heart', desc: 'Corte, peinado, coloración y tratamientos fotónicos' },
         { id: 'manicura', label: 'Manicura', icon: 'sparkles', desc: 'Uñas, esmaltados y extensiones' },
         { id: 'pedicure', label: 'Pedicure', icon: 'footprints', desc: 'Cuidado y spa de pies' },
@@ -22,8 +47,8 @@ const mockData = {
         { id: 'bienestar', label: 'Bienestar y Relax', icon: 'smile' }
     ],
 
-    // Servicios
-    services: [
+    // Servicios sincronizados con Firestore (Colección 'Servicios')
+    services: _cachedServices || [
         // --- MANICURA (Lista Oficial) ---
         {
             id: 's1',
@@ -821,6 +846,9 @@ const StorageHelper = {
     _fichasCache: [],
     _professionalsCache: [],
     _inventoryCache: [],
+    _servicesCache: [],
+    _categoriesCache: [],
+    _profilesCache: [],
     _flowConfigCache: null,
 
     init: async function () {
@@ -1070,6 +1098,61 @@ const StorageHelper = {
             console.warn("Firestore Configuracion Flow:", e);
         }
 
+        // --- Sincronización de Servicios desde Firestore (Colección 'Servicios') ---
+        try {
+            const servSnapshot = await db.collection("Servicios").get();
+            if (!servSnapshot.empty) {
+                const servs = [];
+                servSnapshot.forEach((doc) => {
+                    servs.push({ id: doc.id, ...doc.data() });
+                });
+                this._servicesCache = servs;
+                mockData.services = servs;
+                try { localStorage.setItem('nicolett_services_cache', JSON.stringify(servs)); } catch (e) {}
+                console.log(`[StorageHelper] ${servs.length} servicios sincronizados en vivo desde Firestore.`);
+            }
+        } catch (e) {
+            console.warn("[StorageHelper] Error cargando Servicios de Firestore:", e);
+        }
+
+        // --- Sincronización de Categorías desde Firestore (Colección 'Categorias') ---
+        try {
+            const catSnapshot = await db.collection("Categorias").get();
+            if (!catSnapshot.empty) {
+                const cats = [];
+                catSnapshot.forEach((doc) => {
+                    cats.push({ id: doc.id, ...doc.data() });
+                });
+                this._categoriesCache = cats;
+                mockData.categories = cats;
+                try { localStorage.setItem('nicolett_categories_cache', JSON.stringify(cats)); } catch (e) {}
+                console.log(`[StorageHelper] ${cats.length} categorías sincronizadas en vivo desde Firestore.`);
+            }
+        } catch (e) {
+            console.warn("[StorageHelper] Error cargando Categorías de Firestore:", e);
+        }
+
+        // --- Sincronización de Perfiles desde Firestore (Colección 'Perfiles') ---
+        try {
+            const profSnap = await db.collection("Perfiles").get();
+            if (!profSnap.empty) {
+                const profs = [];
+                profSnap.forEach((doc) => {
+                    profs.push({ id: doc.id, ...doc.data() });
+                });
+                this._profilesCache = profs;
+                mockData.profiles = profs;
+                try { localStorage.setItem('nicolett_profiles_cache', JSON.stringify(profs)); } catch (e) {}
+            }
+        } catch (e) {
+            console.warn("[StorageHelper] Error cargando Perfiles de Firestore:", e);
+        }
+
+        // Refrescar vistas si están activas para reflejar datos frescos de la base de datos
+        if (typeof AppRouter !== 'undefined' && (AppRouter.currentRoute === 'home' || AppRouter.currentRoute === 'servicios')) {
+            AppRouter.refresh();
+        }
+
         this._refreshAdminIfSafe();
     },
 
@@ -1265,15 +1348,57 @@ const StorageHelper = {
         }
     },
 
-    // Servicios y Categorías
+    // Servicios y Categorías (Sincronizados con Firestore)
     getServices: function () {
+        if (this._servicesCache && this._servicesCache.length > 0) return this._servicesCache;
         return mockData.services;
     },
     getCategories: function () {
+        if (this._categoriesCache && this._categoriesCache.length > 0) return this._categoriesCache;
         return mockData.categories;
     },
+    getProfiles: function () {
+        if (this._profilesCache && this._profilesCache.length > 0) return this._profilesCache;
+        return mockData.profiles;
+    },
     getServiceById: function (id) {
-        return mockData.services.find(s => s.id === id) || null;
+        const list = this.getServices();
+        return list.find(s => s.id === id) || null;
+    },
+
+    saveService: async function (service) {
+        if (!service) return null;
+        const docId = service.id || ('s_' + Date.now());
+        const docData = { ...service };
+        delete docData.id;
+        if (typeof db !== 'undefined') {
+            try {
+                await db.collection("Servicios").doc(docId).set(docData, { merge: true });
+            } catch (err) {
+                console.error("[StorageHelper] Error guardando servicio en Firestore:", err);
+            }
+        }
+        service.id = docId;
+        const idx = this._servicesCache.findIndex(s => s.id === docId);
+        if (idx >= 0) this._servicesCache[idx] = service;
+        else this._servicesCache.push(service);
+        mockData.services = this._servicesCache;
+        try { localStorage.setItem('nicolett_services_cache', JSON.stringify(this._servicesCache)); } catch (e) {}
+        return service;
+    },
+
+    deleteService: async function (serviceId) {
+        if (!serviceId) return;
+        if (typeof db !== 'undefined') {
+            try {
+                await db.collection("Servicios").doc(serviceId).delete();
+            } catch (err) {
+                console.error("[StorageHelper] Error eliminando servicio de Firestore:", err);
+            }
+        }
+        this._servicesCache = this._servicesCache.filter(s => s.id !== serviceId);
+        mockData.services = this._servicesCache;
+        try { localStorage.setItem('nicolett_services_cache', JSON.stringify(this._servicesCache)); } catch (e) {}
     },
 
     // Professionals
