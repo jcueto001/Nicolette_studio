@@ -326,15 +326,11 @@ let isProcessingFlowReturn = false;
 async function checkFlowPaymentReturn() {
     const params = new URLSearchParams(window.location.search);
     if (!params.get('action')?.startsWith('flow-')) return;
-    window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
-    if (params.get('action') === 'flow-conflict') {
-        alert('Pago recibido, pero el horario no está disponible. El estudio revisará tu pago para reprogramar.');
-        return;
-    }
     const token = params.get('token');
     const receipt = sessionStorage.getItem('nicolett_flow_receipt');
-    if (params.get('action') !== 'flow-success' || !token || !receipt) {
-        alert('Pago pendiente o no completado. No se ha confirmado ninguna cita.');
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+    if (!token || !receipt) {
+        alert('No se pudo recuperar el comprobante en este navegador. Consulta al estudio antes de pagar nuevamente; tu cita podría estar confirmada.');
         return;
     }
     try {
@@ -342,11 +338,20 @@ async function checkFlowPaymentReturn() {
             headers: { 'X-Booking-Receipt': receipt }
         });
         const result = await response.json();
-        if (!response.ok || !result.paid || !result.booked) throw new Error('El servidor aún no confirma el pago.');
+        if (!response.ok) throw new Error('El servidor aún no confirma el pago.');
+        if (result.paid && result.conflict) {
+            alert('Pago recibido, pero el horario no está disponible. El estudio revisará tu pago para reprogramar.');
+            return;
+        }
+        if (!result.paid || !result.booked) {
+            alert('Flow todavía informa el pago como pendiente. Conserva tu comprobante y consulta al estudio antes de pagar nuevamente.');
+            return;
+        }
         sessionStorage.removeItem('nicolett_pending_booking');
         localStorage.removeItem('nicolett_pending_booking');
         sessionStorage.removeItem('nicolett_flow_receipt');
-        alert('Pago verificado por el servidor. Tu cita está confirmada.');
+        alert('Pago verificado por el servidor. Tu cita está confirmada.' + (result.emailStatus && result.emailStatus !== 'sent'
+            ? '\nEl correo de confirmación está pendiente; esto no afecta tu cita.' : ''));
     } catch (error) {
         alert('No se pudo verificar el pago. Conserva el comprobante y vuelve a consultar.');
     }

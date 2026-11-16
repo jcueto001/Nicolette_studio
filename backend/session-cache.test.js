@@ -53,7 +53,7 @@ function fixture() {
     } };
     const firestore = () => db;
     firestore.FieldValue = { serverTimestamp: () => 'synthetic-time' };
-    const context = { crypto, console: { log() {}, warn() {}, error() {} }, db,
+    const context = { crypto, URLSearchParams, console: { log() {}, warn() {}, error() {} }, db,
         window: { location: { origin: 'http://localhost' } },
         localStorage: store(local), sessionStorage: store(session),
         firebase: { auth: () => ({ currentUser: state.user }), firestore } };
@@ -73,8 +73,43 @@ function fixture() {
         await helper.resolveStaffUser(state.user);
         helper.setAuth({ loggedIn: true });
     };
-    return { helper, state, local, session, login };
+    return { helper, state, local, session, login, context };
 }
+
+test('Retorno Flow conserva solo comprobante durante arranque y primer Auth; logout lo elimina', async () => {
+    const f = fixture();
+    f.context.window.location.search = '?action=flow-success&token=synthetic_token_123';
+    const receipt = 'a'.repeat(64);
+    f.session.set('nicolett_flow_receipt', receipt);
+    f.session.set('nicolett_pending_booking', 'PRIVATE');
+    f.local.set('nicolett_pending_booking', 'PRIVATE');
+    f.helper._clearPrivateData({ preservePaymentReturn: true });
+    assert.equal(f.session.get('nicolett_flow_receipt'), receipt);
+    assert.equal(f.session.has('nicolett_pending_booking'), false);
+    assert.equal(f.local.has('nicolett_pending_booking'), false);
+    f.state.user = null; // Firebase todavía no ha restaurado currentUser.
+    f.helper.getAuth();
+    assert.equal(f.helper._hasObservedAuth, false);
+    await f.login();
+    assert.equal(f.session.get('nicolett_flow_receipt'), receipt);
+    f.helper.setAuth({ loggedIn: false });
+    assert.equal(f.session.has('nicolett_flow_receipt'), false);
+    f.helper.getAuth();
+    assert.equal(f.session.has('nicolett_flow_receipt'), false);
+});
+
+test('Arranque normal y cambio de usuario no conservan comprobantes de otra sesión', async () => {
+    const f = fixture();
+    f.session.set('nicolett_flow_receipt', 'a'.repeat(64));
+    f.helper._clearPrivateData({ preservePaymentReturn: true });
+    assert.equal(f.session.has('nicolett_flow_receipt'), false);
+    await f.login();
+    f.context.window.location.search = '?action=flow-success&token=synthetic_token_123';
+    f.session.set('nicolett_flow_receipt', 'a'.repeat(64));
+    f.state.user = { uid: 'worker' };
+    f.helper.getAuth();
+    assert.equal(f.session.has('nicolett_flow_receipt'), false);
+});
 
 test('saveFicha usa backend e identificador estable, nunca escritura directa ni descuento antiguo', async () => {
     const f = fixture(); await f.login('worker', 'profesional');

@@ -27,6 +27,14 @@ Configurar mediante el gestor de secretos del entorno de ejecución:
 - `BOOKING_PAUSED`: activar con `true` durante la preparación. Bloquea nuevas órdenes y reservas manuales; mantiene webhooks, retornos, verificación y consultas de pagos existentes. Cambiar una variable de Vercel requiere un nuevo despliegue para aplicarla; no cancela pagos ni libera retenciones.
 - `FRONTEND_URL`: retorno del respaldo Webpay, si se mantiene habilitado.
 
+## Correo de la cita
+
+El retorno conserva el comprobante solo durante el arranque de la página de pago; logout y cambio posterior de usuario siguen eliminándolo. La etiqueta `flow-success` de la URL no acredita un pago: se consulta siempre el estado al backend con el comprobante.
+
+El backend puede enviar la confirmación con EmailJS después de verificar pago y cita. Configurar exclusivamente en Vercel `EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY` y `EMAILJS_PRIVATE_KEY`; habilitar el uso del API desde servidor en EmailJS. La clave privada nunca pertenece al frontend. Se conserva el template existente y el destinatario proviene de la cita guardada, no del navegador.
+
+`AppointmentNotifications/{reservationId}` evita envíos automáticos duplicados entre webhook, retorno y consulta de estado. Sin configuración queda `pending_configuration`; un fallo del correo no cambia el pago ni elimina la cita. Un envío iniciado con resultado incierto requiere revisión manual del historial de EmailJS antes de reintentarlo; no se promete entrega exactamente una vez. El endpoint del proveedor tiene límites de frecuencia y cuota: un rechazo se registra para revisión, sin reintento automático. Las claves y respuestas del proveedor no se imprimen. Ver https://www.emailjs.com/docs/rest-api/send/.
+
 ## Preview aislado
 
 José debe seleccionar el alcance Preview al configurar variables. Usar un proyecto Firebase de prueba separado y una cuenta de servicio limitada a ese proyecto; el frontend Preview también debe apuntar a ese proyecto de prueba. El frontend actual contiene configuración fija: no promover ni probar accesos Firebase en Preview mientras siga apuntando a producción. No copiar secretos productivos ni descargar variables de producción.

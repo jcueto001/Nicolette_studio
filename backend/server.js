@@ -138,7 +138,19 @@ function bookings() {
         flowStatus: localFirebase.enabled ? undefined : token => flowRequest('/payment/getStatus', { token })
     });
 }
-const confirmPayment = (token, receipt) => bookings().confirmPayment(token, receipt);
+const confirmPayment = async (token, receipt) => {
+    const result = await bookings().confirmPayment(token, receipt);
+    if (result.paid && result.booked) {
+        try {
+            const email = await require('./appointment-email').notifyConfirmedAppointment(database(), token, { env: process.env, fetchImpl: fetch });
+            return { ...result, emailStatus: email.status };
+        } catch (_) {
+            console.warn('[AppointmentEmail] No se pudo completar la notificación; el pago conserva su estado verificado.');
+            return { ...result, emailStatus: 'review_required' };
+        }
+    }
+    return result;
+};
 function bookingError(error, res) {
     if (error.code === 'BOOKING_PAUSED') return bookingPausedResponse(res);
     const safeCodes = new Set(['SLOT_UNAVAILABLE', 'BOOKING_MIGRATION_REQUIRED', 'INVALID_CATALOG_DURATION',

@@ -143,12 +143,24 @@ const StorageHelper = {
     _sessionEpoch: 0,
     _authEpoch: 0,
     _observedUid: null,
+    _hasObservedAuth: false,
+    _initialFlowReceiptUid: null,
     _privateOwner: null,
     _clientIdentity: null,
     _galleryCache: [],
     _publicGalleryCache: [],
     _roleUnsubscribe: null,
-    _clearPrivateData: function () {
+    _flowReturnReceipt: function () {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            if (!['flow-success', 'flow-failed', 'flow-conflict'].includes(params.get('action'))
+                || !/^[\w-]{8,256}$/.test(params.get('token') || '')) return null;
+            const receipt = sessionStorage.getItem('nicolett_flow_receipt');
+            return /^[a-f0-9]{64}$/.test(receipt || '') ? receipt : null;
+        } catch (_) { return null; }
+    },
+    _clearPrivateData: function (options = {}) {
+        const receipt = options.preservePaymentReturn ? this._flowReturnReceipt() : null;
         this._sessionEpoch++;
         this._appointmentsCache = [];
         this._fichasCache = [];
@@ -180,15 +192,24 @@ const StorageHelper = {
                 store.removeItem(key);
             }
         }
+        if (receipt) sessionStorage.setItem('nicolett_flow_receipt', receipt);
     },
     _publicProfessional: function (person) {
         const { id, name, specialty, avatar } = person;
         return { id, name, specialty, avatar };
     },
     _observeAuthUser: function (uid) {
+        const firstObservation = !this._hasObservedAuth;
+        // currentUser puede ser null mientras Firebase restaura su sesión inicial.
+        if (uid) this._hasObservedAuth = true;
         if (this._observedUid !== uid) {
+            const receipt = firstObservation ? this._flowReturnReceipt() : null;
             this.setAuth({ loggedIn: false, user: null });
             this._observedUid = uid;
+            if (receipt) {
+                sessionStorage.setItem('nicolett_flow_receipt', receipt);
+                this._initialFlowReceiptUid = uid;
+            }
         }
     },
     _sessionIdentity: function () {
@@ -201,7 +222,8 @@ const StorageHelper = {
         this._observeAuthUser(uid || null);
         const identity = this._sessionIdentity();
         if (identity !== this._privateOwner) {
-            this._clearPrivateData();
+            this._clearPrivateData({ preservePaymentReturn: !!uid && this._initialFlowReceiptUid === uid });
+            this._initialFlowReceiptUid = null;
             this._privateOwner = identity;
         }
         return identity;
@@ -245,7 +267,7 @@ const StorageHelper = {
     },
 
     init: async function () {
-        this._clearPrivateData();
+        this._clearPrivateData({ preservePaymentReturn: true });
         const publicLoad = this.loadAppointmentsCache();
 
         // Sincronizar estado de autenticación con Firebase
@@ -253,6 +275,7 @@ const StorageHelper = {
             firebase.auth().onAuthStateChanged(async (user) => {
                 if (user?.uid !== firebase.auth().currentUser?.uid) return;
                 this._observeAuthUser(user?.uid || null);
+                this._hasObservedAuth = true;
                 if (user) {
                     try {
                         await this.resolveStaffUser(user);
@@ -619,6 +642,8 @@ const StorageHelper = {
     },
     setAuth: function (authData) {
         if (!authData?.loggedIn) {
+            this._hasObservedAuth = true;
+            this._initialFlowReceiptUid = null;
             this._authEpoch++;
             if (this._roleUnsubscribe) this._roleUnsubscribe();
             this._roleUnsubscribe = null;

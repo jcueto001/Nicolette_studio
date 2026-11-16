@@ -135,6 +135,28 @@ test('URL flow-success falsificada no escribe reservas', async () => {
     assert.equal(alerts, 1);
 });
 
+test('Retorno verifica el estado servidor aunque la etiqueta diga fallido, sin confirmar desde navegador', async () => {
+    const source = fs.readFileSync(path.join(__dirname, '../js/main.js'), 'utf8');
+    const start = source.indexOf('async function checkFlowPaymentReturn()');
+    const end = source.indexOf('// --- Modal y Acceso', start);
+    for (const action of ['flow-success', 'flow-failed', 'flow-conflict']) {
+        const messages = [], stored = new Map([['nicolett_flow_receipt', 'a'.repeat(64)]]);
+        let requests = 0;
+        const context = { URLSearchParams, window: { location: { search: '?action=' + action + '&token=synthetic_token_123', pathname: '/', hash: '' }, history: { replaceState() {} } },
+            document: { title: 'Synthetic' }, sessionStorage: { getItem: key => stored.get(key), removeItem: key => stored.delete(key) },
+            localStorage: { removeItem() {} }, alert: message => messages.push(message),
+            StorageHelper: { saveAppointment: () => assert.fail('No confirmar desde cliente') },
+            fetch: async (_, options) => {
+                requests++; assert.equal(options.headers['X-Booking-Receipt'], 'a'.repeat(64));
+                return { ok: true, json: async () => ({ paid: true, booked: true, emailStatus: 'pending_configuration' }) };
+            } };
+        vm.runInNewContext(source.slice(start, end), context);
+        await context.checkFlowPaymentReturn();
+        assert.equal(requests, 1); assert.ok(messages[0].includes('Tu cita está confirmada'));
+        assert.equal(stored.has('nicolett_flow_receipt'), false);
+    }
+});
+
 test('Backend real carga Admin SDK y responde localmente sin credenciales', async () => {
     process.env.FLOW_API_KEY = '';
     process.env.FLOW_SECRET_KEY = '';
