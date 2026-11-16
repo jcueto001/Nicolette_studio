@@ -192,3 +192,56 @@ test('StorageHelper usa disponibilidad del backend, mantiene firmas y no crea ci
     await assert.rejects(helper.saveAppointment({ serviceId: 'long', profId: 'pro', date: '2035-01-10', time: '10:00' }), /offline/);
     assert.equal(helper.getAppointments().length, 0);
 });
+
+test('Disponibilidad distingue mantenimiento, errores y una agenda realmente sin horas', async () => {
+    const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm');
+    const context = { console, crypto, URLSearchParams, window: { location: { origin: 'http://localhost' } },
+        localStorage: { getItem: () => null, removeItem() {}, setItem() {} } };
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../js/mockData.js'), 'utf8')
+        .replace('StorageHelper.init();', 'globalThis.helper = StorageHelper;'), context);
+    context.helper._bookingServiceId = 'service';
+    for (const code of ['BOOKING_MIGRATION_REQUIRED', 'BOOKING_PAUSED']) {
+        context.fetch = async () => ({ ok: false, json: async () => ({ error: code }) });
+        await assert.rejects(context.helper.getAvailableTimeSlots('2035-01-10', 'pro'), { code });
+    }
+    for (const response of [
+        { ok: false, json: async () => { throw new SyntaxError('Server failed'); } },
+        { ok: true, json: async () => ({ times: ['<img onerror=alert(1)>'] }) },
+        { ok: false, json: async () => ({ error: '<script>private server detail</script>' }) }
+    ]) {
+        context.fetch = async () => response;
+        await assert.rejects(context.helper.getAvailableTimeSlots('2035-01-10', 'pro'), error => {
+            assert.equal(error.code, 'AVAILABILITY_UNAVAILABLE');
+            assert.ok(!error.message.includes('script')); return true;
+        });
+    }
+    context.fetch = async () => ({ ok: true, json: async () => ({ times: [] }) });
+    assert.equal((await context.helper.getAvailableTimeSlots('2035-01-10', 'pro')).length, 0);
+    context.fetch = async () => ({ ok: true, json: async () => ({ times: ['09:00', '11:00'] }) });
+    assert.equal((await context.helper.getAvailableTimeSlots('2035-01-10', 'pro')).join(','), '09:00,11:00');
+});
+
+test('Formulario bloquea avance ante error y descarta respuestas tardías de otra fecha', async () => {
+    const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm');
+    const source = fs.readFileSync(path.join(__dirname, '../js/main.js'), 'utf8');
+    const start = source.indexOf('        let availabilityRequest = 0;');
+    const end = source.indexOf("        btnPrev3?.addEventListener", start);
+    assert.ok(start > 0 && end > start);
+    let handler, resolveOld;
+    const dateInput = { value: '2035-01-10', addEventListener: (_, callback) => { handler = callback; } };
+    const grid = { innerHTML: '', textContent: '', isConnected: true, querySelectorAll: () => [] };
+    const state = { date: null, time: '09:00', profId: 'pro' };
+    const context = { dateInput, timeSlotsGrid: grid, btnNext3: { disabled: false }, bookingState: state,
+        StorageHelper: { getAvailableTimeSlots: () => new Promise(resolve => { resolveOld = resolve; }) } };
+    vm.runInNewContext(source.slice(start, end), context);
+    const first = handler();
+    dateInput.value = '2035-01-11';
+    context.StorageHelper.getAvailableTimeSlots = async () => { throw new Error('Reservas en mantenimiento'); };
+    await handler(); resolveOld(['09:00']); await first;
+    assert.equal(grid.textContent, 'Reservas en mantenimiento');
+    assert.equal(context.btnNext3.disabled, true); assert.equal(state.time, null);
+    context.StorageHelper.getAvailableTimeSlots = async () => [];
+    await handler(); assert.ok(grid.innerHTML.includes('No hay horas disponibles'));
+    context.StorageHelper.getAvailableTimeSlots = async () => ['11:00'];
+    await handler(); assert.ok(grid.innerHTML.includes('data-time="11:00"'));
+});

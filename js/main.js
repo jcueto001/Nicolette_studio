@@ -1088,15 +1088,23 @@ window.logoutClientProfile = async function () {
         const btnNext3 = document.getElementById('btn-next-3');
         const btnPrev3 = document.getElementById('btn-prev-3');
 
-        // Simulate updating time slots on date change
+        let availabilityRequest = 0;
         dateInput?.addEventListener('change', async () => {
+            const request = ++availabilityRequest;
             bookingState.date = dateInput.value;
             bookingState.time = null;
             btnNext3.disabled = true;
 
             if (timeSlotsGrid && bookingState.profId && bookingState.date) {
                 timeSlotsGrid.innerHTML = '<p>Buscando horas disponibles...</p>';
-                const availableSlots = await StorageHelper.getAvailableTimeSlots(bookingState.date, bookingState.profId);
+                let availableSlots;
+                try { availableSlots = await StorageHelper.getAvailableTimeSlots(bookingState.date, bookingState.profId); }
+                catch (error) {
+                    if (request !== availabilityRequest || timeSlotsGrid.isConnected === false) return;
+                    timeSlotsGrid.textContent = error.message;
+                    return;
+                }
+                if (request !== availabilityRequest || timeSlotsGrid.isConnected === false) return;
 
                 if (availableSlots.length === 0) {
                     timeSlotsGrid.innerHTML = '<p style="color:red; grid-column: 1/-1;">No hay horas disponibles para esta fecha. Por favor, selecciona otra.</p>';
@@ -1109,6 +1117,7 @@ window.logoutClientProfile = async function () {
                     const newTimeSlots = timeSlotsGrid.querySelectorAll('.time-slot-btn');
                     newTimeSlots.forEach(btn => {
                         btn.addEventListener('click', () => {
+                            if (request !== availabilityRequest) return;
                             newTimeSlots.forEach(b => {
                                 b.style.background = 'white';
                                 b.style.color = 'var(--clr-neutral-dark)';
@@ -1123,7 +1132,7 @@ window.logoutClientProfile = async function () {
                         });
                     });
                 }
-            }
+            } else if (timeSlotsGrid) timeSlotsGrid.textContent = '';
         });
 
         btnPrev3?.addEventListener('click', () => showStep(2));

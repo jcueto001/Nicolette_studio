@@ -498,8 +498,26 @@ const StorageHelper = {
             const query = new URLSearchParams({ date, profId, serviceId: this._bookingServiceId, times: mockData.timeSlots.join(',') });
             const response = await fetch('/api/bookings/availability?' + query);
             const result = await response.json();
-            return response.ok && Array.isArray(result.times) ? result.times : [];
-        } catch (error) { return []; }
+            if (!response.ok) {
+                const messages = {
+                    BOOKING_MIGRATION_REQUIRED: 'Las reservas están temporalmente en mantenimiento. La agenda aún no está habilitada.',
+                    BOOKING_PAUSED: 'Las nuevas reservas están temporalmente pausadas. Inténtalo más tarde.',
+                    CATALOG_UNAVAILABLE: 'El servicio o la profesional no están disponibles. Revisa tu selección.',
+                    PROFESSIONAL_UNAVAILABLE: 'La profesional seleccionada no está disponible. Selecciona otra.',
+                    INVALID_CATALOG_DURATION: 'No se puede consultar este servicio en este momento. Contacta al estudio.',
+                    INVALID_CATALOG_PRICE: 'No se puede consultar este servicio en este momento. Contacta al estudio.'
+                };
+                const code = Object.prototype.hasOwnProperty.call(messages, result?.error) ? result.error : 'AVAILABILITY_UNAVAILABLE';
+                throw Object.assign(new Error(messages[code] || 'No se pudieron consultar los horarios. Inténtalo nuevamente más tarde.'), { code });
+            }
+            if (!Array.isArray(result?.times) || !result.times.every(time => typeof time === 'string'
+                && /^([01]\d|2[0-3]):[0-5]\d$/.test(time))) throw new Error('INVALID_AVAILABILITY_RESPONSE');
+            return result.times;
+        } catch (error) {
+            if (['BOOKING_MIGRATION_REQUIRED', 'BOOKING_PAUSED', 'CATALOG_UNAVAILABLE', 'PROFESSIONAL_UNAVAILABLE',
+                'INVALID_CATALOG_DURATION', 'INVALID_CATALOG_PRICE', 'AVAILABILITY_UNAVAILABLE'].includes(error.code)) throw error;
+            throw Object.assign(new Error('No se pudieron consultar los horarios. Verifica tu conexión e inténtalo nuevamente.'), { code: 'AVAILABILITY_UNAVAILABLE' });
+        }
     },
     _bookingApi: async function (url, method, body, session) {
         const user = typeof firebase !== 'undefined' && firebase.auth ? firebase.auth().currentUser : null;
