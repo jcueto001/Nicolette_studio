@@ -157,6 +157,26 @@ test('Retorno verifica el estado servidor aunque la etiqueta diga fallido, sin c
     }
 });
 
+test('Reenvío del panel usa backend y conserva requestId si se pierde respuesta, sin enviar datos privados del navegador', async () => {
+    const source = fs.readFileSync(path.join(__dirname, '../js/main.js'), 'utf8');
+    const start = source.indexOf('function appointmentEmailMessage(');
+    const end = source.indexOf('// Variable de bloqueo', start);
+    const requests = [];let first = true;
+    const context = { window: {}, crypto: { randomUUID: () => 'synthetic-request-id' },
+        document: { querySelectorAll: () => [] }, alert() {},
+        StorageHelper: { getAppointments: () => [{ id: 'r', clientEmail: 'private@example.invalid', clientName: 'PRIVATE' }] },
+        firebase: { auth: () => ({ currentUser: { getIdToken: async () => 'synthetic-auth-token' } }) },
+        fetch: async (url, options) => {
+            assert.equal(url, '/api/bookings/r/email');assert.equal(options.headers.Authorization, 'Bearer synthetic-auth-token');
+            const payload = JSON.parse(options.body);assert.deepEqual(Object.keys(payload), ['requestId']);requests.push(payload.requestId);
+            if (first) { first = false;throw new Error('synthetic timeout'); }
+            return { ok: true, json: async () => ({ status: 'sent' }) };
+        } };
+    vm.runInNewContext(source.slice(start, end), context);
+    await context.window.resendAppointmentEmail('r');await context.window.resendAppointmentEmail('r');
+    assert.deepEqual(requests, ['synthetic-request-id', 'synthetic-request-id']);
+});
+
 test('Backend real carga Admin SDK y responde localmente sin credenciales', async () => {
     process.env.FLOW_API_KEY = '';
     process.env.FLOW_SECRET_KEY = '';

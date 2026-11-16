@@ -277,12 +277,29 @@ function buildAppointmentEmailParams(app) {
     };
 }
 
-// Función global para reenviar correo de confirmación desde el panel admin con feedback inmediato
+function appointmentEmailMessage(code) {
+    const messages = {
+        EMAIL_CONFIGURATION_MISSING: 'Faltan variables de EmailJS en Vercel. Configura servicio, plantilla y ambas claves y vuelve a desplegar.',
+        EMAIL_SERVER_API_DISABLED: 'EmailJS bloquea los envíos desde servidor. Habilita las solicitudes para aplicaciones no-browser en Account → Security de EmailJS.',
+        EMAIL_PRIVATE_KEY_INVALID: 'EmailJS rechazó la clave privada. Revisa EMAILJS_PRIVATE_KEY de la misma cuenta; no es la clave de Firebase.',
+        EMAIL_PUBLIC_KEY_INVALID: 'EmailJS rechazó la clave pública. Revisa EMAILJS_PUBLIC_KEY y que pertenezca a la cuenta del servicio y plantilla.',
+        EMAIL_SERVICE_INVALID: 'EmailJS no reconoce el servicio. Revisa EMAILJS_SERVICE_ID y la conexión del servicio en EmailJS.',
+        EMAIL_TEMPLATE_INVALID: 'EmailJS no reconoce la plantilla. Revisa EMAILJS_TEMPLATE_ID en la misma cuenta.',
+        EMAIL_RECIPIENT_INVALID: 'La cita no tiene un destinatario válido. Revisa el correo registrado antes de reenviar.',
+        EMAIL_QUOTA_EXCEEDED: 'EmailJS alcanzó un límite de envío. Revisa la cuota del servicio antes de intentar nuevamente.',
+        EMAIL_MAILBOX_RECONNECT_REQUIRED: 'La conexión de correo expiró o fue rechazada. Reconecta Gmail u otro proveedor en EmailJS.',
+        EMAIL_RETRY_RATE_LIMIT: 'Espera un minuto antes de solicitar otro envío de esta cita.',
+        EMAIL_SEND_IN_PROGRESS: 'El envío ya está en curso. No lo repitas.',
+        EMAIL_DELIVERY_UNCERTAIN: 'El resultado del envío es incierto. Revisa el historial de EmailJS antes de solicitar otro envío.',
+        EMAIL_PROVIDER_REJECTED: 'EmailJS rechazó el correo. El servidor registró el código HTTP del rechazo, sin datos privados.',
+        CONFIRMED_APPOINTMENT_REQUIRED: 'La cita aún no cumple las condiciones para enviar una confirmación.',
+        FORBIDDEN: 'Tu sesión no autoriza el envío de esta cita.'
+    };
+    return messages[code] || 'No se pudo completar el correo. Revisa la configuración de EmailJS; tu cita y pago conservan su estado.';
+}
+const appointmentEmailRequests = new Map();
+// El servidor valida rol, cita, pago y destinatario; el navegador no envía datos de la clienta.
 window.resendAppointmentEmail = async function (appId) {
-    if (typeof emailjs === 'undefined') {
-        alert('⚠️ El servicio de correo (EmailJS) no está cargado. Por favor recarga la página.');
-        return;
-    }
     const app = StorageHelper.getAppointments().find(a => a.id === appId);
     if (!app) {
         alert('⚠️ No se encontró la información de la cita.');
@@ -301,15 +318,22 @@ window.resendAppointmentEmail = async function (appId) {
     }
 
     try {
-        const params = buildAppointmentEmailParams(app);
-        console.log('[EmailJS Reenviar] Enviando parámetros:', params);
-        const res = await emailjs.send("service_rmc9mu9", "template_2h2ya38", params);
-        console.log('[EmailJS Reenviar] Respuesta exitosa:', res);
-        alert(`✉️ ¡Correo de confirmación enviado exitosamente a:\n${app.clientEmail}\n\nRevisa la bandeja de entrada o la carpeta de Spam / Correo no deseado.`);
-    } catch (err) {
-        console.error('[EmailJS Reenviar] Error:', err);
-        const errDetail = err?.text || err?.message || JSON.stringify(err);
-        alert(`⚠️ No se pudo enviar el correo a ${app.clientEmail}:\n\n${errDetail}\n\nVerifica que tu cuenta de EmailJS esté activa y conectada a tu correo.`);
+        const user = typeof firebase !== 'undefined' && firebase.auth ? firebase.auth().currentUser : null;
+        if (!user) throw new Error('AUTH_REQUIRED');
+        const token = await user.getIdToken();
+        if (!appointmentEmailRequests.has(appId)) appointmentEmailRequests.set(appId, crypto.randomUUID());
+        const response = await fetch('/api/bookings/' + encodeURIComponent(appId) + '/email', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            body: JSON.stringify({ requestId: appointmentEmailRequests.get(appId) })
+        });
+        const result = await response.json();
+        appointmentEmailRequests.delete(appId);
+        if (response.ok && result.status === 'sent') alert('EmailJS aceptó el correo de confirmación. Revisa también Spam.');
+        else alert(appointmentEmailMessage(result.errorCode || result.error || (result.status === 'sending' ? 'EMAIL_SEND_IN_PROGRESS'
+            : result.status === 'delivery_unknown' ? 'EMAIL_DELIVERY_UNCERTAIN' : 'EMAIL_PROVIDER_REJECTED')));
+    } catch (_) {
+        // Conservar requestId si no se conoce la respuesta para no duplicar al reintentar.
+        alert('No se pudo comprobar el envío. Revisa tu sesión y conexión antes de volver a intentarlo.');
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -351,7 +375,7 @@ async function checkFlowPaymentReturn() {
         localStorage.removeItem('nicolett_pending_booking');
         sessionStorage.removeItem('nicolett_flow_receipt');
         alert('Pago verificado por el servidor. Tu cita está confirmada.' + (result.emailStatus && result.emailStatus !== 'sent'
-            ? '\nEl correo de confirmación está pendiente; esto no afecta tu cita.' : ''));
+            ? '\n' + (result.emailErrorCode ? appointmentEmailMessage(result.emailErrorCode) : 'El correo de confirmación está pendiente; esto no afecta tu cita.') : ''));
     } catch (error) {
         alert('No se pudo verificar el pago. Conserva el comprobante y vuelve a consultar.');
     }

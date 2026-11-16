@@ -56,6 +56,7 @@ service cloud.firestore {
     match /FinancialConflicts/{id} { allow read, write: if false; }
     match /BookingMigrationArchive/{id} { allow read, write: if false; }
     match /AppointmentNotifications/{id} { allow read, write: if false; }
+    match /AppointmentEmailRequests/{id} { allow read, write: if false; }
     match /{document=**} { allow read, write: if false; }
   }
 }

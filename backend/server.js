@@ -143,7 +143,7 @@ const confirmPayment = async (token, receipt) => {
     if (result.paid && result.booked) {
         try {
             const email = await require('./appointment-email').notifyConfirmedAppointment(database(), token, { env: process.env, fetchImpl: fetch });
-            return { ...result, emailStatus: email.status };
+            return { ...result, emailStatus: email.status, ...(email.errorCode ? { emailErrorCode: email.errorCode } : {}) };
         } catch (_) {
             console.warn('[AppointmentEmail] No se pudo completar la notificación; el pago conserva su estado verificado.');
             return { ...result, emailStatus: 'review_required' };
@@ -174,6 +174,21 @@ async function requireStaff(req, res, next) {
         next();
     } catch (error) { res.status(403).json({ error: 'FORBIDDEN' }); }
 }
+app.post('/api/bookings/:id/email', requireStaff, async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        if (!req.body || Object.keys(req.body).some(key => key !== 'requestId')) {
+            return res.status(400).json({ error: 'INVALID_EMAIL_REQUEST' });
+        }
+        const result = await require('./appointment-email').resendAppointmentEmail(database(), req.params.id, req.staff, req.body.requestId,
+            { env: process.env, fetchImpl: fetch });
+        res.json(result);
+    } catch (error) {
+        const allowed = new Set(['INVALID_EMAIL_REQUEST', 'FORBIDDEN', 'CONFIRMED_APPOINTMENT_REQUIRED', 'EMAIL_REQUEST_MISMATCH',
+            'EMAIL_SEND_IN_PROGRESS', 'EMAIL_DELIVERY_UNCERTAIN', 'EMAIL_RETRY_RATE_LIMIT']);
+        res.status(allowed.has(error.code) ? error.status : 503).json({ error: allowed.has(error.code) ? error.code : 'EMAIL_NOTIFICATION_UNAVAILABLE' });
+    }
+});
 app.post('/api/fichas', requireStaff, async (req, res) => {
     res.set('Cache-Control', 'no-store');
     try { res.json(await require('./ficha-service').saveFicha(database(), req.body.ficha, req.body.requestId, req.staff)); }
