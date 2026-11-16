@@ -73,6 +73,8 @@
             }
 
             const fichaNormalizada = {
+                appointmentId: fichaData.appointmentId || null,
+                _operationId: fichaData._operationId || (fichaData._operationId = crypto.randomUUID()),
                 id: fichaData.id || ('f_' + Date.now()),
                 clientName: fichaData.clientName || 'Clienta',
                 clientEmail: fichaData.clientEmail.trim().toLowerCase(),
@@ -94,18 +96,7 @@
                 await StorageHelper.saveFicha(fichaNormalizada);
             }
 
-            // RF-10: Descontar stock de productos automáticamente
-            if (fichaNormalizada.products.length > 0 && typeof StorageHelper !== 'undefined') {
-                for (const prod of fichaNormalizada.products) {
-                    if (prod.id && prod.quantity) {
-                        try {
-                            await StorageHelper.discountInventory(prod.id, prod.quantity);
-                        } catch (err) {
-                            console.warn("[ClientasModule] No se pudo descontar stock de:", prod.id, err);
-                        }
-                    }
-                }
-            }
+            // saveFicha persiste ficha y consumo en una única transacción.
 
             return fichaNormalizada;
         }

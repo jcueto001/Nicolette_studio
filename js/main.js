@@ -293,7 +293,7 @@ window.resendAppointmentEmail = async function (appId) {
         return;
     }
 
-    const btn = document.querySelector(`.btn-resend-email[data-appid="${appId}"]`);
+    const btn = Array.from(document.querySelectorAll('.btn-resend-email')).find(element => element.getAttribute('data-appid') === appId);
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<i data-lucide="loader" class="lucide-spin" style="width:13px; height:13px;"></i> Enviando...';
@@ -327,6 +327,10 @@ async function checkFlowPaymentReturn() {
     const params = new URLSearchParams(window.location.search);
     if (!params.get('action')?.startsWith('flow-')) return;
     window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+    if (params.get('action') === 'flow-conflict') {
+        alert('Pago recibido, pero el horario no está disponible. El estudio revisará tu pago para reprogramar.');
+        return;
+    }
     const token = params.get('token');
     const receipt = sessionStorage.getItem('nicolett_flow_receipt');
     if (params.get('action') !== 'flow-success' || !token || !receipt) {
@@ -338,7 +342,7 @@ async function checkFlowPaymentReturn() {
             headers: { 'X-Booking-Receipt': receipt }
         });
         const result = await response.json();
-        if (!response.ok || !result.paid) throw new Error('El servidor aún no confirma el pago.');
+        if (!response.ok || !result.paid || !result.booked) throw new Error('El servidor aún no confirma el pago.');
         sessionStorage.removeItem('nicolett_pending_booking');
         localStorage.removeItem('nicolett_pending_booking');
         sessionStorage.removeItem('nicolett_flow_receipt');
@@ -604,13 +608,14 @@ window.handleGlobalLogout = function () {
 window.logoutClientProfile = async function () {
     const ok = await window.showCustomConfirm({
         title: '¿Cerrar Sesión de tu Perfil?',
-        message: '¿Estás segura de que deseas salir de tu perfil de clienta?\nPodrás volver a consultar tus citas y fotos en cualquier momento ingresando con tu correo.',
+        message: '¿Estás segura de que deseas salir de tu perfil de clienta?\nSe borrarán las preferencias guardadas en este dispositivo.',
         confirmText: 'Cerrar Sesión',
         cancelText: 'Permanecer Conectada',
         icon: 'log-out',
         iconType: 'logout'
     });
     if (ok) {
+        StorageHelper.setAuth({ loggedIn: false, user: null });
         localStorage.removeItem('nicolett_personalization');
         window.updateNavAuthVisibility();
         if (typeof AppRouter !== 'undefined') {
@@ -664,10 +669,8 @@ window.logoutClientProfile = async function () {
                 btn.innerText = 'Cargando perfil...';
 
                 try {
-                    // Utiliza la función centralizada que verifica si ya existe en Firestore
-                    // para evitar crear un registro duplicado
+                    // Guardar únicamente personalización local.
                     const profile = await StorageHelper.getOrCreateClientProfile(email, name);
-                    await StorageHelper.loadAppointmentsCache();
                     window.updateNavAuthVisibility();
 
                     if (modal) modal.style.opacity = '0';
@@ -1010,6 +1013,7 @@ window.logoutClientProfile = async function () {
                 card.style.borderColor = 'var(--clr-rose-gold)';
                 card.style.background = '#FFFDFB';
                 bookingState.serviceId = card.getAttribute('data-service-id');
+                StorageHelper._bookingServiceId = bookingState.serviceId;
                 if (btnNext1) btnNext1.disabled = false;
             });
         });
@@ -1379,7 +1383,10 @@ window.logoutClientProfile = async function () {
 
             try {
                 console.log('[Flow] Solicitando orden de pago al backend:', '/api/flow/create');
-                const payload = { booking: appointmentData };
+                appointmentData._flowRequestId = appointmentData._flowRequestId || crypto.randomUUID();
+                sessionStorage.setItem('nicolett_pending_booking', JSON.stringify(appointmentData));
+                localStorage.setItem('nicolett_pending_booking', JSON.stringify(appointmentData));
+                const payload = { booking: appointmentData, requestId: appointmentData._flowRequestId };
 
                 const response = await fetch('/api/flow/create', {
                     method: 'POST',
@@ -1730,10 +1737,8 @@ window.logoutClientProfile = async function () {
                 const usedProds = [];
                 prodChecks.forEach(chk => {
                     if (chk.checked) {
-                        const qty = parseInt(document.getElementById('qty_' + chk.value).value) || 1;
+                        const qty = Number(document.getElementById('qty_' + chk.value).value);
                         usedProds.push({ id: chk.value, name: chk.getAttribute('data-name'), quantity: qty });
-                        // Descontar stock
-                        StorageHelper.updateProductStock(chk.value, qty);
                     }
                 });
 
@@ -1742,10 +1747,16 @@ window.logoutClientProfile = async function () {
                 const mapDer = document.getElementById('ficha-map-der')?.value || '';
 
                 const btnSubmit = formFicha.querySelector('button[type="submit"]');
+                const consumptionContext = appId || 'standalone';
+                if (formFicha.dataset.consumptionContext !== consumptionContext) {
+                    delete formFicha.dataset.consumptionOperation;
+                    formFicha.dataset.consumptionContext = consumptionContext;
+                }
                 btnSubmit.disabled = true;
                 btnSubmit.innerText = "Guardando...";
 
                 const ficha = {
+                    _operationId: formFicha.dataset.consumptionOperation || (formFicha.dataset.consumptionOperation = crypto.randomUUID()),
                     appointmentId: appId || null,
                     date: new Date().toLocaleDateString('es-CL'),
                     clientName: clientName,
@@ -1754,7 +1765,13 @@ window.logoutClientProfile = async function () {
                     mapping: (mapIzq || mapDer) ? { left: mapIzq, right: mapDer } : null
                 };
 
-                await StorageHelper.saveFicha(ficha);
+                try { await StorageHelper.saveFicha(ficha); }
+                catch (_) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerText = "Guardar Ficha";
+                    alert('No se pudo guardar la ficha. Verifica la sesión y la cita asignada.');
+                    return;
+                }
 
                 // Actualizar o crear clienta
                 const clientsList = StorageHelper.getClients();
@@ -1773,6 +1790,7 @@ window.logoutClientProfile = async function () {
                 }
 
                 fichaModal.style.display = 'none';
+                delete formFicha.dataset.consumptionOperation;
                 btnSubmit.disabled = false;
                 btnSubmit.innerText = "Guardar Ficha";
 
@@ -1792,7 +1810,7 @@ window.logoutClientProfile = async function () {
                     if (!ficha) return;
 
                     let prodsHtml = (ficha.products && ficha.products.length > 0)
-                        ? ficha.products.map(p => `<li style="margin-bottom:5px;"><i data-lucide="package" style="width:14px; display:inline;"></i> ${p.quantity}x ${p.name}</li>`).join('')
+                        ? ficha.products.map(p => `<li style="margin-bottom:5px;"><i data-lucide="package" style="width:14px; display:inline;"></i> ${escapeReservationHtml(p.quantity)}x ${escapeReservationHtml(p.name)}</li>`).join('')
                         : 'Ningún producto registrado';
 
                     let extraHtml = '';
@@ -1800,17 +1818,17 @@ window.logoutClientProfile = async function () {
                         extraHtml = `
                     <div style="background:var(--clr-nude-light); padding:15px; border-radius:var(--radius-sm); margin-bottom:15px;">
                         <h4 style="margin-bottom:10px; font-size:1rem; color:var(--clr-rose-gold-dark);">Lash Mapping Utilizado</h4>
-                        <p style="margin-bottom:5px;"><strong>Ojo Izquierdo:</strong> ${ficha.mapping.left || 'N/A'}</p>
-                        <p style="margin-bottom:0;"><strong>Ojo Derecho:</strong> ${ficha.mapping.right || 'N/A'}</p>
+                        <p style="margin-bottom:5px;"><strong>Ojo Izquierdo:</strong> ${escapeReservationHtml(ficha.mapping.left || 'N/A')}</p>
+                        <p style="margin-bottom:0;"><strong>Ojo Derecho:</strong> ${escapeReservationHtml(ficha.mapping.right || 'N/A')}</p>
                     </div>
                 `;
                     }
 
                     viewFichaContent.innerHTML = `
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
-                    <div><span style="color:var(--clr-neutral-gray); font-size:0.9rem;">Cliente</span><br><strong>${ficha.clientName}</strong></div>
-                    <div><span style="color:var(--clr-neutral-gray); font-size:0.9rem;">Fecha</span><br><strong>${ficha.date}</strong></div>
-                    <div style="grid-column: 1/-1;"><span style="color:var(--clr-neutral-gray); font-size:0.9rem;">Servicio</span><br><strong>${ficha.serviceName}</strong></div>
+                    <div><span style="color:var(--clr-neutral-gray); font-size:0.9rem;">Cliente</span><br><strong>${escapeReservationHtml(ficha.clientName)}</strong></div>
+                    <div><span style="color:var(--clr-neutral-gray); font-size:0.9rem;">Fecha</span><br><strong>${escapeReservationHtml(ficha.date)}</strong></div>
+                    <div style="grid-column: 1/-1;"><span style="color:var(--clr-neutral-gray); font-size:0.9rem;">Servicio</span><br><strong>${escapeReservationHtml(ficha.serviceName)}</strong></div>
                 </div>
                 ${extraHtml}
                 <div style="margin-bottom:20px;">
@@ -1819,7 +1837,7 @@ window.logoutClientProfile = async function () {
                 </div>
                 <div>
                     <h4 style="margin-bottom:10px; font-size:1rem; color:var(--clr-rose-gold-dark);">Observaciones</h4>
-                    <p style="background:#f9f9f9; padding:15px; border-radius:var(--radius-sm); border:1px solid #eee; margin:0;">${ficha.notes || 'Ninguna'}</p>
+                    <p style="background:#f9f9f9; padding:15px; border-radius:var(--radius-sm); border:1px solid #eee; margin:0;">${escapeReservationHtml(ficha.notes || 'Ninguna')}</p>
                 </div>
             `;
 
@@ -3259,7 +3277,7 @@ window.logoutClientProfile = async function () {
 
                     // Llenar Modal
                     document.getElementById('crm-name').innerText = client.name;
-                    document.getElementById('crm-phone').innerHTML = `<i data-lucide="phone" style="width:14px; display:inline;"></i> ${client.phone || 'Sin número'}`;
+                    document.getElementById('crm-phone').innerHTML = `<i data-lucide="phone" style="width:14px; display:inline;"></i> ${escapeReservationHtml(client.phone || 'Sin número')}`;
                     document.getElementById('crm-total-visits').innerText = totalVisits;
                     document.getElementById('crm-total-spent').innerText = '$' + totalSpent.toLocaleString('es-CL');
                     document.getElementById('crm-notes').value = client.notes || '';
@@ -3275,8 +3293,8 @@ window.logoutClientProfile = async function () {
                         allFichas.forEach(f => {
                             html += `
                         <div style="border:1px solid #ddd; padding:10px; border-radius:4px; font-size:0.9rem;">
-                            <strong>${f.date} - ${f.serviceName}</strong> (Ficha)<br>
-                            <span style="color:#666;">${f.notes || 'Sin notas'}</span>
+                            <strong>${escapeReservationHtml(f.date)} - ${escapeReservationHtml(f.serviceName)}</strong> (Ficha)<br>
+                            <span style="color:#666;">${escapeReservationHtml(f.notes || 'Sin notas')}</span>
                         </div>
                     `;
                         });
@@ -3757,27 +3775,13 @@ window.logoutClientProfile = async function () {
                     if (window.lucide) lucide.createIcons();
 
                     try {
-                        // Recuperar o crear perfil (no duplicará si ya existe en Firestore)
+                        // Guardar preferencias locales; no autentica ni consulta historiales.
                         const profile = await StorageHelper.getOrCreateClientProfile(email, name);
-
-                        // Asegurarse de que el caché de citas esté sincronizado
-                        await StorageHelper.loadAppointmentsCache();
 
                         // Actualizar barra de navegación
                         window.updateNavAuthVisibility();
 
-                        const clientAppts = StorageHelper.getClientAppointments(profile.email, profile.phone);
-                        if (profile.isExisting) {
-                            const countMsg = clientAppts.length > 0
-                                ? `Encontramos ${clientAppts.length} cita(s) asociadas a tu correo.`
-                                : 'No encontramos citas registradas aún, ¡puedes agendar tu primera cita!';
-                            alert(`✨ ¡Bienvenida de nuevo, ${profile.name}!\n${countMsg}`);
-                        } else {
-                            const countMsg = clientAppts.length > 0
-                                ? `Asociamos ${clientAppts.length} cita(s) agendada(s) a tu nuevo perfil.`
-                                : 'Tu cuenta ha sido creada con éxito.';
-                            alert(`✨ ¡Cuenta creada exitosamente, ${profile.name}!\n${countMsg}`);
-                        }
+                        alert('Preferencias guardadas en este dispositivo. No se ha creado una cuenta.');
 
                         if (typeof AppRouter !== 'undefined') {
                             AppRouter.refresh();
@@ -3786,7 +3790,7 @@ window.logoutClientProfile = async function () {
                         console.error('Error al iniciar sesión en perfil:', err);
                         alert('Hubo un error al procesar tu acceso: ' + (err.message || 'Intenta nuevamente'));
                         btnSubmit.disabled = false;
-                        btnSubmit.innerHTML = '<i data-lucide="log-in" style="width:18px; height:18px; margin-right:6px; vertical-align:middle;"></i> Ingresar a Mi Perfil / Ver Mis Citas';
+                        btnSubmit.innerHTML = '<i data-lucide="log-in" style="width:18px; height:18px; margin-right:6px; vertical-align:middle;"></i> Guardar preferencias locales';
                         if (window.lucide) lucide.createIcons();
                     }
                 });

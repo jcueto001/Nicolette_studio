@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test security.test.js"
+    "test": "node --test security.test.js emulators.test.js xss.test.js session-cache.test.js booking.test.js migration.test.js maintenance.test.js booking.integration.test.js ficha.test.js"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +19,6 @@
     "transbank-sdk": "^6.1.1"
   },
   "engines": {
-    "node": ">=22"
+    "node": "24.x"
   }
 }

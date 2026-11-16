@@ -6,35 +6,17 @@ const path = require('node:path');
 
 // Dobles locales: ninguna prueba llama a Firebase, Google o Flow.
 async function fixture(env = {}) {
-    const docs = new Map([
-        ['Servicios/s1', { name: 'Servicio', price: 15000 }],
+    const { db, docs } = require('./test-firestore').memoryFirestore([
+        ['BookingConfig/control', { version: 1, ready: true }],
+        ['Servicios/s1', { name: 'Servicio', price: 15000, duration: 60 }],
         ['Profesionales/p1', { name: 'Profesional', activo: true }]
     ]);
-    const snapshot = key => ({ exists: docs.has(key), data: () => docs.get(key) });
-    const ref = key => ({ key, get: async () => snapshot(key), create: async data => {
-        if (docs.has(key)) throw new Error('exists');
-        docs.set(key, data);
-    } });
-    let queue = Promise.resolve();
-    const db = {
-        collection: name => ({ doc: id => ref(name + '/' + id) }),
-        runTransaction: callback => {
-            const next = queue.then(() => callback({
-                get: async r => snapshot(r.key),
-                create: (r, data) => { assert.equal(docs.has(r.key), false); docs.set(r.key, data); },
-                update: (r, data) => docs.set(r.key, { ...docs.get(r.key), ...data })
-            }));
-            queue = next.catch(() => {});
-            return next;
-        }
-    };
-    const firestore = () => db;
-    firestore.FieldValue = { serverTimestamp: () => 'server-time' };
-    const admin = { apps: [{}], firestore };
+    const appApi = { getApps: () => [{ name: '[DEFAULT]' }], initializeApp: () => { throw new Error('App ya inicializada'); } };
+    const firestoreApi = { getFirestore: () => db, FieldValue: { serverTimestamp: () => 'server-time' } };
     let fields;
     let statusOverride = {};
     const context = {
-        require: name => name === 'firebase-admin' ? admin : name === 'dotenv' ? { config() {} } : require(name),
+        require: name => name === 'firebase-admin/app' ? appApi : name === 'firebase-admin/firestore' ? firestoreApi : name === 'dotenv' ? { config() {} } : require(name),
         module: { exports: {} }, __dirname, URL, URLSearchParams, AbortSignal, console,
         process: { env: { BACKEND_URL: 'http://localhost:3000', FLOW_API_KEY: 'test-only', FLOW_SECRET_KEY: 'test-only', ...env } },
         fetch: async (url, options) => {
@@ -49,12 +31,12 @@ async function fixture(env = {}) {
     const server = context.module.exports.listen(0, '127.0.0.1');
     await new Promise(resolve => server.once('listening', resolve));
     const request = (route, options) => fetch(`http://127.0.0.1:${server.address().port}${route}`, options);
-    const create = booking => request('/api/flow/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ booking }) });
+    const create = booking => request('/api/flow/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ booking, requestId: 'security-test-request-00000001' }) });
     return { docs, request, create, setStatus: value => { statusOverride = value; }, fields: () => fields,
         close: () => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }) };
 }
 const booking = { serviceId: 's1', profId: 'p1', clientName: 'Test', clientEmail: 'test@example.invalid',
-    date: '2026-12-01', time: '10:00', needs: { kids: true }, totalPrice: 1, paymentStatus: 'pagado' };
+    date: '2035-12-01', time: '10:00', needs: { kids: true }, totalPrice: 1, paymentStatus: 'pagado' };
 
 test('Backend inicia; no publica backend ni acepta parámetros de pago del cliente', async () => {
     const f = await fixture();
@@ -105,7 +87,7 @@ test('Pago pendiente, monto/moneda/orden incorrectos o claves ausentes nunca con
         assert.equal([...f.docs.keys()].filter(key => key.startsWith('Citas/')).length, 0);
     } finally { await f.close(); }
     const missing = await fixture({ FLOW_SECRET_KEY: '' });
-    try { assert.equal((await missing.create(booking)).status, 400); }
+    try { assert.equal((await missing.create(booking)).status, 503); }
     finally { await missing.close(); }
 });
 

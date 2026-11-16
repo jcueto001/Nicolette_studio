@@ -11,6 +11,7 @@ try {
 
 // Cargar variables de entorno desde .env si existe
 try { require('dotenv').config(); } catch (e) {}
+const localFirebase = require('./firebase-emulators')(process.env);
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -18,6 +19,34 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '16kb', inflate: false }));
 app.use(express.urlencoded({ extended: false, limit: '16kb', inflate: false }));
+
+if (localFirebase.enabled) {
+    app.use(async (req, res, next) => {
+        if (!['127.0.0.1', 'localhost', '[::1]'].includes(req.hostname)) {
+            return res.status(403).send('Modo local: solo localhost.');
+        }
+        if (/^\/api\/(flow|webpay)(\/|$)/.test(req.path)) {
+            return res.status(503).json({ error: 'Pagos externos deshabilitados en modo emuladores.' });
+        }
+        try { await localFirebase.assertAvailable(); next(); }
+        catch (error) {
+            return res.status(503).type('text/plain').send('Inicia Auth y Firestore Emulator; no se usará producción.');
+        }
+    });
+    app.get('/js/firebase-config.js', (req, res) => {
+        res.set('Cache-Control', 'no-store');
+        const source = require('node:fs').readFileSync(path.join(__dirname, 'firebase-emulator-client.js'), 'utf8');
+        res.type('application/javascript').send(source.replace('/* EMULATOR_PORTS */ { auth: 9099, firestore: 8080 }', JSON.stringify(localFirebase.ports)));
+    });
+}
+// En localhost no permitir que olvidar el flag cargue la configuración real.
+app.get('/js/firebase-config.js', (req, res, next) => {
+    if (!process.env.VERCEL && process.env.NODE_ENV !== 'production'
+        && ['localhost', '127.0.0.1', '[::1]'].includes(req.hostname)) {
+        return res.status(503).type('text/plain').send('Activa LOCAL_FIREBASE_EMULATORS=1 para pruebas locales.');
+    }
+    next();
+});
 
 // Servir los archivos estáticos de la web completa (HTML, CSS, JS, imágenes)
 // Permite acceder a la web en http://localhost:3000 sin problemas de protocolo file://
@@ -33,10 +62,20 @@ app.get(['/reset-password', '/restablecer-contrasena'], (req, res) => {
 });
 
 // Flow: secretos y confirmaciones exclusivamente en servidor.
-const admin = require('firebase-admin');
+const { getApps, initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 function database() {
-    if (!admin.apps.length) admin.initializeApp(); // Application Default Credentials, solo servidor.
-    return admin.firestore();
+    if (localFirebase.enabled) return localFirebase.database({ getApps, initializeApp, getFirestore });
+    let app = getApps().find(item => item.name === '[DEFAULT]');
+    if (!app) {
+        const projectId = (process.env.FIREBASE_PROJECT_ID || '').trim();
+        const clientEmail = (process.env.FIREBASE_CLIENT_EMAIL || '').trim();
+        const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n').trim();
+        if (!projectId || !clientEmail || !privateKey) throw new Error('FIREBASE_ADMIN_NOT_CONFIGURED');
+        try { app = initializeApp({ projectId, credential: cert({ projectId, clientEmail, privateKey }) }); }
+        catch (_) { throw new Error('FIREBASE_ADMIN_NOT_CONFIGURED'); }
+    }
+    return getFirestore(app);
 }
 const FLOW_API_KEY = (process.env.FLOW_API_KEY || '').trim();
 const FLOW_SECRET_KEY = (process.env.FLOW_SECRET_KEY || '').trim();
@@ -44,6 +83,19 @@ const FLOW_IS_SANDBOX = process.env.FLOW_SANDBOX !== 'false';
 const FLOW_BASE_URL = FLOW_IS_SANDBOX ? 'https://sandbox.flow.cl/api' : 'https://www.flow.cl/api';
 const BACKEND_URL = process.env.BACKEND_URL || '';
 const FRONTEND_URL = process.env.FRONTEND_URL || '';
+function bookingPaused() {
+    return String(process.env.BOOKING_PAUSED || '').trim().toLowerCase() === 'true';
+}
+function bookingPausedResponse(res) {
+    return res.status(503).set('Cache-Control', 'no-store').json({
+        code: 'BOOKING_PAUSED',
+        error: 'Las nuevas reservas están temporalmente pausadas por mantenimiento. Inténtalo más tarde.'
+    });
+}
+function requireBookingOpen(req, res, next) {
+    if (bookingPaused()) return bookingPausedResponse(res);
+    next();
+}
 function originUrl() {
     const url = new URL(BACKEND_URL);
     if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) {
@@ -68,78 +120,83 @@ async function flowRequest(endpoint, fields, method = 'GET') {
     if (!response.ok) throw new Error('Flow rechazó la solicitud.');
     return data;
 }
-function tokenRef(token) {
-    if (typeof token !== 'string' || !/^[a-zA-Z0-9_-]{8,256}$/.test(token)) throw new Error('Token inválido.');
-    return database().collection('FlowTransactions').doc(crypto.createHash('sha256').update(token).digest('hex'));
-}
-function receiptHash(receipt) { return crypto.createHash('sha256').update(receipt).digest('hex'); }
-async function confirmPayment(token, receipt) {
-    const ref = tokenRef(token);
-    const snap = await ref.get();
-    if (!snap.exists) throw new Error('Transacción desconocida.');
-    const tx = snap.data();
-    if (receipt !== undefined && (typeof receipt !== 'string' || receipt.length > 128 || receiptHash(receipt) !== tx.receiptHash)) {
-        throw new Error('Comprobante inválido.');
-    }
-    if (tx.sandbox !== FLOW_IS_SANDBOX) throw new Error('Entorno incorrecto.');
-    const status = await flowRequest('/payment/getStatus', { token });
-    if (status.status !== 2) return { paid: false };
-    if (String(status.commerceOrder) !== tx.orderId || status.currency !== 'CLP' || Number(status.amount) !== 5000 ||
-        String(status.flowOrder) !== String(tx.flowOrder)) throw new Error('Pago no corresponde a la reserva.');
-    await database().runTransaction(async transaction => {
-        const current = await transaction.get(ref);
-        if (!current.exists || current.data().paid) return;
-        const booking = { ...current.data().booking, status: 'confirmada', paymentStatus: 'pagado',
-            depositAmount: 5000, paymentMethod: 'Flow', flowOrder: tx.flowOrder, orderId: tx.orderId,
-            createdAt: admin.firestore.FieldValue.serverTimestamp() };
-        transaction.create(database().collection('Citas').doc(tx.orderId), booking);
-        transaction.update(ref, { paid: true, paidAt: admin.firestore.FieldValue.serverTimestamp() });
+const { createBookingService } = require('./booking-service');
+function bookings() {
+    return createBookingService(database(), {
+        isBookingPaused: bookingPaused,
+        sandbox: FLOW_IS_SANDBOX,
+        flowCreate: localFirebase.enabled ? undefined : async (orderId, booking) => {
+            const origin = originUrl();
+            const data = await flowRequest('/payment/create', { commerceOrder: orderId, subject: 'Abono reserva Nicolett Studio',
+                currency: 'CLP', amount: 5000, email: booking.clientEmail,
+                urlConfirmation: origin + '/api/flow/notify', urlReturn: origin + '/api/flow/return' }, 'POST');
+            const url = new URL(data.url);
+            if (url.protocol !== 'https:' || url.hostname !== (FLOW_IS_SANDBOX ? 'sandbox.flow.cl' : 'www.flow.cl')) throw new Error('INVALID_FLOW_RESPONSE');
+            url.searchParams.set('token', data.token);
+            return { ...data, redirectUrl: url.href };
+        },
+        flowStatus: localFirebase.enabled ? undefined : token => flowRequest('/payment/getStatus', { token })
     });
-    return { paid: true };
 }
-app.get('/api/flow/config', (req, res) => res.json({ configured: !!(FLOW_API_KEY && FLOW_SECRET_KEY && BACKEND_URL), sandbox: FLOW_IS_SANDBOX }));
-app.post('/api/flow/create', async (req, res) => {
+const confirmPayment = (token, receipt) => bookings().confirmPayment(token, receipt);
+function bookingError(error, res) {
+    if (error.code === 'BOOKING_PAUSED') return bookingPausedResponse(res);
+    const safeCodes = new Set(['SLOT_UNAVAILABLE', 'BOOKING_MIGRATION_REQUIRED', 'INVALID_CATALOG_DURATION',
+        'INVALID_CATALOG_PRICE', 'CATALOG_UNAVAILABLE', 'PROFESSIONAL_UNAVAILABLE', 'PAST_BOOKING', 'OUTSIDE_SCHEDULE',
+        'INVALID_DATE', 'INVALID_TIME', 'INVALID_ID', 'INVALID_REQUEST_ID', 'IDEMPOTENCY_MISMATCH',
+        'PAYMENT_CREATION_PENDING_REVIEW', 'FORBIDDEN', 'STALE_APPOINTMENT', 'MIGRATION_REQUIRED_FOR_APPOINTMENT']);
+    res.status(error.status || 400).json({ error: safeCodes.has(error.code) ? error.code : 'BOOKING_REQUEST_FAILED' });
+}
+async function requireStaff(req, res, next) {
     try {
-        if (['apiKey', 'secretKey', 'amount', 'isSandbox', 'returnUrl'].some(key => key in req.body)) {
+        const match = /^Bearer (.+)$/.exec(req.get('Authorization') || '');
+        if (!match) return res.status(401).json({ error: 'AUTH_REQUIRED' });
+        const db = database();
+        const app = getApps().find(item => item.name === (localFirebase.enabled ? localFirebase.appName : '[DEFAULT]'));
+        const { getAuth } = require('firebase-admin/auth');
+        const user = await getAuth(app).verifyIdToken(match[1], true);
+        const record = await db.collection('Usuarios').doc(user.uid).get();
+        const data = record.exists ? record.data() : null;
+        if (!data || data.activo === false || !['Admin', 'admin', 'profesional'].includes(data.rol)) return res.status(403).json({ error: 'FORBIDDEN' });
+        req.staff = { uid: user.uid, role: data.rol.toLowerCase() };
+        next();
+    } catch (error) { res.status(403).json({ error: 'FORBIDDEN' }); }
+}
+app.post('/api/fichas', requireStaff, async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try { res.json(await require('./ficha-service').saveFicha(database(), req.body.ficha, req.body.requestId, req.staff)); }
+    catch (error) {
+        const codes = ['INVALID_FICHA', 'INVALID_QUANTITY', 'FORBIDDEN', 'INVALID_ATTENTION',
+            'FICHA_ALREADY_RECORDED', 'FICHA_REVIEW_REQUIRED', 'INSUFFICIENT_STOCK'];
+        res.status(codes.includes(error.code) ? error.status : 503).json({ error: codes.includes(error.code) ? error.code : 'FICHA_SAVE_FAILED' });
+    }
+});
+app.get('/api/bookings/availability', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const times = (req.query.times || '09:00,11:00,13:00,15:00,17:00,19:00,21:00').split(',');
+        res.json({ times: await bookings().availability({ date: req.query.date, profId: req.query.profId, serviceId: req.query.serviceId, times }) });
+    } catch (error) { bookingError(error, res); }
+});
+app.post('/api/bookings/manual', requireBookingOpen, requireStaff, async (req, res) => {
+    try {
+        const saved = await bookings().reserve(req.body.booking, req.body.requestId, 'manual', req.staff);
+        res.json((await database().collection('Citas').doc(saved.reservationId).get()).data());
+    } catch (error) { bookingError(error, res); }
+});
+app.patch('/api/bookings/:id', requireStaff, async (req, res) => {
+    try { res.json(await bookings().change(req.params.id, req.body.changes || {}, req.staff, req.body.requestId)); }
+    catch (error) { bookingError(error, res); }
+});
+app.get('/api/flow/config', (req, res) => res.json({ configured: !!(FLOW_API_KEY && FLOW_SECRET_KEY && BACKEND_URL), sandbox: FLOW_IS_SANDBOX }));
+app.post('/api/flow/create', requireBookingOpen, async (req, res) => {
+    try {
+        if (['apiKey', 'secretKey', 'amount', 'isSandbox', 'returnUrl'].some(key => key in (req.body || {}))) {
             return res.status(400).json({ error: 'Parámetros de pago no permitidos.' });
         }
-        const input = req.body.booking || {};
-        const booking = {};
-        for (const key of ['serviceId', 'profId', 'date', 'time', 'clientName', 'clientPhone', 'clientEmail', 'notes']) {
-            if (input[key] !== undefined) {
-                if (typeof input[key] !== 'string' || input[key].length > 1000) throw new Error('Reserva inválida.');
-                booking[key] = input[key];
-            }
-        }
-        if (!booking.clientName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(booking.clientEmail || '') ||
-            !/^\d{4}-\d{2}-\d{2}$/.test(booking.date || '') || !/^\d{2}:\d{2}$/.test(booking.time || '') ||
-            !booking.serviceId || !booking.profId || /[/]/.test(booking.serviceId + booking.profId)) throw new Error('Reserva incompleta.');
-        if (input.needs && typeof input.needs === 'object' && !Array.isArray(input.needs)) {
-            booking.needs = Object.fromEntries(['kids', 'time', 'event'].map(key => [key, input.needs[key] === true]));
-        }
-        const db = database();
-        const [service, professional] = await Promise.all([
-            db.collection('Servicios').doc(booking.serviceId).get(), db.collection('Profesionales').doc(booking.profId).get()
-        ]);
-        if (!service.exists || !professional.exists || professional.data().activo === false) throw new Error('Servicio o profesional no disponible.');
-        const price = Number(service.data().price ?? service.data().precio);
-        if (!Number.isFinite(price) || price < 5000) throw new Error('Precio inválido.');
-        Object.assign(booking, { servicio: service.data().name || service.data().nombre || booking.serviceId,
-            profesional: professional.data().name || professional.data().nombre || booking.profId,
-            totalPrice: price, balanceDue: price - 5000 });
-        const orderId = 'FLOW-' + crypto.randomUUID();
-        const receipt = crypto.randomBytes(32).toString('hex');
-        const origin = originUrl();
-        const data = await flowRequest('/payment/create', { commerceOrder: orderId, subject: 'Abono reserva Nicolett Studio',
-            currency: 'CLP', amount: 5000, email: booking.clientEmail,
-            urlConfirmation: origin + '/api/flow/notify', urlReturn: origin + '/api/flow/return' }, 'POST');
-        const paymentUrl = new URL(data.url);
-        const expectedHost = FLOW_IS_SANDBOX ? 'sandbox.flow.cl' : 'www.flow.cl';
-        if (paymentUrl.protocol !== 'https:' || paymentUrl.hostname !== expectedHost || !data.token || !data.flowOrder) throw new Error('Respuesta inválida de Flow.');
-        await tokenRef(data.token).create({ booking, orderId, flowOrder: data.flowOrder, receiptHash: receiptHash(receipt), sandbox: FLOW_IS_SANDBOX, paid: false });
-        paymentUrl.searchParams.set('token', data.token);
-        res.json({ success: true, receipt, redirectUrl: paymentUrl.href });
-    } catch (error) { res.status(400).json({ error: 'No se pudo crear el pago. Revisa la reserva y la configuración del servidor.' }); }
+        if (!FLOW_API_KEY || !FLOW_SECRET_KEY) return res.status(503).json({ error: 'PAYMENTS_DISABLED' });
+        res.json(await bookings().createPayment(req.body.booking, req.body.requestId));
+    } catch (error) { bookingError(error, res); }
 });
 app.get('/api/flow/status/:token', async (req, res) => {
     res.set('Cache-Control', 'no-store');
@@ -155,7 +212,7 @@ async function handleFlowReturn(req, res) {
     try {
         const result = await confirmPayment(token);
         const target = new URL('/index.html', originUrl());
-        target.searchParams.set('action', result.paid ? 'flow-success' : 'flow-failed');
+        target.searchParams.set('action', result.conflict ? 'flow-conflict' : result.paid && result.booked ? 'flow-success' : 'flow-failed');
         target.searchParams.set('token', token);
         res.redirect(303, target.href);
     } catch (error) { res.status(400).send('No se pudo verificar el pago. Conserva tu comprobante.'); }
@@ -172,7 +229,7 @@ app.post('/api/flow/notify', async (req, res) => {
 // ==========================================
 
 // Endpoint para crear una transacción en Webpay Plus
-app.post('/api/webpay/create', async (req, res) => {
+app.post('/api/webpay/create', requireBookingOpen, async (req, res) => {
     try {
         const { buyOrder, sessionId, amount, returnUrl } = req.body;
         const tx = new WebpayPlus.Transaction(new Options(IntegrationCommerceCodes.WEBPAY_PLUS, IntegrationApiKeys.WEBPAY, Environment.Integration));
@@ -234,8 +291,13 @@ app.get('/api/webpay/commit', async (req, res) => {
 });
 
 if (require.main === module) {
-    app.listen(port, () => {
-        console.log(`Backend de pagos Flow y Webpay escuchando en http://localhost:${port}`);
+    localFirebase.assertAvailable().then(() => {
+        app.listen(port, ...(localFirebase.enabled ? ['127.0.0.1'] : []), () => {
+            console.log(`Servidor disponible en http://localhost:${port}`);
+        });
+    }).catch(() => {
+        console.error('No se inicia la SPA: faltan los emuladores locales de Auth/Firestore.');
+        process.exitCode = 1;
     });
 }
 

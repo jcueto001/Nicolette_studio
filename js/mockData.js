@@ -26,7 +26,7 @@ const _cachedProfiles = (function () {
 const _cachedProfessionals = (function () {
     try {
         const raw = localStorage.getItem('nicolett_professionals_cache');
-        if (raw) return JSON.parse(raw);
+        if (raw) return JSON.parse(raw).map(({ id, name, specialty, avatar }) => ({ id, name, specialty, avatar }));
     } catch (e) { }
     return null;
 })();
@@ -96,7 +96,7 @@ const mockData = {
     ],
 
     // Profesionales
-    professionals: _cachedProfessionals || [
+    professionals: _cachedProfessionals?.map(({ id, name, specialty, avatar }) => ({ id, name, specialty, avatar })) || [
         { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin', specialty: 'Especialista Integral & Fundadora', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80' },
         { id: 'p2', name: 'Camila', email: 'camila@gmail.com', role: 'profesional', specialty: 'Manicura & Mirada', avatar: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=150&q=80' },
         { id: 'p3', name: 'Priscila Villarreal', email: 'priscila@gmail.com', role: 'profesional', specialty: 'Podología Clínica (ROL MINSAL 164959)', avatar: 'https://images.unsplash.com/photo-1594824813583-0599a80b064c?auto=format&fit=crop&w=150&q=80' }
@@ -140,44 +140,132 @@ const StorageHelper = {
     _profilesCache: [],
     _flowConfigCache: null,
 
-    init: async function () {
-        if (!localStorage.getItem('nicolett_appointments')) {
-            localStorage.setItem('nicolett_appointments', JSON.stringify([]));
+    _sessionEpoch: 0,
+    _authEpoch: 0,
+    _observedUid: null,
+    _privateOwner: null,
+    _clientIdentity: null,
+    _galleryCache: [],
+    _publicGalleryCache: [],
+    _roleUnsubscribe: null,
+    _clearPrivateData: function () {
+        this._sessionEpoch++;
+        this._appointmentsCache = [];
+        this._fichasCache = [];
+        this._inventoryCache = [];
+        this._galleryCache = [];
+        this._professionalsCache = this._professionalsCache.map(this._publicProfessional);
+        this._flowConfigCache = null;
+        mockData.clients = [];
+        // Conservar solo campos de personalización; descartar historiales incrustados antiguos.
+        try {
+            const raw = localStorage.getItem('nicolett_personalization');
+            if (raw) {
+                const saved = JSON.parse(raw);
+                const clean = {};
+                for (const key of ['name', 'email', 'phone']) {
+                    if (typeof saved?.[key] === 'string') clean[key] = saved[key];
+                }
+                if (Object.keys(clean).length) localStorage.setItem('nicolett_personalization', JSON.stringify(clean));
+                else localStorage.removeItem('nicolett_personalization');
+            }
+        } catch (_) { localStorage.removeItem('nicolett_personalization'); }
+        for (const store of [localStorage, typeof sessionStorage !== 'undefined' ? sessionStorage : null]) {
+            if (!store) continue;
+            for (const key of ['nicolett_appointments', 'nicolett_fichas', 'nicolett_clients', 'nicolett_user',
+                'nicolett_gallery_v2', 'nicolett_local_professionals',
+                'nicolett_professionals_cache', 'nicolett_staff_passwords', 'nicolett_auth',
+                'nicolett_flow_config', 'nicolett_pending_booking', 'nicolett_flow_receipt',
+                'nicolett_active_admin_tab', 'nicolett_admin_gallery_filter']) {
+                store.removeItem(key);
+            }
         }
-        await this.loadAppointmentsCache();
+    },
+    _publicProfessional: function (person) {
+        const { id, name, specialty, avatar } = person;
+        return { id, name, specialty, avatar };
+    },
+    _observeAuthUser: function (uid) {
+        if (this._observedUid !== uid) {
+            this.setAuth({ loggedIn: false, user: null });
+            this._observedUid = uid;
+        }
+    },
+    _sessionIdentity: function () {
+        const user = typeof firebase !== 'undefined' && firebase.auth ? firebase.auth().currentUser : null;
+        if (user && this._verifiedStaff?.id === user.uid) return user.uid + ':' + this._verifiedStaff.role;
+        return null; // La personalización local nunca crea una sesión privada.
+    },
+    _syncPrivateSession: function () {
+        const uid = typeof firebase !== 'undefined' && firebase.auth ? firebase.auth().currentUser?.uid : null;
+        this._observeAuthUser(uid || null);
+        const identity = this._sessionIdentity();
+        if (identity !== this._privateOwner) {
+            this._clearPrivateData();
+            this._privateOwner = identity;
+        }
+        return identity;
+    },
+    _sessionStamp: function () {
+        this._syncPrivateSession();
+        const uid = typeof firebase !== 'undefined' && firebase.auth ? firebase.auth().currentUser?.uid : null;
+        return { epoch: this._sessionEpoch, uid: uid || null, owner: this._privateOwner };
+    },
+    _isSessionCurrent: function (stamp) {
+        const current = this._sessionStamp();
+        return stamp.epoch === current.epoch && stamp.uid === current.uid && stamp.owner === current.owner;
+    },
+    _hasPrivateSession: function () { return !!this._syncPrivateSession(); },
+    _isDenied: function (error) {
+        return /(^|\/)(permission-denied|unauthenticated)$/.test(error?.code || '');
+    },
+    _assertSessionCurrent: function (stamp) {
+        if (!this._isSessionCurrent(stamp)) {
+            const error = new Error('La sesión cambió durante la operación.');
+            error.code = 'session-changed';
+            throw error;
+        }
+    },
+    _handlePrivateError: function (error, stamp) {
+        this._assertSessionCurrent(stamp);
+        if (this._isDenied(error)) {
+            this._clearPrivateData();
+            this._refreshAdminIfSafe();
+            throw error;
+        }
+    },
+    _publicGalleryImage: function (image) {
+        const { id, fbId, src, title, serviceName, profesional, profId, date, source, approved, status } = image;
+        return { id, fbId, src, title, serviceName, profesional, profId, date, source, approved, status };
+    },
+    _storeGallery: function (gallery) {
+        if (!this._hasPrivateSession()) return;
+        this._galleryCache = gallery;
+        // Las fotos privadas y sus metadatos se mantienen solo en memoria de sesión.
+    },
 
-        if (!localStorage.getItem('nicolett_user')) {
-            localStorage.setItem('nicolett_user', JSON.stringify({
-                name: 'Cliente Prueba',
-                phone: '+56912345678',
-                email: 'cliente@test.com'
-            }));
-        }
-        if (!localStorage.getItem('nicolett_auth')) {
-            localStorage.setItem('nicolett_auth', JSON.stringify({ loggedIn: false, user: null }));
-        }
+    init: async function () {
+        this._clearPrivateData();
+        const publicLoad = this.loadAppointmentsCache();
 
         // Sincronizar estado de autenticación con Firebase
         if (typeof firebase !== 'undefined' && firebase.auth) {
             firebase.auth().onAuthStateChanged(async (user) => {
-                this._verifiedStaff = null;
-                this.setAuth({ loggedIn: false, user: null });
+                if (user?.uid !== firebase.auth().currentUser?.uid) return;
+                this._observeAuthUser(user?.uid || null);
                 if (user) {
                     try {
-                        const staff = await this.resolveStaffUser(user);
-                        if (firebase.auth().currentUser?.uid === user.uid) this.setAuth({ loggedIn: true, user: staff });
+                        await this.resolveStaffUser(user);
+
                     } catch (error) { console.warn('Cuenta sin autorización de personal.'); }
                 }
+                await this.loadAppointmentsCache();
                 if (typeof window.updateNavAuthVisibility === 'function') window.updateNavAuthVisibility();
+                this._refreshAdminIfSafe();
             });
         }
 
-        if (!localStorage.getItem('nicolett_gallery_v2')) {
-            localStorage.setItem('nicolett_gallery_v2', JSON.stringify(mockData.gallery));
-        }
-        if (!localStorage.getItem('nicolett_clients')) {
-            localStorage.setItem('nicolett_clients', JSON.stringify(mockData.clients));
-        }
+        await publicLoad;
     },
 
     _refreshAdminIfSafe: function () {
@@ -200,6 +288,7 @@ const StorageHelper = {
     },
 
     getAppointments: function () {
+        if (!this._hasPrivateSession()) return [];
         const seen = new Set();
         const unique = [];
         for (const a of this._appointmentsCache) {
@@ -217,6 +306,7 @@ const StorageHelper = {
     },
 
     getClientAppointments: function (email, phone) {
+        if (!this.getAuth().loggedIn) return [];
         const normEmail = (email || '').toString().trim().toLowerCase();
         const cleanPhone = (phone || '').toString().replace(/\D/g, '');
 
@@ -252,119 +342,94 @@ const StorageHelper = {
     loadAppointmentsCache: async function () {
         if (typeof db === 'undefined') return;
 
-        try {
-            const querySnapshot = await db.collection("Citas").get();
-            const appointments = [];
-            const seenKeys = new Set();
-            const duplicateDocIds = [];
-
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                const appt = { id: doc.id, ...data };
-                const key = this._getAppointmentKey(appt);
-
-                if (key && seenKeys.has(key)) {
-                    console.warn(`[StorageHelper] Cita duplicada detectada: ${doc.id} (clave: ${key}). Omitiendo.`);
-                    duplicateDocIds.push(doc.id);
-                } else {
-                    if (key) seenKeys.add(key);
-                    appointments.push(appt);
+        const session = this._sessionStamp();
+        if (this.getAuth().loggedIn) {
+            try {
+                const auth = this.getAuth();
+                const read = async collection => {
+                    let query = db.collection(collection);
+                    if (auth.user.role !== 'admin') query = query.where('profId', '==', auth.user.id);
+                    const snapshot = await query.get({ source: 'server' });
+                    this._assertSessionCurrent(session);
+                    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                };
+                const appointments = await read('Citas');
+                if (!this._isSessionCurrent(session)) return;
+                let fichas = await read('FichasClientas');
+                if (!this._isSessionCurrent(session)) return;
+                if (!fichas.length && auth.user.role === 'admin') {
+                    fichas = await read('FichasClinicas');
+                    if (!this._isSessionCurrent(session)) return;
                 }
-            });
-
-            this._appointmentsCache = appointments;
-
-            // Limpieza pasiva de citas duplicadas en Firestore si se encontraron (para sanar la base de datos)
-            if (duplicateDocIds.length > 0) {
-                console.log(`[StorageHelper] Limpiando ${duplicateDocIds.length} citas duplicadas en Firestore...`);
-                duplicateDocIds.forEach(dupId => {
-                    db.collection("Citas").doc(dupId).delete().catch(err => {
-                        console.warn(`[StorageHelper] Error al eliminar duplicado ${dupId}:`, err);
-                    });
-                });
+                this._appointmentsCache = appointments;
+                this._fichasCache = fichas;
+            } catch (error) {
+                if (!this._isSessionCurrent(session)) return;
+                this._clearPrivateData();
+                this._refreshAdminIfSafe();
             }
-        } catch (e) { console.error("Error cargando appointments:", e); }
-
-        try {
-            let fichasSnapshot = await db.collection("FichasClientas").get();
-            // Fallback si la colección anterior FichasClinicas contiene datos históricos
-            if (fichasSnapshot.empty) {
-                try {
-                    const legacySnap = await db.collection("FichasClinicas").get();
-                    if (!legacySnap.empty) fichasSnapshot = legacySnap;
-                } catch (err) { }
-            }
-            const fichas = [];
-            fichasSnapshot.forEach((doc) => {
-                fichas.push({ id: doc.id, ...doc.data() });
-            });
-            this._fichasCache = fichas;
-        } catch (e) { console.error("Error cargando fichas clientas:", e); }
+        }
 
         try {
             const profsSnapshot = await db.collection("Profesionales").get();
+            if (!this._isSessionCurrent(session)) return;
             const profs = [];
             profsSnapshot.forEach((doc) => {
                 profs.push({ id: doc.id, ...doc.data() });
             });
-            this._professionalsCache = profs.length > 0 ? profs : [...mockData.professionals];
-            try { localStorage.setItem('nicolett_professionals_cache', JSON.stringify(this._professionalsCache)); } catch (e) {}
+            this._professionalsCache = (profs.length > 0 ? profs : [...mockData.professionals]).map(person => this.getAuth().loggedIn ? person : this._publicProfessional(person));
+            try { localStorage.setItem('nicolett_professionals_cache', JSON.stringify(this._professionalsCache.map(this._publicProfessional))); } catch (e) {}
             // Asegurar que profesionales base (incluyendo podóloga clínica Priscila Villarreal) estén disponibles
             mockData.professionals.forEach(dp => {
                 if (!this._professionalsCache.some(p => p.email === dp.email || p.id === dp.id)) {
-                    this._professionalsCache.push(dp);
+                    this._professionalsCache.push(this.getAuth().loggedIn ? dp : this._publicProfessional(dp));
                 }
             });
         } catch (e) {
             console.error("Error cargando profesionales:", e);
-            if (this._professionalsCache.length === 0) this._professionalsCache = mockData.professionals;
+            if (this._professionalsCache.length === 0) this._professionalsCache = mockData.professionals.map(this._publicProfessional);
         }
 
-        try {
-            const invSnapshot = await db.collection("Inventario").get();
-            const inv = [];
-            invSnapshot.forEach((doc) => {
-                inv.push({ id: doc.id, ...doc.data() });
-            });
-            this._inventoryCache = inv.length > 0 ? inv : mockData.inventory;
-
-            if (inv.length === 0 && typeof db !== 'undefined') {
-                for (const item of mockData.inventory) {
-                    const docData = { ...item };
-                    delete docData.id;
-                    try {
-                        await db.collection("Inventario").doc(item.id).set(docData);
-                    } catch (err) { console.error("Error inicializando inventario en FB:", err); }
-                }
-            }
-        } catch (e) {
-            console.error("Error cargando inventario:", e);
-            if (this._inventoryCache.length === 0) this._inventoryCache = mockData.inventory;
-        }
-
-        try {
-            const galSnapshot = await db.collection("Galeria").get();
-            if (!galSnapshot.empty) {
-                const currentGallery = this.getGallery();
-                const existingIds = new Set(currentGallery.map(img => img.fbId || img.id));
-                let addedAny = false;
-                galSnapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (!existingIds.has(doc.id)) {
-                        currentGallery.unshift({
-                            id: doc.id,
-                            fbId: doc.id,
-                            ...data
-                        });
-                        addedAny = true;
+        if (this.getAuth().loggedIn && this._isSessionCurrent(session)) {
+            try {
+                const snapshot = await db.collection('Inventario').get({ source: 'server' });
+                if (!this._isSessionCurrent(session)) return;
+                this._inventoryCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (!snapshot.docs.length && this.getAuth().user.role === 'admin') {
+                    for (const item of mockData.inventory) {
+                        this._assertSessionCurrent(session);
+                        const data = { ...item };
+                        delete data.id;
+                        await db.collection('Inventario').doc(item.id).set(data);
+                        this._assertSessionCurrent(session);
                     }
-                });
-                if (addedAny) {
-                    localStorage.setItem('nicolett_gallery_v2', JSON.stringify(currentGallery));
+                    this._inventoryCache = mockData.inventory.map(item => ({ ...item }));
                 }
+            } catch (error) {
+                if (!this._isSessionCurrent(session)) return;
+                this._clearPrivateData();
+                this._refreshAdminIfSafe();
             }
-        } catch (e) {
-            console.warn("Firestore Galeria (usando fallback local):", e);
+        }
+
+        try {
+            const auth = this.getAuth();
+            const staff = auth.loggedIn;
+            const isAdmin = staff && auth.user.role === 'admin';
+            const query = isAdmin ? db.collection('Galeria') : db.collection('Galeria').where('approved', '==', true);
+            const snapshot = await query.get({ source: 'server' });
+            const own = staff && !isAdmin
+                ? await db.collection('Galeria').where('profId', '==', firebase.auth().currentUser.uid).get({ source: 'server' }) : null;
+            if (!this._isSessionCurrent(session)) return;
+            const records = new Map(snapshot.docs.map(doc => [doc.id, doc]));
+            if (own) own.docs.forEach(doc => records.set(doc.id, doc));
+            const images = [...records.values()].map(doc => ({ id: doc.id, fbId: doc.id, ...doc.data() }));
+            this._galleryCache = staff ? images : [];
+            this._publicGalleryCache = images.filter(image => image.approved === true).map(this._publicGalleryImage);
+        } catch (error) {
+            if (!this._isSessionCurrent(session)) return;
+            this._galleryCache = [];
+            if (this._isDenied(error)) this._clearPrivateData();
         }
 
         localStorage.removeItem('nicolett_flow_config');
@@ -428,176 +493,137 @@ const StorageHelper = {
     },
 
     getAvailableTimeSlots: async function (date, profId) {
-        if (typeof db === 'undefined') return mockData.timeSlots;
-
+        if (!this._bookingServiceId) return [];
         try {
-            const querySnapshot = await db.collection("Citas")
-                .where("date", "==", date)
-                .get();
-
-            const bookedTimes = [];
-            querySnapshot.forEach(doc => {
-                const data = doc.data();
-                // Bloquear si pertenece a la profesional (o a cualquier si es un bloqueo general, pero por simplicidad al profId o profName)
-                // Chequeo laxo por profId o profName
-                if (data.profId === profId || data.profesional === profId || data.profesional === this.getProfessionals().find(p => p.id === profId)?.name) {
-                    if (data.status !== 'cancelada' && data.status !== 'no asiste') {
-                        bookedTimes.push(data.time);
-                    }
-                }
-            });
-
-            return mockData.timeSlots.filter(t => !bookedTimes.includes(t));
-        } catch (e) {
-            console.error("Error obteniendo horas de Firebase:", e);
-            return mockData.timeSlots;
-        }
+            const query = new URLSearchParams({ date, profId, serviceId: this._bookingServiceId, times: mockData.timeSlots.join(',') });
+            const response = await fetch('/api/bookings/availability?' + query);
+            const result = await response.json();
+            return response.ok && Array.isArray(result.times) ? result.times : [];
+        } catch (error) { return []; }
     },
-
+    _bookingApi: async function (url, method, body, session) {
+        const user = typeof firebase !== 'undefined' && firebase.auth ? firebase.auth().currentUser : null;
+        if (!user) throw new Error('Sesión requerida.');
+        const token = await user.getIdToken();
+        this._assertSessionCurrent(session);
+        const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify(body) });
+        this._assertSessionCurrent(session);
+        const result = await response.json();
+        this._assertSessionCurrent(session);
+        if (!response.ok) {
+            if ([401, 403].includes(response.status)) this._clearPrivateData();
+            throw new Error(result.error || 'No se pudo reservar el horario.');
+        }
+        return result;
+    },
     saveAppointment: async function (appointment) {
-        appointment.status = appointment.status || 'confirmada';
-        appointment.depositAmount = appointment.depositAmount || 5000;
-        appointment.createdAt = new Date().toISOString(); // Fallback date
-
-        const key = this._getAppointmentKey(appointment);
-
-        // 1. Evitar duplicar en la memoria local si ya está presente
-        if (key) {
-            const existingIdx = this._appointmentsCache.findIndex(a => this._getAppointmentKey(a) === key);
-            if (existingIdx >= 0) {
-                console.warn("[StorageHelper] Cita ya presente en memoria local, actualizando:", this._appointmentsCache[existingIdx].id);
-                this._appointmentsCache[existingIdx] = { ...this._appointmentsCache[existingIdx], ...appointment };
-                return this._appointmentsCache[existingIdx];
-            }
-        }
-
-        if (typeof db !== 'undefined') {
-            try {
-                // 2. Verificar en Firestore si ya existe un documento previo con la misma orden, token o slot
-                let existingDocId = null;
-                if (appointment.flowOrder || appointment.orderId || appointment.flowToken) {
-                    const queries = [];
-                    if (appointment.flowOrder) queries.push(db.collection("Citas").where("flowOrder", "==", appointment.flowOrder).limit(1).get());
-                    if (appointment.orderId) queries.push(db.collection("Citas").where("orderId", "==", appointment.orderId).limit(1).get());
-                    if (appointment.flowToken) queries.push(db.collection("Citas").where("flowToken", "==", appointment.flowToken).limit(1).get());
-
-                    const snaps = await Promise.all(queries);
-                    for (const snap of snaps) {
-                        if (!snap.empty) {
-                            existingDocId = snap.docs[0].id;
-                            break;
-                        }
-                    }
-                }
-
-                if (!existingDocId && appointment.date && appointment.time) {
-                    const snap = await db.collection("Citas")
-                        .where("date", "==", appointment.date)
-                        .where("time", "==", appointment.time)
-                        .get();
-                    snap.forEach(doc => {
-                        const d = doc.data();
-                        const matchProf = (d.profId === appointment.profId) || (d.profesional === appointment.profesional);
-                        const matchClient = (d.clientEmail && d.clientEmail === appointment.clientEmail) ||
-                            (d.clientPhone && d.clientPhone === appointment.clientPhone) ||
-                            (d.clientName && d.clientName === appointment.clientName);
-                        if (matchProf && matchClient && d.status !== 'cancelada') {
-                            existingDocId = doc.id;
-                        }
-                    });
-                }
-
-                if (existingDocId) {
-                    console.warn("[StorageHelper] Cita ya existe en Firestore con id:", existingDocId, "- Actualizando registro en vez de duplicar.");
-                    appointment.id = existingDocId;
-                    await db.collection("Citas").doc(existingDocId).set(appointment, { merge: true });
-                    const idx = this._appointmentsCache.findIndex(a => a.id === existingDocId);
-                    if (idx >= 0) {
-                        this._appointmentsCache[idx] = { ...this._appointmentsCache[idx], ...appointment };
-                    } else {
-                        this._appointmentsCache.push(appointment);
-                    }
-                    return appointment;
-                }
-
-                // 3. Documento nuevo
-                appointment.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                const docRef = await db.collection("Citas").add(appointment);
-                appointment.id = docRef.id;
-                this._appointmentsCache.push(appointment); // Update local cache
-                return appointment;
-            } catch (e) {
-                console.error("Error guardando cita en Firebase (posible falta de permisos o reglas):", e);
-                // Fallback to local storage if Firebase fails
-                appointment.createdAt = new Date().toISOString(); // Reset to ISO string since serverTimestamp failed
-                const appointments = JSON.parse(localStorage.getItem('nicolett_appointments') || '[]');
-                appointment.id = 'appt_' + Date.now();
-                appointments.push(appointment);
-                localStorage.setItem('nicolett_appointments', JSON.stringify(appointments));
-                this._appointmentsCache.push(appointment);
-                return appointment;
-            }
-        } else {
-            // Fallback to local storage if Firebase fails
-            const appointments = JSON.parse(localStorage.getItem('nicolett_appointments') || '[]');
-            appointment.id = 'appt_' + Date.now();
-            appointments.push(appointment);
-            localStorage.setItem('nicolett_appointments', JSON.stringify(appointments));
-            this._appointmentsCache.push(appointment);
-            return appointment;
-        }
+        const session = this._sessionStamp();
+        if (!session.owner) throw new Error('Sesión requerida.');
+        const existing = appointment.id ? this._appointmentsCache.find(item => item.id === appointment.id) : null;
+        appointment._bookingRequestId = appointment._bookingRequestId || crypto.randomUUID();
+        const result = existing
+            ? await this._bookingApi('/api/bookings/' + encodeURIComponent(existing.reservationId || existing.id), 'PATCH',
+                { changes: { date: appointment.date, time: appointment.time, profId: appointment.profId, serviceId: appointment.serviceId,
+                    status: appointment.status, revision: existing.revision || 0 }, requestId: appointment._bookingRequestId + '-' + (existing.revision || 0) }, session)
+            : await this._bookingApi('/api/bookings/manual', 'POST', { booking: appointment, requestId: appointment._bookingRequestId }, session);
+        this._assertSessionCurrent(session);
+        const index = this._appointmentsCache.findIndex(item => item.id === result.id);
+        if (index >= 0) this._appointmentsCache[index] = result;
+        else this._appointmentsCache.push(result);
+        return result;
     },
 
     getUser: function () {
-        return JSON.parse(localStorage.getItem('nicolett_user') || '{}');
+        return this._hasPrivateSession() ? JSON.parse(localStorage.getItem('nicolett_user') || '{}') : {};
     },
 
     saveUser: function (user) {
+        if (!this._hasPrivateSession()) return;
         localStorage.setItem('nicolett_user', JSON.stringify(user));
     },
 
     // Auth
     _verifiedStaff: null,
     resolveStaffUser: async function (user) {
-        if (!user) throw new Error('Sesión requerida.');
-        const snap = await firebase.firestore().collection('Usuarios').doc(user.uid).get();
+        if (!user || firebase.auth().currentUser?.uid !== user.uid) throw new Error('Sesión requerida.');
+        this._observeAuthUser(user.uid);
+        const epoch = this._authEpoch;
+        let snap;
+        try {
+            snap = await firebase.firestore().collection('Usuarios').doc(user.uid).get({ source: 'server' });
+        } catch (error) {
+            if (epoch === this._authEpoch && this._isDenied(error)) this.setAuth({ loggedIn: false, user: null });
+            throw error;
+        }
+        if (epoch !== this._authEpoch || firebase.auth().currentUser?.uid !== user.uid) throw new Error('Sesión cambiada.');
         const data = snap.exists ? snap.data() : null;
         if (!data || data.activo === false || !['admin', 'Admin', 'profesional'].includes(data.rol)) {
+            this.setAuth({ loggedIn: false, user: null });
             throw new Error('Cuenta sin autorización de personal.');
         }
-        if (firebase.auth().currentUser?.uid !== user.uid) throw new Error('Sesión cambiada.');
+        this._clientIdentity = null;
         this._verifiedStaff = { id: user.uid, email: user.email, name: data.nombre || data.name || 'Personal', role: data.rol.toLowerCase() };
+        this._syncPrivateSession();
+        this._watchStaffRole(user.uid);
         return this._verifiedStaff;
     },
+    _watchStaffRole: function (uid) {
+        if (this._roleUnsubscribe) this._roleUnsubscribe();
+        const epoch = this._authEpoch;
+        const ref = firebase.firestore().collection('Usuarios').doc(uid);
+        if (typeof ref.onSnapshot !== 'function') return;
+        this._roleUnsubscribe = ref.onSnapshot(snapshot => {
+            if (snapshot.metadata?.fromCache) return;
+            if (epoch !== this._authEpoch || firebase.auth().currentUser?.uid !== uid) return;
+            const data = snapshot.exists ? snapshot.data() : null;
+            const role = data?.rol?.toLowerCase();
+            if (!data || data.activo === false || !['admin', 'profesional'].includes(role)) {
+                this.setAuth({ loggedIn: false, user: null });
+            } else if (this._verifiedStaff?.role !== role) {
+                this._verifiedStaff = { ...this._verifiedStaff, role };
+                this._syncPrivateSession();
+                this.loadAppointmentsCache();
+            }
+            this._refreshAdminIfSafe();
+        }, () => {
+            if (epoch === this._authEpoch) {
+                this.setAuth({ loggedIn: false, user: null });
+                this._refreshAdminIfSafe();
+            }
+        });
+    },
     getAuth: function () {
+        this._syncPrivateSession();
         const current = typeof firebase !== 'undefined' && firebase.auth ? firebase.auth().currentUser : null;
         return current && this._verifiedStaff?.id === current.uid
             ? { loggedIn: true, user: this._verifiedStaff }
             : { loggedIn: false, user: null };
     },
     setAuth: function (authData) {
-        if (!authData?.loggedIn) this._verifiedStaff = null;
+        if (!authData?.loggedIn) {
+            this._authEpoch++;
+            if (this._roleUnsubscribe) this._roleUnsubscribe();
+            this._roleUnsubscribe = null;
+            this._verifiedStaff = null;
+            this._clientIdentity = null;
+            this._privateOwner = null;
+            this._clearPrivateData();
+        } else this._syncPrivateSession();
         localStorage.removeItem('nicolett_auth');
         localStorage.removeItem('nicolett_staff_passwords');
     },
 
     // Inventory
     getInventory: function () {
-        return this._inventoryCache;
+        return this._hasPrivateSession() ? this._inventoryCache : [];
     },
     updateProductStock: async function (productId, amountUsed) {
-        const inv = this.getInventory();
-        const p = inv.find(x => x.id === productId);
-        if (p && typeof db !== 'undefined') {
-            p.stock = Math.max(0, p.stock - amountUsed);
-            try {
-                const docData = { ...p };
-                delete docData.id;
-                await db.collection("Inventario").doc(productId).set(docData, { merge: true });
-            } catch (e) { console.error("Error updating stock", e); }
-        }
+        throw new Error('Registra el consumo al guardar la ficha; usa el ajuste administrativo para correcciones generales.');
     },
     updateProductStockDirect: async function (productId, newStock) {
+        const session = this._sessionStamp();
+        if (!session.owner) return null;
+
         const inv = this.getInventory();
         const p = inv.find(x => x.id === productId);
         if (p) {
@@ -607,33 +633,36 @@ const StorageHelper = {
                     const docData = { ...p };
                     delete docData.id;
                     await db.collection("Inventario").doc(productId).set(docData, { merge: true });
-                } catch (e) { console.error("Error updating stock", e); }
+                    this._assertSessionCurrent(session);
+                } catch (e) { this._handlePrivateError(e, session); console.error("Error updating stock", e); }
             }
         }
     },
     addProduct: async function (product) {
+        const session = this._sessionStamp();
+        if (!session.owner) return null;
+
         if (typeof db !== 'undefined') {
             try {
                 const docRef = await db.collection("Inventario").add(product);
+                this._assertSessionCurrent(session);
                 product.id = docRef.id;
                 this._inventoryCache.push(product);
                 return product;
-            } catch (e) { console.error("Error adding product", e); }
+            } catch (e) { this._handlePrivateError(e, session); console.error("Error adding product", e); }
         }
     },
 
     updateAppointmentStatus: async function (id, newStatus) {
-        if (typeof db !== 'undefined') {
-            try {
-                await db.collection("Citas").doc(id).update({ status: newStatus });
-                const appIdx = this._appointmentsCache.findIndex(a => a.id === id);
-                if (appIdx > -1) {
-                    this._appointmentsCache[appIdx].status = newStatus;
-                }
-            } catch (e) {
-                console.error("Error updating appointment status", e);
-            }
-        }
+        const session = this._sessionStamp();
+        const current = this.getAppointments().find(item => item.id === id);
+        if (!current) throw new Error('Cita no disponible.');
+        const result = await this._bookingApi('/api/bookings/' + encodeURIComponent(current.reservationId || id), 'PATCH',
+            { changes: { status: newStatus, revision: current.revision || 0 }, requestId: crypto.randomUUID() }, session);
+        this._assertSessionCurrent(session);
+        const index = this._appointmentsCache.findIndex(item => item.id === id);
+        if (index >= 0) this._appointmentsCache[index] = result;
+        return result;
     },
 
     // Servicios y Categorías (Sincronizados con Firestore)
@@ -691,27 +720,34 @@ const StorageHelper = {
 
     // Professionals
     getProfessionals: function () {
-        return this._professionalsCache;
+        return this._hasPrivateSession() ? this._professionalsCache : this._professionalsCache.map(this._publicProfessional);
     },
     addProfessional: async function (prof) {
+        const session = this._sessionStamp();
+        if (!session.owner) return null;
+
         if (!prof.id) {
             prof.id = 'p_' + Date.now();
         }
         if (typeof db !== 'undefined') {
             try {
                 const docRef = await db.collection("Profesionales").add(prof);
+                this._assertSessionCurrent(session);
                 prof.id = docRef.id;
-            } catch (e) {
+            } catch (e) { this._handlePrivateError(e, session);
                 console.error("Error adding professional to Firestore", e);
             }
         }
         this._professionalsCache.push(prof);
         try {
-            localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache));
-        } catch (e) { }
+            localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache.map(this._publicProfessional)));
+        } catch (e) { this._handlePrivateError(e, session); }
         return prof;
     },
     updateProfessional: async function (id, data) {
+        const session = this._sessionStamp();
+        if (!session.owner) return null;
+
         const profIdx = this._professionalsCache.findIndex(p => p.id === id);
         if (profIdx > -1) {
             this._professionalsCache[profIdx] = { ...this._professionalsCache[profIdx], ...data };
@@ -719,25 +755,30 @@ const StorageHelper = {
         if (typeof db !== 'undefined') {
             try {
                 await db.collection("Profesionales").doc(id).set(data, { merge: true });
-            } catch (e) {
+                this._assertSessionCurrent(session);
+            } catch (e) { this._handlePrivateError(e, session);
                 console.error("Error updating professional in Firestore", e);
             }
         }
         try {
-            localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache));
-        } catch (e) { }
+            localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache.map(this._publicProfessional)));
+        } catch (e) { this._handlePrivateError(e, session); }
         return this._professionalsCache[profIdx];
     },
     deleteProfessional: async function (id) {
+        const session = this._sessionStamp();
+        if (!session.owner) return null;
+
         if (typeof db !== 'undefined') {
             try {
                 await db.collection("Profesionales").doc(id).delete();
-            } catch (e) { console.error("Error deleting professional", e); }
+                this._assertSessionCurrent(session);
+            } catch (e) { this._handlePrivateError(e, session); console.error("Error deleting professional", e); }
         }
         this._professionalsCache = this._professionalsCache.filter(p => p.id !== id);
         try {
-            localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache));
-        } catch (e) { }
+            localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache.map(this._publicProfessional)));
+        } catch (e) { this._handlePrivateError(e, session); }
     },
 
     // Las contraseñas se gestionan exclusivamente con Firebase Auth.
@@ -746,54 +787,18 @@ const StorageHelper = {
 
     // --- Gallery ---
     getGallery: function () {
-        const stored = localStorage.getItem('nicolett_gallery_v2');
-        if (stored) {
-            try {
-                const list = JSON.parse(stored);
-                // Asegurar que las fotos iniciales tengan profesional si no lo tenían
-                let changed = false;
-                list.forEach(item => {
-                    if (!item.profesional) {
-                        const defaultMatch = mockData.gallery.find(d => d.id === item.id || d.title === item.title);
-                        if (defaultMatch) {
-                            item.profesional = defaultMatch.profesional || 'Nicolett Studio';
-                            item.profId = defaultMatch.profId || '';
-                            changed = true;
-                        }
-                    }
-                });
-                if (changed) {
-                    localStorage.setItem('nicolett_gallery_v2', JSON.stringify(list));
-                }
-                return list;
-            } catch (e) { }
-        }
-
-        // Inicializar con fotos aprobadas por defecto del estudio
-        const initial = mockData.gallery.map(g => ({
-            ...g,
-            source: 'admin',
-            approved: true,
-            status: 'approved'
-        }));
-        localStorage.setItem('nicolett_gallery_v2', JSON.stringify(initial));
-        return initial;
+        if (this._hasPrivateSession() && this._galleryCache.length) return this._galleryCache;
+        return this._publicGalleryCache.length ? this._publicGalleryCache : mockData.gallery.map(image => this._publicGalleryImage({ ...image, source: 'admin', approved: true, status: 'approved' }));
     },
 
     // Galería pública (solo fotos del estudio o fotos de clientas APROBADAS)
     getPublicGallery: function () {
         const gallery = this.getGallery();
-        return gallery.filter(img => {
-            // Si es de clienta, solo si está aprobada
-            if (img.source === 'client') {
-                return img.approved === true || img.status === 'approved';
-            }
-            // Si es de estudio/admin, visible por defecto a menos que se oculte explícitamente
-            return img.approved !== false && img.status !== 'hidden';
-        });
+        return gallery.filter(img => img.approved === true).map(this._publicGalleryImage);
     },
 
     getClientGallery: function (email) {
+        if (!this.getAuth().loggedIn) return [];
         const gallery = this.getGallery();
         if (!email) return [];
         const normEmail = email.trim().toLowerCase();
@@ -814,20 +819,26 @@ const StorageHelper = {
     },
 
     addGalleryImage: async function (imageObj) {
+        const session = this._sessionStamp();
+        if (!session.owner) return null;
+
         const gallery = this.getGallery();
         imageObj.id = imageObj.id || ('g' + Date.now());
         imageObj.timestamp = imageObj.timestamp || Date.now();
         imageObj.date = imageObj.date || new Date().toLocaleDateString('es-CL');
         imageObj.profesional = imageObj.profesional || '';
-        imageObj.profId = imageObj.profId || '';
+        const currentUser = firebase.auth().currentUser;
+        if (!currentUser) throw new Error('Sesión requerida.');
+        const isAdmin = this.getAuth().user.role === 'admin';
+        if (!isAdmin) {
+            imageObj.profId = currentUser.uid;
+            imageObj.source = 'worker';
+        }
 
         // Si la foto es subida por una clienta, queda PENDIENTE de aprobación
         const isClient = imageObj.source === 'client';
-        imageObj.approved = isClient ? (imageObj.approved === true) : true;
-        imageObj.status = isClient ? (imageObj.status || (imageObj.approved ? 'approved' : 'pending')) : 'approved';
-
-        gallery.unshift(imageObj); // Agregar al principio
-        localStorage.setItem('nicolett_gallery_v2', JSON.stringify(gallery));
+        imageObj.approved = isAdmin && !isClient;
+        imageObj.status = imageObj.approved ? 'approved' : 'pending';
 
         // Intento de persistencia en Firebase Firestore (asíncrono y resiliente)
         if (typeof db !== 'undefined') {
@@ -849,24 +860,31 @@ const StorageHelper = {
                         : new Date().toISOString()
                 };
                 const docRef = await db.collection("Galeria").add(docData);
+                this._assertSessionCurrent(session);
                 imageObj.fbId = docRef.id;
-            } catch (e) {
-                console.warn("Firestore Galeria add error (usando local):", e);
+            } catch (e) { this._handlePrivateError(e, session);
+                throw new Error('No se pudo publicar la fotografía.');
             }
-        }
-
+        } else throw new Error('Firebase no disponible.');
+        this._assertSessionCurrent(session);
+        gallery.unshift(imageObj);
+        this._storeGallery(gallery);
         return imageObj;
     },
 
     // Aprobar o Desaprobar/Ocultar foto en Galería Pública (Solo Administradora)
     setGalleryImageApproval: async function (id, approved) {
+        const session = this._sessionStamp();
+        if (!session.owner) return null;
+        if (this.getAuth().user.role !== 'admin') throw new Error('Solo administración puede aprobar fotografías.');
+
         const gallery = this.getGallery();
         const img = gallery.find(item => item.id === id || item.fbId === id);
         if (!img) return null;
 
         img.approved = !!approved;
         img.status = approved ? 'approved' : 'pending';
-        localStorage.setItem('nicolett_gallery_v2', JSON.stringify(gallery));
+        this._storeGallery(gallery);
 
         if (typeof db !== 'undefined') {
             try {
@@ -876,8 +894,9 @@ const StorageHelper = {
                         approved: img.approved,
                         status: img.status
                     }, { merge: true });
+                    this._assertSessionCurrent(session);
                 }
-            } catch (e) {
+            } catch (e) { this._handlePrivateError(e, session);
                 console.warn("Firestore Galeria update approval error:", e);
             }
         }
@@ -885,18 +904,24 @@ const StorageHelper = {
     },
 
     deleteGalleryImage: async function (id) {
+        const session = this._sessionStamp();
+        if (!session.owner) return null;
+
         let gallery = this.getGallery();
         const imgToDelete = gallery.find(img => img.id === id || img.fbId === id);
+        if (this.getAuth().user.role !== 'admin' && (!imgToDelete || imgToDelete.approved
+            || imgToDelete.profId !== firebase.auth().currentUser.uid)) throw new Error('Fotografía no autorizada.');
         gallery = gallery.filter(img => img.id !== id && img.fbId !== id);
-        localStorage.setItem('nicolett_gallery_v2', JSON.stringify(gallery));
+        this._storeGallery(gallery);
 
         if (typeof db !== 'undefined' && imgToDelete) {
             try {
                 const docId = imgToDelete.fbId || (imgToDelete.id && !imgToDelete.id.startsWith('g') ? imgToDelete.id : null);
                 if (docId) {
                     await db.collection("Galeria").doc(docId).delete();
+                    this._assertSessionCurrent(session);
                 }
-            } catch (e) {
+            } catch (e) { this._handlePrivateError(e, session);
                 console.warn("Firestore Galeria delete error:", e);
             }
         }
@@ -904,35 +929,39 @@ const StorageHelper = {
 
     // Fichas Clientas
     getFichas: function () {
-        return this._fichasCache || [];
+        return this._hasPrivateSession() ? (this._fichasCache || []) : [];
     },
     saveFicha: async function (ficha) {
-        if (typeof db !== 'undefined') {
-            try {
-                ficha.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                const docRef = await db.collection("FichasClientas").add(ficha);
-                ficha.id = docRef.id;
-                this._fichasCache.push(ficha);
-            } catch (e) {
-                console.error("Error guardando ficha clienta en Firebase (posible falta de permisos o reglas):", e);
-                // Fallback
-                ficha.id = 'ficha_' + Date.now();
-                ficha.createdAt = new Date().toISOString();
-                this._fichasCache.push(ficha);
-            }
-        } else {
-            // Fallback
-            ficha.id = 'ficha_' + Date.now();
-            this._fichasCache.push(ficha);
+        const session = this._sessionStamp();
+        if (!session.owner) return null;
+        ficha._operationId = ficha._operationId || crypto.randomUUID();
+        try {
+            const result = await this._bookingApi('/api/fichas', 'POST', { ficha, requestId: ficha._operationId }, session);
+            this._assertSessionCurrent(session);
+            Object.assign(ficha, result.ficha);
+            const index = this._fichasCache.findIndex(item => item.id === ficha.id);
+            if (index < 0) this._fichasCache.push(ficha);
+            else this._fichasCache[index] = ficha;
+            // No usar stock de una respuesta idempotente antigua para sobrescribir la caché.
+            this._inventoryCache = [];
+            await this.loadAppointmentsCache();
+            this._assertSessionCurrent(session);
+        } catch (error) {
+            this._handlePrivateError(error, session);
+            throw error;
         }
     },
     deleteFicha: async function (id) {
+        const session = this._sessionStamp();
+        if (!session.owner) return null;
+
         if (typeof db !== 'undefined') {
             try {
                 await db.collection("FichasClientas").doc(id).delete();
-                try { await db.collection("FichasClinicas").doc(id).delete(); } catch (err) { }
+                this._assertSessionCurrent(session);
+                try { await db.collection("FichasClinicas").doc(id).delete(); this._assertSessionCurrent(session); } catch (err) { this._handlePrivateError(err, session); }
                 this._fichasCache = this._fichasCache.filter(f => f.id !== id);
-            } catch (e) {
+            } catch (e) { this._handlePrivateError(e, session);
                 console.error("Error eliminando ficha clienta:", e);
             }
         } else {
@@ -942,9 +971,10 @@ const StorageHelper = {
 
     // --- Clientas Globales y CRM ---
     getClients: function () {
-        return JSON.parse(localStorage.getItem('nicolett_clients') || '[]');
+        return this._hasPrivateSession() ? JSON.parse(localStorage.getItem('nicolett_clients') || '[]') : [];
     },
     saveClients: function (clients) {
+        if (!this._hasPrivateSession()) return;
         localStorage.setItem('nicolett_clients', JSON.stringify(clients));
     },
     addClient: function (client) {
@@ -988,128 +1018,14 @@ const StorageHelper = {
         this.saveClients(clients);
     },
 
-    // --- Gestión de Perfil de Clienta (Autenticación e Historial) ---
+    // Personalización del dispositivo: no consulta ni crea perfiles privados.
     getOrCreateClientProfile: async function (rawEmail, rawName, rawPhone) {
-        const email = (rawEmail || '').toString().trim().toLowerCase();
-        let name = (rawName || '').toString().trim();
-        let phone = (rawPhone || '').toString().trim();
-
-        if (!email) {
-            throw new Error('El correo electrónico es requerido.');
-        }
-
-        let existingDoc = null;
-        let existingDocId = null;
-
-        if (typeof db !== 'undefined' && db && typeof db.collection === 'function') {
-            try {
-                // 1. Buscar en perfil_cliente por correo normalizado en minúsculas
-                let snapshot = await db.collection('perfil_cliente').where('email', '==', email).get();
-
-                // 2. Si no se encontró por minúsculas, probar con el texto original sin modificar mayúsculas
-                if (snapshot.empty && rawEmail && rawEmail.trim() !== email) {
-                    snapshot = await db.collection('perfil_cliente').where('email', '==', rawEmail.trim()).get();
-                }
-
-                // 3. Fallback de búsqueda case-insensitive recorriendo los perfiles si aún no se encuentra
-                if (snapshot.empty) {
-                    const allSnap = await db.collection('perfil_cliente').get();
-                    allSnap.forEach(doc => {
-                        const data = doc.data();
-                        if (!existingDoc && data.email && data.email.toString().trim().toLowerCase() === email) {
-                            existingDoc = data;
-                            existingDocId = doc.id;
-                        }
-                    });
-                } else {
-                    const doc = snapshot.docs[0];
-                    existingDoc = doc.data();
-                    existingDocId = doc.id;
-                }
-            } catch (err) {
-                console.warn('[StorageHelper] Error consultando perfil_cliente en Firestore:', err);
-            }
-        }
-
-        // Si el perfil ya existe en Firestore
-        if (existingDoc && existingDocId) {
-            console.log(`[StorageHelper] Perfil existente encontrado en Firestore (ID: ${existingDocId}) para ${email}. No se creará duplicado.`);
-            const finalName = name || existingDoc.name || 'Clienta';
-            const finalPhone = phone || existingDoc.phone || '';
-
-            // Actualización no destructiva en Firestore si se aportó nombre o teléfono
-            if (typeof db !== 'undefined' && db && typeof db.collection === 'function') {
-                const updates = { email: email };
-                if (name && (!existingDoc.name || existingDoc.name === 'Clienta')) updates.name = name;
-                if (phone && !existingDoc.phone) updates.phone = phone;
-
-                try {
-                    await db.collection('perfil_cliente').doc(existingDocId).set(updates, { merge: true });
-                } catch (e) { }
-            }
-
-            const profile = {
-                id: existingDocId,
-                name: finalName,
-                email: email,
-                phone: finalPhone,
-                isExisting: true
-            };
-
-            localStorage.setItem('nicolett_personalization', JSON.stringify({
-                name: profile.name,
-                email: profile.email,
-                phone: profile.phone
-            }));
-
-            return profile;
-        }
-
-        // Si NO existe en perfil_cliente, buscar si tiene citas agendadas previas para rescatar su nombre
-        const clientAppts = this.getClientAppointments(email, phone);
-        if (!name && clientAppts.length > 0 && clientAppts[0].clientName) {
-            name = clientAppts[0].clientName.trim();
-        }
-        if (!phone && clientAppts.length > 0 && clientAppts[0].clientPhone) {
-            phone = clientAppts[0].clientPhone.trim();
-        }
-
-        const finalName = name || 'Clienta';
-        const finalPhone = phone || '';
-
-        // Crear registro único en Firestore
-        let newDocId = 'cli_' + Date.now();
-        if (typeof db !== 'undefined' && db && typeof db.collection === 'function') {
-            try {
-                const newDocRef = await db.collection('perfil_cliente').add({
-                    name: finalName,
-                    email: email,
-                    phone: finalPhone,
-                    createdAt: (typeof firebase !== 'undefined' && firebase.firestore)
-                        ? firebase.firestore.FieldValue.serverTimestamp()
-                        : new Date().toISOString()
-                });
-                newDocId = newDocRef.id;
-                console.log(`[StorageHelper] Nuevo perfil_cliente creado en Firestore con ID: ${newDocId} para ${email}.`);
-            } catch (err) {
-                console.error('[StorageHelper] Error creando perfil_cliente:', err);
-            }
-        }
-
-        const profile = {
-            id: newDocId,
-            name: finalName,
-            email: email,
-            phone: finalPhone,
-            isExisting: false
-        };
-
+        const clean = value => typeof value === 'string' ? value.trim() : '';
+        const profile = { id: null, name: clean(rawName) || 'Clienta',
+            email: clean(rawEmail).toLowerCase(), phone: clean(rawPhone), isExisting: false };
         localStorage.setItem('nicolett_personalization', JSON.stringify({
-            name: profile.name,
-            email: profile.email,
-            phone: profile.phone
+            name: profile.name, email: profile.email, phone: profile.phone
         }));
-
         return profile;
     },
 

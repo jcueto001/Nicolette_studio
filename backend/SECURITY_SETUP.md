@@ -1,6 +1,16 @@
 # Configuración de pagos del servidor
 
-Requiere Node.js 22 o posterior. Instalar y probar desde `backend/`:
+Vercel utiliza Node.js 24.x y la raíz del repositorio como Root Directory. Mantener el preset sin framework (Other) y la salida estática actual de la SPA; no cambiarla a `backend/`. `vercel.json` instala ambos lockfiles mediante `npm ci` y conserva `/api/*` → `api/index.js` → Express. Firebase Admin se declara únicamente en `backend/package.json` y se carga exclusivamente en servidor. Incluir ambos lockfiles al publicar los cambios.
+
+Node.js 22 no cumple los requisitos de todas las dependencias bloqueadas: `@firebase/database@1.1.6` y `@firebase/database-compat@2.1.8` requieren Node >=24.12.0. Aunque las pruebas funcionales pasan en Node 22, no se considera una combinación soportada. Se selecciona Node 24.x sin cambiar versiones de dependencias; si fuera obligatorio mantener Node 22, habría que autorizar y probar una selección distinta de esas dependencias.
+
+Instalar desde la raíz con Node.js 24 actualizado (>=24.12.0):
+
+    npm ci --no-audit --no-fund
+    npm --prefix backend ci --no-audit --no-fund
+    npm --prefix backend test
+
+Para arrancar localmente, iniciar primero los emuladores y activar `LOCAL_FIREBASE_EMULATORS=1`. Nunca usar credenciales productivas en pruebas locales. Desde `backend/`:
 
     npm ci
     npm test
@@ -11,7 +21,17 @@ Configurar mediante el gestor de secretos del entorno de ejecución:
 - `FLOW_API_KEY` y `FLOW_SECRET_KEY`: credenciales de la cuenta del comercio.
 - `FLOW_SANDBOX`: `true` para pruebas; `false` para pagos reales.
 - `BACKEND_URL`: origen HTTPS público y fijo de esta aplicación. Se admite HTTP únicamente para localhost.
-- Firebase Admin usa Application Default Credentials con acceso al proyecto correcto. No colocar archivos de credenciales dentro de la carpeta pública ni del repositorio.
+- Firebase Admin usa `cert()` con `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL` y `FIREBASE_PRIVATE_KEY`. Normaliza los saltos de línea escapados de la clave y rechaza configuración incompleta al inicializar, sin fallback a ADC. Reutiliza la instancia del servidor. Configurar estos valores solo en el entorno servidor; nunca incluir claves en archivos públicos, repositorio ni variables con prefijos públicos.
+- `BOOKING_PAUSED`: activar con `true` durante la preparación. Bloquea nuevas órdenes y reservas manuales; mantiene webhooks, retornos, verificación y consultas de pagos existentes. Cambiar una variable de Vercel requiere un nuevo despliegue para aplicarla; no cancela pagos ni libera retenciones.
+- `FRONTEND_URL`: retorno del respaldo Webpay, si se mantiene habilitado.
+
+## Preview aislado
+
+José debe seleccionar el alcance Preview al configurar variables. Usar un proyecto Firebase de prueba separado y una cuenta de servicio limitada a ese proyecto; el frontend Preview también debe apuntar a ese proyecto de prueba. El frontend actual contiene configuración fija: no promover ni probar accesos Firebase en Preview mientras siga apuntando a producción. No copiar secretos productivos ni descargar variables de producción.
+
+Mantener `BOOKING_PAUSED=true`, `FLOW_SANDBOX=true` y omitir las claves Flow si no se probarán pagos. Para una validación posterior de Flow, usar exclusivamente claves sandbox y un `BACKEND_URL` HTTPS estable del Preview; garantizar que la protección del despliegue no impida recibir `/api/flow/notify`. No enviar pagos ni conectar al Firebase real durante las pruebas locales de configuración. Vercel no debe tener `LOCAL_FIREBASE_EMULATORS`, `FIRESTORE_EMULATOR_HOST` ni `FIREBASE_AUTH_EMULATOR_HOST` activados; esos hosts solo funcionan en el equipo local.
+
+Verificar en Preview la carga estática y `/api/flow/config`; después, con autorización independiente, probar el proyecto de prueba y sandbox. Confirmar 503 en nuevas órdenes durante la pausa y que webhooks/consultas alcanzan su validación normal. La migración productiva continúa bloqueada: el script disponible solo admite emuladores.
 
 El navegador usa el backend del mismo origen. Las claves no se reciben del cliente ni se incorporan a URLs. Las transacciones se guardan en `FlowTransactions`; solo el servidor escribe la cita pagada en `Citas` mediante una transacción idempotente. El retorno y el webhook consultan Flow; el navegador solo consulta el resultado con un comprobante aleatorio de su sesión.
 

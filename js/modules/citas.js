@@ -72,19 +72,11 @@
          */
         getHorasDisponibles: function (date, profId, includeSobrecupos = false) {
             if (typeof StorageHelper !== 'undefined' && StorageHelper.getAvailableTimeSlots) {
-                return StorageHelper.getAvailableTimeSlots(date, profId);
+                const allowed = includeSobrecupos ? [...HORARIO_BASE, ...SOBRECUPOS_PERMITIDOS] : HORARIO_BASE;
+                return StorageHelper.getAvailableTimeSlots(date, profId).then(times => times.filter(time => allowed.includes(time)));
             }
-            const citas = this.getCitas();
-            const ocupadas = citas
-                .filter(c => c.date === date && (!profId || c.profId === profId || c.professionalId === profId))
-                .filter(c => c.status !== 'cancelada' && c.status !== 'no asiste')
-                .map(c => c.time);
-
-            let pool = [...HORARIO_BASE];
-            if (includeSobrecupos) {
-                pool = pool.concat(SOBRECUPOS_PERMITIDOS);
-            }
-            return pool.filter(h => !ocupadas.includes(h));
+            // Sin el backend no hay disponibilidad verificable.
+            return [];
         },
 
         /**
@@ -100,7 +92,7 @@
             const nuevaCita = {
                 ...citaData,
                 depositAmount: MONTO_ABONO_OBLIGATORIO,
-                depositPaid: true,
+                depositPaid: false,
                 status: citaData.status || 'confirmada',
                 policyAccepted: true,
                 createdAt: citaData.createdAt || new Date().toISOString()

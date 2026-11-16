@@ -116,11 +116,11 @@
          * Cierra la sesión activa
          */
         logout: function () {
-            if (typeof firebase !== 'undefined' && firebase.auth) {
-                try { firebase.auth().signOut(); } catch (e) {}
-            }
             if (typeof StorageHelper !== 'undefined') {
                 StorageHelper.setAuth({ loggedIn: false, user: null });
+            }
+            if (typeof firebase !== 'undefined' && firebase.auth) {
+                try { firebase.auth().signOut(); } catch (e) {}
             }
             if (typeof AppRouter !== 'undefined') {
                 AppRouter.navigate('home');

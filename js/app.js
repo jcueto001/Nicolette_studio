@@ -2,6 +2,13 @@
  * Router simple basado en JavaScript puro para inyectar vistas
  */
 
+// Solo texto y atributos HTML entre comillas; nunca usar para código JavaScript o URLs.
+function escapeReservationHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[character]));
+}
+
 const AppRouter = {
     _navTimeout: null,
     currentRoute: 'home',
@@ -101,7 +108,7 @@ const AppRouter = {
                                     <i data-lucide="alert-triangle" style="width:28px; height:28px;"></i>
                                 </div>
                                 <h3 style="color:var(--clr-neutral-dark); margin-bottom:10px; font-size:1.3rem;">Hubo un inconveniente al cargar esta sección</h3>
-                                <p style="color:var(--clr-neutral-gray); font-size:0.9rem; margin-bottom:20px; line-height:1.5;">${renderErr.message || 'Por favor recarga la página o vuelve al inicio.'}</p>
+                                <p style="color:var(--clr-neutral-gray); font-size:0.9rem; margin-bottom:20px; line-height:1.5;">${escapeReservationHtml(renderErr.message || 'Por favor recarga la página o vuelve al inicio.')}</p>
                                 <button class="btn btn-primary" onclick="AppRouter.navigate('home')">Volver al Inicio</button>
                             </div>
                         </div>
@@ -776,14 +783,14 @@ function renderGaleriaView() {
                         
                         <!-- Overlay Informativo -->
                         <div style="position:absolute; bottom:0; left:0; right:0; padding:22px 20px; background:linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.45) 70%, transparent 100%); color:white;">
-                            <h3 style="margin:0 0 6px 0; font-size:1.3rem; font-weight:700;">${img.serviceName || img.title || 'Servicio de Belleza'}</h3>
+                            <h3 style="margin:0 0 6px 0; font-size:1.3rem; font-weight:700;">${escapeReservationHtml(img.serviceName || img.title || 'Servicio de Belleza')}</h3>
                             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                                 <span style="background:rgba(219, 137, 160, 0.95); color:white; padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:5px;">
-                                    <i data-lucide="sparkles" style="width:12px; height:12px;"></i> Especialista: ${profName}
+                                    <i data-lucide="sparkles" style="width:12px; height:12px;"></i> Especialista: ${escapeReservationHtml(profName)}
                                 </span>
                                 ${isClient ? `
                                     <span style="background:rgba(255,255,255,0.25); color:white; padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; backdrop-filter:blur(4px); display:inline-flex; align-items:center; gap:4px;">
-                                        <i data-lucide="camera" style="width:12px; height:12px;"></i> Clienta: ${img.clientName || 'Clienta'}
+                                        <i data-lucide="camera" style="width:12px; height:12px;"></i> Clienta: ${escapeReservationHtml(img.clientName || 'Clienta')}
                                     </span>
                                 ` : ''}
                             </div>
@@ -1224,21 +1231,21 @@ function renderAdminView() {
 
                 let notesHtml = '';
                 if (app.notes && app.notes.trim() !== '') {
-                    notesHtml = `<div style="margin-top: 5px; font-size: 0.8rem; color: var(--clr-neutral-gray); font-style: italic; border-left: 2px solid var(--clr-rose-gold); padding-left: 5px;">"${app.notes}"</div>`;
+                    notesHtml = `<div style="margin-top: 5px; font-size: 0.8rem; color: var(--clr-neutral-gray); font-style: italic; border-left: 2px solid var(--clr-rose-gold); padding-left: 5px;">"${escapeReservationHtml(app.notes)}"</div>`;
                 }
 
                 agendaRows += `
                 <tr style="border-bottom: 1px solid var(--clr-nude);">
-                    <td style="padding: 15px;">${app.date} <br><strong style="color: var(--clr-rose-gold-dark);">${app.time}</strong></td>
-                    <td style="padding: 15px;"><strong>${app.clientName || 'Cliente'}</strong><br><small>${app.clientPhone}</small></td>
+                    <td style="padding: 15px;">${escapeReservationHtml(app.date)} <br><strong style="color: var(--clr-rose-gold-dark);">${escapeReservationHtml(app.time)}</strong></td>
+                    <td style="padding: 15px;"><strong>${escapeReservationHtml(app.clientName || 'Cliente')}</strong><br><small>${escapeReservationHtml(app.clientPhone)}</small></td>
                     <td style="padding: 15px;">
-                        ${serviceName} ${isAdmin ? `<br><small>${profName}</small>` : ''}
+                        ${escapeReservationHtml(serviceName)} ${isAdmin ? `<br><small>${escapeReservationHtml(profName)}</small>` : ''}
                         ${needsHtml}
                         ${notesHtml}
-                        ${app.transactionId ? `<div style="margin-top: 5px; font-size: 0.8rem; color: #00B19B;"><strong>Comprobante:</strong> ${app.transactionId}</div>` : ''}
+                        ${app.transactionId ? `<div style="margin-top: 5px; font-size: 0.8rem; color: #00B19B;"><strong>Comprobante:</strong> ${escapeReservationHtml(app.transactionId)}</div>` : ''}
                     </td>
                     <td style="padding: 15px;">
-                        <select class="status-selector" data-appid="${app.id}" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.85rem; outline: none; background: #e8f5e9; color: #2e7d32; font-weight: bold; cursor:pointer;">
+                        <select class="status-selector" data-appid="${escapeReservationHtml(app.id)}" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.85rem; outline: none; background: #e8f5e9; color: #2e7d32; font-weight: bold; cursor:pointer;">
                             <option value="confirmada" ${(app.status || 'confirmada') === 'confirmada' ? 'selected' : ''}>CONFIRMADA</option>
                             <option value="pendiente de pago" ${app.status === 'Pendiente de Pago' ? 'selected' : ''}>PENDIENTE DE PAGO</option>
                             <option value="pago reportado" ${app.status === 'Pago Reportado' ? 'selected' : ''}>PAGO REPORTADO</option>
@@ -1250,12 +1257,12 @@ function renderAdminView() {
                     </td>
                     <td style="padding: 15px;">
                         <div style="display:inline-flex; align-items:center; gap:6px;">
-                            ${!isFichaDone ? `<button class="btn btn-outline btn-sm btn-ficha" data-appid="${app.id}">Crear Ficha</button>` : `<span style="color: #4CAF50;"><i data-lucide="check-circle" style="width:16px; display:inline; vertical-align:middle;"></i> Ficha Lista</span>`}
-                            <button type="button" class="btn btn-outline btn-sm btn-worker-take-photo" data-appid="${app.id}" data-clientname="${app.clientName || 'Cliente'}" data-clientemail="${app.clientEmail || ''}" data-servicename="${serviceName}" data-profname="${profName}" data-profid="${app.profId || ''}" style="border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Sacar foto del trabajo para esta clienta">
+                            ${!isFichaDone ? `<button class="btn btn-outline btn-sm btn-ficha" data-appid="${escapeReservationHtml(app.id)}">Crear Ficha</button>` : `<span style="color: #4CAF50;"><i data-lucide="check-circle" style="width:16px; display:inline; vertical-align:middle;"></i> Ficha Lista</span>`}
+                            <button type="button" class="btn btn-outline btn-sm btn-worker-take-photo" data-appid="${escapeReservationHtml(app.id)}" data-clientname="${escapeReservationHtml(app.clientName || 'Cliente')}" data-clientemail="${escapeReservationHtml(app.clientEmail || '')}" data-servicename="${escapeReservationHtml(serviceName)}" data-profname="${escapeReservationHtml(profName)}" data-profid="${escapeReservationHtml(app.profId || '')}" style="border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Sacar foto del trabajo para esta clienta">
                                 <i data-lucide="camera" style="width:14px; height:14px;"></i> Sacar Foto
                             </button>
                             ${app.clientEmail ? `
-                            <button type="button" class="btn btn-outline btn-sm btn-resend-email" onclick="window.resendAppointmentEmail('${app.id}')" data-appid="${app.id}" style="border-color:#1b75bb; color:#1b75bb; display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Reenviar comprobante por correo a ${app.clientEmail}">
+                            <button type="button" class="btn btn-outline btn-sm btn-resend-email" onclick="window.resendAppointmentEmail(this.dataset.appid)" data-appid="${escapeReservationHtml(app.id)}" style="border-color:#1b75bb; color:#1b75bb; display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Reenviar comprobante por correo a ${escapeReservationHtml(app.clientEmail)}">
                                 <i data-lucide="mail" style="width:14px; height:14px;"></i> Reenviar Correo
                             </button>
                             ` : ''}
@@ -1282,12 +1289,12 @@ function renderAdminView() {
             myFichas.forEach(f => {
                 fichasRows += `
                 <tr style="border-bottom: 1px solid var(--clr-nude);">
-                    <td style="padding: 15px;">${f.date}</td>
-                    <td style="padding: 15px;"><strong>${f.clientName}</strong></td>
-                    <td style="padding: 15px;">${f.serviceName}</td>
+                    <td style="padding: 15px;">${escapeReservationHtml(f.date)}</td>
+                    <td style="padding: 15px;"><strong>${escapeReservationHtml(f.clientName)}</strong></td>
+                    <td style="padding: 15px;">${escapeReservationHtml(f.serviceName)}</td>
                     <td style="padding: 15px;">
-                        <button class="btn btn-outline btn-sm btn-view-ficha" data-fichaid="${f.id}"><i data-lucide="eye"></i></button>
-                        ${isAdmin ? `<button class="btn btn-outline btn-sm btn-del-ficha" style="color:red; border-color:red;" data-fichaid="${f.id}"><i data-lucide="trash-2"></i></button>` : ''}
+                        <button class="btn btn-outline btn-sm btn-view-ficha" data-fichaid="${escapeReservationHtml(f.id)}"><i data-lucide="eye"></i></button>
+                        ${isAdmin ? `<button class="btn btn-outline btn-sm btn-del-ficha" style="color:red; border-color:red;" data-fichaid="${escapeReservationHtml(f.id)}"><i data-lucide="trash-2"></i></button>` : ''}
                     </td>
                 </tr>
             `;
@@ -1384,13 +1391,13 @@ function renderAdminView() {
                 clientRows += `
                 <tr style="border-bottom: 1px solid var(--clr-nude);">
                     <td style="padding: 15px;">
-                        <a href="#" class="open-crm" data-clientid="${c.id}" style="color: var(--clr-rose-gold-dark); text-decoration: underline; font-weight: bold; cursor: pointer;">${c.name}</a><br>
-                        <small>${c.phone || ''}</small>
+                        <a href="#" class="open-crm" data-clientid="${escapeReservationHtml(c.id)}" style="color: var(--clr-rose-gold-dark); text-decoration: underline; font-weight: bold; cursor: pointer;">${escapeReservationHtml(c.name)}</a><br>
+                        <small>${escapeReservationHtml(c.phone || '')}</small>
                     </td>
-                    <td style="padding: 15px;">${c.lastVisit || 'Sin registro'}</td>
-                    <td style="padding: 15px;">${c.products || 'N/A'}</td>
+                    <td style="padding: 15px;">${escapeReservationHtml(c.lastVisit || 'Sin registro')}</td>
+                    <td style="padding: 15px;">${escapeReservationHtml(c.products || 'N/A')}</td>
                     <td style="padding: 15px;">
-                        <button class="btn btn-outline btn-sm btn-del-client" style="color:red; border-color:red;" data-id="${c.id}"><i data-lucide="trash-2"></i></button>
+                        <button class="btn btn-outline btn-sm btn-del-client" style="color:red; border-color:red;" data-id="${escapeReservationHtml(c.id)}"><i data-lucide="trash-2"></i></button>
                     </td>
                 </tr>
             `;
@@ -1734,7 +1741,7 @@ function renderAdminView() {
                                     <div style="display:flex; gap:5px; flex-wrap:wrap;">
                                         ${isClientRelated ? `
                                             <span class="badge-client-photo" style="box-shadow:0 2px 6px rgba(0,0,0,0.3);">
-                                                <i data-lucide="user" style="width:11px; height:11px;"></i> ${img.clientName || 'Clienta'}
+                                                <i data-lucide="user" style="width:11px; height:11px;"></i> ${escapeReservationHtml(img.clientName || 'Clienta')}
                                             </span>
                                         ` : `
                                             <span style="background:rgba(0,0,0,0.65); color:#f5ebe0; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:600; backdrop-filter:blur(4px);">
@@ -1765,7 +1772,7 @@ function renderAdminView() {
                                 <div style="position:absolute; bottom:0; left:0; width:100%; padding:12px 14px; background:linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.7) 70%, transparent 100%); color:white;">
                                     <div style="margin-bottom:8px;">
                                         <div style="font-size:0.9rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                            ${img.serviceName || img.title || 'Servicio'}
+                                            ${escapeReservationHtml(img.serviceName || img.title || 'Servicio')}
                                         </div>
                                         ${img.title && img.title !== img.serviceName ? `
                                             <div style="font-size:0.78rem; color:#f0d0c0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"${img.title}"</div>
@@ -2322,9 +2329,9 @@ function renderAdminView() {
                     <div style="width: 70px; height: 70px; border-radius: 50%; background: var(--clr-nude-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--clr-rose-gold);">
                         <i data-lucide="user" style="width: 32px; height: 32px;"></i>
                     </div>
-                    <h3 class="section-title" style="margin-bottom: 12px; font-size: 1.8rem; color: var(--clr-rose-gold-dark);">Acceso a tu Perfil y Citas</h3>
+                    <h3 class="section-title" style="margin-bottom: 12px; font-size: 1.8rem; color: var(--clr-rose-gold-dark);">Personaliza tu experiencia</h3>
                     <p style="color: var(--clr-neutral-gray); margin-bottom: 25px; line-height: 1.6; font-size: 0.95rem;">
-                        Ingresa tu correo para ver todas tus citas agendadas, verificar tus abonos y acceder a la galería de tus resultados. Si ya te has atendido con nosotras, tus citas aparecerán de inmediato.
+                        Guarda tu nombre y preferencias en este dispositivo. No necesitas una cuenta para explorar nuestros servicios o agendar.
                     </p>
 
                     <form id="perfil-direct-login-form" style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
@@ -2338,7 +2345,7 @@ function renderAdminView() {
 
                         <div>
                             <label style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem; color: var(--clr-neutral-dark);">
-                                Nombre y Apellido <span style="font-weight:400; font-size:0.8rem; color:var(--clr-neutral-gray);">(opcional si ya estás registrada)</span>
+                                Nombre y Apellido <span style="font-weight:400; font-size:0.8rem; color:var(--clr-neutral-gray);">(opcional)</span>
                             </label>
                             <input type="text" id="perfil-login-name" placeholder="Tu nombre completo"
                                 style="width:100%; padding:12px 14px; border:1px solid #dcd3cb; border-radius:8px; font-family: var(--font-body); font-size:1rem; outline:none; transition:border-color 0.3s ease;">
@@ -2346,7 +2353,7 @@ function renderAdminView() {
 
                         <button type="submit" id="btn-perfil-direct-login" class="btn btn-primary" style="margin-top: 10px; font-size: 1.05rem; padding: 14px; width: 100%; font-weight: 600;">
                             <i data-lucide="log-in" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
-                            Ingresar a Mi Perfil / Ver Mis Citas
+                            Guardar preferencias locales
                         </button>
                     </form>
 
@@ -2364,154 +2371,35 @@ function renderAdminView() {
         let pers;
         try {
             pers = JSON.parse(persStr);
+            pers = { name: typeof pers?.name === 'string' ? pers.name : 'Clienta',
+                email: typeof pers?.email === 'string' ? pers.email : '' };
         } catch (e) {
             return `<div class="container section text-center"><p>Error al cargar el perfil.</p></div>`;
         }
 
-        // Filtrar citas de la clienta por su correo o teléfono registrado de forma segura y normalizada
-        const userAppointments = StorageHelper.getClientAppointments ? StorageHelper.getClientAppointments(pers.email, pers.phone) : [];
-
-        // Obtener fotos que esta clienta ha subido
-        const clientPhotos = StorageHelper.getClientGallery ? StorageHelper.getClientGallery(pers.email) : [];
-
-        let historyHtml = '';
-        if (userAppointments.length > 0) {
-            historyHtml = '<div style="display:grid; gap:16px; max-width:680px; margin: 0 auto; text-align:left;">';
-            userAppointments.forEach(appt => {
-                const hasDeposit = appt.abono || appt.depositAmount || appt.paymentStatus === 'pagado' || appt.status === 'confirmada';
-                const depAmount = appt.depositAmount || 5000;
-                const statusLabel = (appt.status || 'confirmada').toUpperCase();
-                const statusBg = appt.status === 'cancelada' ? '#ffebee' : (appt.status === 'completada' ? '#e3f2fd' : '#e8f5e9');
-                const statusColor = appt.status === 'cancelada' ? '#c62828' : (appt.status === 'completada' ? '#1565c0' : '#2e7d32');
-
-                historyHtml += `
-                <div class="card" style="padding:22px 24px; border-left: 5px solid var(--clr-rose-gold); background: #ffffff; box-shadow: var(--shadow-soft); border-radius: var(--radius-md);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <h4 style="margin:0; color:var(--clr-neutral-dark); font-size:1.2rem;">${appt.servicio || 'Servicio de Belleza'}</h4>
-                            <span style="font-size:0.75rem; font-weight:700; padding:3px 10px; border-radius:12px; background:${statusBg}; color:${statusColor};">
-                                ${statusLabel}
-                            </span>
-                        </div>
-                        <span style="font-size:0.85rem; color:var(--clr-rose-gold-dark); font-weight:600; background:var(--clr-nude-light); padding:5px 12px; border-radius:20px;">
-                            ${appt.date} • ${appt.time}
-                        </span>
-                    </div>
-                    <p style="margin:4px 0 0 0; font-size:0.95rem; color:var(--clr-neutral-gray);">
-                        Especialista: <strong style="color:var(--clr-neutral-dark);">${appt.profesional}</strong>
-                    </p>
-                    ${hasDeposit ? `<p style="margin:6px 0 0 0; font-size:0.85rem; color:#28a745; font-weight:500;">✓ Abono verificado: $${depAmount.toLocaleString('es-CL')}</p>` : ''}
-                </div>
-            `;
-            });
-            historyHtml += '</div>';
-        } else {
-            historyHtml = `
-            <div class="card" style="padding:40px 30px; max-width:680px; margin: 0 auto; background: #ffffff; box-shadow: var(--shadow-soft); text-align:center; border-radius: var(--radius-md);">
-                <div style="width:65px; height:65px; border-radius:50%; background:var(--clr-nude-light); display:flex; align-items:center; justify-content:center; margin:0 auto 15px; color:var(--clr-rose-gold);">
-                    <i data-lucide="sparkles" style="width:30px; height:30px;"></i>
-                </div>
-                <h4 style="color:var(--clr-rose-gold-dark); margin-bottom:12px; font-size:1.35rem;">¡Bienvenida a Nicolett Studio Fantasy!</h4>
-                <p style="color:var(--clr-neutral-gray); max-width:480px; margin:0 auto 24px; line-height: 1.6;">
-                    Aún no tienes citas registradas asociadas a tu correo (<strong>${pers.email}</strong>). ¡Te invitamos a agendar tu próxima experiencia de autocuidado!
-                </p>
-                <button class="btn btn-primary" onclick="AppRouter.navigate('agendar')">
-                    Agendar mi primera cita
-                </button>
-            </div>
-        `;
-        }
-
-        // Galería de resultados de la clienta (fotos tomadas por su especialista)
-        let clientGalleryHtml = `
-        <div style="max-width:680px; margin:40px auto 0; text-align:left;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
-                <div>
-                    <h3 style="margin:0; font-size:1.35rem; color:var(--clr-rose-gold-dark); display:flex; align-items:center; gap:8px;">
-                        <i data-lucide="sparkles" style="width:22px; height:22px;"></i> Galería de tus Resultados
-                    </h3>
-                    <p style="margin:4px 0 0; font-size:0.88rem; color:var(--clr-neutral-gray);">
-                        Fotos de tus atenciones tomadas por tu especialista en Nicolett Studio Fantasy.
-                    </p>
-                </div>
-            </div>
-
-            ${clientPhotos.length > 0 ? `
-                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:16px;">
-                    ${clientPhotos.map(photo => `
-                        <div class="card client-photo-card" style="padding:0; overflow:hidden; border-radius:var(--radius-md); box-shadow:var(--shadow-soft); background:#fff; position:relative;">
-                            <div style="height:180px; width:100%; overflow:hidden; background:#000;">
-                                <img src="${photo.src}" alt="${photo.title || 'Foto de servicio'}" style="width:100%; height:100%; object-fit:cover; display:block;">
-                            </div>
-                            <div style="padding:12px 14px;">
-                                <div style="font-weight:600; color:var(--clr-neutral-dark); font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                    ${photo.serviceName || photo.title || 'Servicio realizado'}
-                                </div>
-                                ${photo.profesional ? `
-                                    <div style="font-size:0.78rem; color:var(--clr-rose-gold-dark); font-weight:600; margin-top:2px; display:flex; align-items:center; gap:4px;">
-                                        <i data-lucide="sparkles" style="width:11px; height:11px;"></i> Especialista: ${photo.profesional}
-                                    </div>
-                                ` : ''}
-                                ${photo.title && photo.title !== photo.serviceName ? `
-                                    <p style="margin:3px 0 0; font-size:0.8rem; color:var(--clr-neutral-gray); line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">"${photo.title}"</p>
-                                ` : ''}
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:0.75rem; color:var(--clr-neutral-gray);">
-                                    <span><i data-lucide="calendar" style="width:12px; height:12px; vertical-align:middle;"></i> ${photo.date || 'Reciente'}</span>
-                                    <span style="color:#2e7d32; font-weight:600;"><i data-lucide="check" style="width:12px; height:12px; vertical-align:middle;"></i> Verificada</span>
-                                </div>
-                            </div>
-                            ${photo.approved === true || photo.status === 'approved' ? `
-                                <span style="position:absolute; top:8px; right:8px; background:rgba(16,185,129,0.95); color:white; padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:700; backdrop-filter:blur(3px); display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
-                                    <i data-lucide="check" style="width:12px; height:12px;"></i> Publicada en Galería
-                                </span>
-                            ` : ''}
-                        </div>
-                    `).join('')}
-                </div>
-            ` : `
-                <div class="card" style="padding:28px 20px; text-align:center; background:#ffffff; box-shadow:var(--shadow-soft); border-radius:var(--radius-md); border:1.5px dashed #dfd5cb;">
-                    <i data-lucide="sparkles" style="width:36px; height:36px; color:var(--clr-rose-gold); margin-bottom:8px;"></i>
-                    <h4 style="margin:0 0 6px; font-size:1.1rem; color:var(--clr-neutral-dark);">
-                        Tus resultados se verán aquí
-                    </h4>
-                    <p style="margin:0 auto; font-size:0.88rem; color:var(--clr-neutral-gray); max-width:440px; line-height:1.5;">
-                        Tu especialista tomará las fotos del resultado de tu atención al finalizar el servicio para que las veas guardadas en este espacio.
-                    </p>
-                </div>
-            `}
-        </div>
-    `;
-
         return `
         <div class="container section text-center" style="padding: 60px 20px;">
             <div style="max-width: 680px; margin: 0 auto 28px; text-align: center;">
-                <h2 class="section-title" style="margin-bottom: 8px;">Hola, ${pers.name}</h2>
+                <h2 class="section-title" style="margin-bottom: 8px;">Hola, ${escapeReservationHtml(pers.name)}</h2>
                 <p class="section-subtitle" style="color: var(--clr-neutral-gray); font-size: 1.05rem;">
-                    Este es tu espacio personal, el historial de tus atenciones y la galería de tus resultados.
+                    Tus preferencias se guardan en este dispositivo. El historial y las fotografías privadas no están disponibles desde este perfil público.
                 </p>
                 <div style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap;">
                     <div style="display:inline-flex; align-items:center; gap:8px; background:var(--clr-nude-light); padding:6px 16px; border-radius:30px; font-size:0.85rem; color:var(--clr-neutral-gray);">
                         <i data-lucide="mail" style="width:14px; height:14px;"></i>
-                        <span>${pers.email}</span>
+                        <span>${escapeReservationHtml(pers.email)}</span>
                     </div>
                     <button type="button" class="btn" onclick="logoutClientProfile()" style="background:#ffffff; border:1px solid #e2b9c3; color:#b5455a; padding:6px 18px; border-radius:30px; font-size:0.85rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:var(--shadow-soft); transition:all 0.3s ease;">
                         <i data-lucide="log-out" style="width:15px; height:15px;"></i>
-                        <span>Cerrar Sesión</span>
+                        <span>Borrar preferencias locales</span>
                     </button>
                 </div>
             </div>
 
-            ${historyHtml}
-
-            ${clientGalleryHtml}
-
-            ${userAppointments.length > 0 ? `
             <div style="margin-top: 40px;">
-                <button class="btn btn-primary" style="font-size:1.05rem; padding: 14px 34px;" onclick="AppRouter.navigate('agendar')">
-                    Agendar Nueva Cita
-                </button>
+                <button class="btn btn-primary" onclick="AppRouter.navigate('agendar')">Agendar Cita</button>
+                <button class="btn btn-secondary" onclick="AppRouter.navigate('galeria')">Ver Galería Pública</button>
             </div>
-            ` : ''}
         </div>
     `;
     }

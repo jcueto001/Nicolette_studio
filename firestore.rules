@@ -18,15 +18,14 @@ service cloud.firestore {
     match /Citas/{id} {
       allow read: if admin() || assigned();
       // Los pagos y las reservas pagadas se escriben con Admin SDK.
-      allow create: if admin() && !request.resource.data.keys().hasAny(['paymentStatus', 'depositAmount', 'flowToken', 'flowOrder']);
+      allow create: if false;
       allow update: if (admin() || assigned())
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'notes']);
-      allow delete: if admin();
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes']);
+      allow delete: if false;
     }
     match /FichasClientas/{id} {
       allow read: if admin() || assigned();
-      allow create: if admin() || (staff() && request.resource.data.profId == request.auth.uid);
-      allow update: if admin() || (assigned() && request.resource.data.profId == resource.data.profId);
+      allow create, update: if false;
       allow delete: if admin();
     }
     match /FichasClinicas/{id} { allow read, write: if admin(); }
@@ -36,14 +35,25 @@ service cloud.firestore {
     match /Categorias/{id} { allow read: if true; allow write: if admin(); }
     match /Perfiles/{id} { allow read: if true; allow write: if admin(); }
     match /Inventario/{id} { allow read: if staff(); allow write: if admin(); }
+    match /ConsumosInventario/{id} { allow read, write: if false; }
+    match /FichaOperations/{id} { allow read, write: if false; }
     match /Galeria/{id} {
-      allow read: if resource.data.get('approved', false) == true || admin();
-      allow write: if admin();
+      allow read: if resource.data.get('approved', false) == true || admin() || assigned();
+      allow create: if admin() || (staff() && request.resource.data.profId == request.auth.uid
+        && request.resource.data.source == 'worker' && request.resource.data.approved == false
+        && request.resource.data.status == 'pending');
+      allow update: if admin();
+      allow delete: if admin() || (assigned() && resource.data.approved == false);
     }
     // Sin secretos ni acceso del cliente a transacciones de pago.
     match /Configuracion/{id} { allow read, write: if false; }
     match /FlowTransactions/{id} { allow read, write: if false; }
     match /FlowOrders/{id} { allow read, write: if false; }
+    match /AgendaLocks/{id} { allow read, write: if false; }
+    match /Reservas/{id} { allow read, write: if false; }
+    match /BookingRequests/{id} { allow read, write: if false; }
+    match /BookingConfig/{id} { allow read, write: if false; }
+    match /FinancialConflicts/{id} { allow read, write: if false; }
     match /{document=**} { allow read, write: if false; }
   }
 }
