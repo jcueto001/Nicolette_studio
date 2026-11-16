@@ -7,12 +7,14 @@
     "node": "24.x"
   },
   "scripts": {
-    "start": "node backend/server.js"
+    "start": "node backend/server.js",
+    "vercel-build": "node -e \"require('firebase-admin/app'); require('firebase-admin/firestore'); require('./api/index.js')\""
   },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "firebase-admin": "14.5.1",
     "transbank-sdk": "^6.1.1"
   }
 }
