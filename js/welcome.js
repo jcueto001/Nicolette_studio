@@ -2,13 +2,16 @@
     'use strict';
 
     const storageKey = 'nicolett_welcome_seen_v1';
-    if (!window.matchMedia) return;
+    const gate = window.studioWelcomeGate;
+    const releaseCover = () => gate?.release();
+    if (gate && !gate.active) return;
+    if (!window.matchMedia) { releaseCover(); return; }
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const isHome = () => ['', '#', '#home'].includes(window.location.hash.toLowerCase())
         && !window.location.search && document.visibilityState !== 'hidden';
-    if (!isHome() || motion.matches) return;
-    try { if (sessionStorage.getItem(storageKey)) return; }
-    catch (_) { return; } // Sin almacenamiento no se puede garantizar una sola vez.
+    if (!isHome() || motion.matches) { releaseCover(); return; }
+    try { if (sessionStorage.getItem(storageKey)) { releaseCover(); return; } }
+    catch (_) { releaseCover(); return; } // Sin almacenamiento no se puede garantizar una sola vez.
 
     let overlay;
     let finished = false;
@@ -53,6 +56,7 @@
         clearTimeout(timer);
         image.onload = image.onerror = null;
         overlay?.remove();
+        releaseCover();
         document.removeEventListener('pointerdown', remove, true);
         document.removeEventListener('keydown', remove, true);
         document.removeEventListener('wheel', remove, true);
@@ -73,7 +77,7 @@
     timer = setTimeout(remove, 800);
     image.onerror = remove;
     image.onload = () => {
-        if (finished || !isHome() || motion.matches || !image.naturalWidth) { remove(); return; }
+        if (finished || (gate && !gate.active) || !isHome() || motion.matches || !image.naturalWidth) { remove(); return; }
         try {
             if (sessionStorage.getItem(storageKey)) { remove(); return; }
             sessionStorage.setItem(storageKey, '1');
@@ -104,6 +108,7 @@
             if (event.target === overlay) remove();
         });
         document.body.appendChild(overlay);
+        releaseCover();
         timer = setTimeout(remove, 3300);
     };
     image.src = 'img/logo%20nicol.png';

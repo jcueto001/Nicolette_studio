@@ -5,6 +5,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nicolett Studio Fantasy | Belleza a tu ritmo</title>
+    <style>
+        html.studio-welcome-pending::before {
+            content: ''; position: fixed; inset: 0; z-index: 2000; pointer-events: none;
+            background: radial-gradient(ellipse at 50% 44%, #FDFBF7 20%, #F7F4F0 65%, #EFE8DF 100%);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            html.studio-welcome-pending::before { display: none; }
+        }
+    </style>
+    <script>
+        (() => {
+            try {
+                if (!['', '#', '#home'].includes(location.hash.toLowerCase()) || location.search
+                    || !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                    || sessionStorage.getItem('nicolett_welcome_seen_v1')) return;
+                const root = document.documentElement;
+                let timer;
+                const gate = window.studioWelcomeGate = {
+                    active: true,
+                    release() {
+                        gate.active = false;
+                        root.classList.remove('studio-welcome-pending');
+                        clearTimeout(timer);
+                    }
+                };
+                root.classList.add('studio-welcome-pending');
+                timer = setTimeout(gate.release, 1600);
+            } catch (_) { /* Si no hay almacenamiento, continuar sin splash. */ }
+        })();
+    </script>
+    <link rel="preload" as="image" href="img/logo%20nicol.png">
 
     <!-- Favicon oficial Nicolett Studio -->
     <link rel="icon" type="image/png" href="img/favicon.png?v=30">
@@ -22,7 +53,7 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/styles.css?v=33">
-    <script src="js/welcome.js?v=3" defer></script>
+    <script src="js/welcome.js?v=4" defer></script>
 </head>
 
 <body>
