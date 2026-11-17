@@ -1,7 +1,7 @@
 const { createHmac, randomBytes, randomInt, timingSafeEqual } = require('node:crypto');
 
 const CODE_MS = 10 * 60000;
-const SESSION_MS = 30 * 60000;
+const SESSION_MS = 24 * 60 * 60000;
 function fail(code, status = 400) { throw Object.assign(new Error(code), { code, status }); }
 function createClientProfileService(db, { env = process.env, now = Date.now, sendCode, fetchImpl = fetch } = {}) {
     const secret = env.CLIENT_PROFILE_SECRET;

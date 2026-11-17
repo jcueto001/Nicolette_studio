@@ -337,3 +337,35 @@ test('Agenda en vivo: admin conserva acceso y snapshots locales no repueblan dat
     await f.helper.loadAppointmentsCache();
     assert.equal(listener.stopped, true);
 });
+
+test('Agenda autorizada persiste aunque fichas, inventario o galería estén denegados', async () => {
+    for (const denied of ['FichasClientas', 'Inventario', 'Galeria']) {
+        const f = fixture(); await f.login('worker', 'profesional');
+        f.state.read = async collection => { if (collection === denied) throw { code: 'permission-denied' }; };
+        await f.helper.loadAppointmentsCache();
+        assert.equal(f.helper.getAppointments().length, 1, denied);
+        assert.equal(f.helper.getAppointments()[0].profId, 'worker');
+        const listener = f.state.appointmentListeners.at(-1);
+        assert.equal(listener.stopped, false);
+        if (denied === 'FichasClientas') assert.equal(f.helper.getFichas().length, 0);
+        if (denied === 'Inventario') assert.equal(f.helper.getInventory().length, 0);
+        if (denied === 'Galeria') assert.equal(f.helper._galleryCache.length, 0);
+        listener.next(snapshot([{ id: 'live', profId: 'worker', status: 'confirmada' }]));
+        assert.equal(f.helper.getAppointments()[0].id, 'live');
+        f.helper.setAuth({ loggedIn: false });
+        listener.next(snapshot([{ id: 'late', profId: 'worker' }]));
+        assert.equal(f.helper.getAppointments().length, 0);
+    }
+});
+
+test('Agenda se carga y escucha antes de finalizar fichas; una respuesta tardía no pisa citas nuevas', async () => {
+    const f = fixture(); await f.login('worker', 'profesional');
+    const pending = deferred(); const started = deferred();
+    f.state.read = async collection => { if (collection === 'FichasClientas') { started.resolve(); return pending.promise; } };
+    const loading = f.helper.loadAppointmentsCache(); await started.promise;
+    assert.equal(f.helper.getAppointments().length, 1);
+    const listener = f.state.appointmentListeners.at(-1);
+    listener.next(snapshot([{ id: 'new-confirmed', profId: 'worker', status: 'confirmada' }]));
+    pending.resolve(snapshot([])); await loading;
+    assert.equal(f.helper.getAppointments()[0].id, 'new-confirmed');
+});

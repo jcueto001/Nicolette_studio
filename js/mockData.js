@@ -396,29 +396,39 @@ const StorageHelper = {
 
         const session = this._sessionStamp();
         if (this.getAuth().loggedIn) {
+            const auth = this.getAuth();
+            const read = async collection => {
+                let query = db.collection(collection);
+                if (auth.user.role !== 'admin') query = query.where('profId', '==', auth.user.id);
+                const snapshot = await query.get({ source: 'server' });
+                this._assertSessionCurrent(session);
+                return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            };
             try {
-                const auth = this.getAuth();
-                const read = async collection => {
-                    let query = db.collection(collection);
-                    if (auth.user.role !== 'admin') query = query.where('profId', '==', auth.user.id);
-                    const snapshot = await query.get({ source: 'server' });
-                    this._assertSessionCurrent(session);
-                    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                };
                 const appointments = await read('Citas');
                 if (!this._isSessionCurrent(session)) return;
+                this._appointmentsCache = appointments;
+                this._watchAppointments(session);
+                this._refreshAdminIfSafe();
+            } catch (error) {
+                if (!this._isSessionCurrent(session)) return;
+                this._clearPrivateData();
+                this._refreshAdminIfSafe();
+                return;
+            }
+            try {
                 let fichas = await read('FichasClientas');
                 if (!this._isSessionCurrent(session)) return;
                 if (!fichas.length && auth.user.role === 'admin') {
                     fichas = await read('FichasClinicas');
                     if (!this._isSessionCurrent(session)) return;
                 }
-                this._appointmentsCache = appointments;
                 this._fichasCache = fichas;
-                this._watchAppointments(session);
             } catch (error) {
                 if (!this._isSessionCurrent(session)) return;
-                this._clearPrivateData();
+                // Una colección denegada no invalida una lectura autorizada de Citas.
+                this._fichasCache = [];
+                console.warn('[StorageHelper] Fichas no disponibles; agenda independiente.');
                 this._refreshAdminIfSafe();
             }
         }
@@ -460,7 +470,8 @@ const StorageHelper = {
                 }
             } catch (error) {
                 if (!this._isSessionCurrent(session)) return;
-                this._clearPrivateData();
+                this._inventoryCache = [];
+                console.warn('[StorageHelper] Inventario no disponible; agenda independiente.');
                 this._refreshAdminIfSafe();
             }
         }
@@ -482,7 +493,7 @@ const StorageHelper = {
         } catch (error) {
             if (!this._isSessionCurrent(session)) return;
             this._galleryCache = [];
-            if (this._isDenied(error)) this._clearPrivateData();
+            if (this._isDenied(error)) this._publicGalleryCache = [];
         }
 
         localStorage.removeItem('nicolett_flow_config');

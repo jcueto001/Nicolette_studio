@@ -65,7 +65,10 @@ test('Sesiones: token alterado, logout durable y vencimiento rechazan consultas'
     await assert.rejects(f.service.appointments(session.token), { code: 'CLIENT_ACCESS_REQUIRED' });
     f.advance(60001); const next = await f.service.requestCode('client@example.invalid', 'ip');
     const second = await f.service.verifyCode(next.challenge, f.sent.at(-1).code);
-    f.advance(1800001);
+    assert.equal(second.expiresIn, 86400);
+    f.advance(23 * 3600000);
+    assert.equal((await f.service.appointments(second.token)).appointments.length, 3);
+    f.advance(3600001);
     await assert.rejects(f.service.appointments(second.token), { code: 'CLIENT_ACCESS_REQUIRED' });
 });
 
