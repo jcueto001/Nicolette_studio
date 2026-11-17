@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 // Dobles locales: ninguna prueba llama a Firebase, Google o Flow.
-async function fixture(env = {}) {
+async function fixture(env = {}, hooks = {}) {
     const { db, docs } = require('./test-firestore').memoryFirestore([
         ['BookingConfig/control', { version: 1, ready: true }],
         ['Servicios/s1', { name: 'Servicio', price: 15000, duration: 60 }],
@@ -17,11 +17,12 @@ async function fixture(env = {}) {
     let statusOverride = {};
     const context = {
         require: name => name === 'firebase-admin/app' ? appApi : name === 'firebase-admin/firestore' ? firestoreApi : name === 'dotenv' ? { config() {} } : require(name),
-        module: { exports: {} }, __dirname, URL, URLSearchParams, AbortSignal, console,
+        module: { exports: {} }, __dirname, URL, URLSearchParams, AbortSignal, console: hooks.console || console,
         process: { env: { BACKEND_URL: 'http://localhost:3000', FLOW_API_KEY: 'test-only', FLOW_SECRET_KEY: 'test-only', ...env } },
         fetch: async (url, options) => {
             if (url.includes('/payment/create')) {
                 fields = new URLSearchParams(options.body);
+                if (hooks.flowCreate) return hooks.flowCreate();
                 return { ok: true, json: async () => ({ url: 'https://sandbox.flow.cl/app/web/pay.php', token: 'test_token_123', flowOrder: 123 }) };
             }
             return { ok: true, json: async () => ({ status: 2, commerceOrder: fields?.get('commerceOrder'), currency: 'CLP', amount: 5000, flowOrder: 123, ...statusOverride }) };
@@ -190,5 +191,35 @@ test('Backend real carga Admin SDK y responde localmente sin credenciales', asyn
         assert.equal((await response.json()).configured, false);
     } finally {
         await new Promise(resolve => { server.close(resolve); server.closeAllConnections(); });
+    }
+});
+
+test('Diagnóstico Flow seguro: rechazo, timeout y respuesta inválida sin secretos ni reintentos', async () => {
+    const sensitive = 'secret-synthetic-token-and-email@example.invalid';
+    for (const scenario of [
+        { code: 'FLOW_AUTH_REJECTED', run: () => ({ ok: false, status: 401, json: async () => ({ code: 123, message: 'apiKey not found ' + sensitive }) }) },
+        { code: 'FLOW_RETURN_URL_REJECTED', run: () => ({ ok: false, status: 400, json: async () => ({ message: 'urlReturn invalid ' + sensitive }) }) },
+        { code: 'FLOW_TIMEOUT', run: () => { throw Object.assign(new Error(sensitive), { name: 'TimeoutError' }); } },
+        { code: 'FLOW_NETWORK_ERROR', run: () => { throw new Error(sensitive); } },
+        { code: 'FLOW_INVALID_RESPONSE', run: () => ({ status: 502, json: async () => { throw new Error(sensitive); } }) }
+    ]) {
+        const logs = []; let attempts = 0;
+        const f = await fixture({}, { console: { ...console, warn: (...args) => logs.push(args) },
+            flowCreate: () => { attempts++; return scenario.run(); } });
+        try {
+            const first = await f.create(booking);
+            const payload = await first.json();
+            assert.equal(payload.error, 'BOOKING_REQUEST_FAILED');
+            assert.equal(logs[0][1].code, scenario.code);
+            assert.equal(logs[0][1].environment, 'sandbox');
+            const retry = await f.create(booking);
+            assert.equal(retry.status, 409);
+            assert.equal((await retry.json()).error, 'PAYMENT_CREATION_PENDING_REVIEW');
+            assert.equal(attempts, 1);
+            assert.equal(logs.at(-1)[1].code, 'PAYMENT_CREATION_PENDING_REVIEW');
+            assert.equal(JSON.stringify(logs).includes(sensitive), false);
+            assert.equal(JSON.stringify(payload).includes(sensitive), false);
+            assert.equal([...f.docs.keys()].filter(key => key.startsWith('Citas/')).length, 0);
+        } finally { await f.close(); }
     }
 });

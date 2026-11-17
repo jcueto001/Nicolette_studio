@@ -107,17 +107,42 @@ function signFlowParams(params) {
     return crypto.createHmac('sha256', FLOW_SECRET_KEY)
         .update(Object.keys(params).sort().map(key => key + params[key]).join('')).digest('hex');
 }
+function reportFlowError(operation, error) {
+    const codes = new Set(['FLOW_NOT_CONFIGURED', 'FLOW_TIMEOUT', 'FLOW_NETWORK_ERROR', 'FLOW_INVALID_RESPONSE',
+        'FLOW_AUTH_REJECTED', 'FLOW_RETURN_URL_REJECTED', 'FLOW_PROVIDER_REJECTED', 'INVALID_FLOW_RESPONSE',
+        'PAYMENT_CREATION_PENDING_REVIEW', 'BOOKING_MIGRATION_REQUIRED', 'SLOT_UNAVAILABLE',
+        'FIREBASE_ADMIN_NOT_CONFIGURED', 'FLOW_ORDER_CONFLICT', 'FLOW_TOKEN_CONFLICT']);
+    const firestoreCodes = { 7: 'FIRESTORE_PERMISSION_DENIED', 14: 'FIRESTORE_UNAVAILABLE',
+        4: 'FIRESTORE_TIMEOUT', 'permission-denied': 'FIRESTORE_PERMISSION_DENIED', unavailable: 'FIRESTORE_UNAVAILABLE' };
+    console.warn('[Flow]', { operation, environment: FLOW_IS_SANDBOX ? 'sandbox' : 'production',
+        code: codes.has(error?.code) ? error.code : firestoreCodes[error?.code] || 'FLOW_OPERATION_FAILED',
+        ...(Number.isInteger(error?.providerHttpStatus) ? { providerHttpStatus: error.providerHttpStatus } : {}),
+        ...(Number.isSafeInteger(error?.providerCode) ? { providerCode: error.providerCode } : {}) });
+}
 async function flowRequest(endpoint, fields, method = 'GET') {
-    if (!FLOW_API_KEY || !FLOW_SECRET_KEY) throw new Error('Flow no configurado.');
+    const failure = (code, details = {}) => Object.assign(new Error(code), { code, ...details });
+    if (!FLOW_API_KEY || !FLOW_SECRET_KEY) throw failure('FLOW_NOT_CONFIGURED');
     const params = { ...fields, apiKey: FLOW_API_KEY };
     params.s = signFlowParams(params);
     const body = new URLSearchParams(params).toString();
-    const response = await fetch(FLOW_BASE_URL + endpoint + (method === 'GET' ? '?' + body : ''), {
-        method, signal: AbortSignal.timeout(15000),
-        ...(method === 'POST' ? { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body } : {})
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error('Flow rechazó la solicitud.');
+    let response;
+    try {
+        response = await fetch(FLOW_BASE_URL + endpoint + (method === 'GET' ? '?' + body : ''), {
+            method, signal: AbortSignal.timeout(15000),
+            ...(method === 'POST' ? { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body } : {})
+        });
+    } catch (error) { throw failure(['TimeoutError', 'AbortError'].includes(error.name) ? 'FLOW_TIMEOUT' : 'FLOW_NETWORK_ERROR'); }
+    let data;
+    try { data = await response.json(); }
+    catch (error) { throw failure(['TimeoutError', 'AbortError'].includes(error.name) ? 'FLOW_TIMEOUT' : 'FLOW_INVALID_RESPONSE', { providerHttpStatus: response.status }); }
+    if (!response.ok) {
+        // Clasificar el texto del proveedor sin registrarlo: puede contener datos sensibles.
+        const message = typeof data?.message === 'string' ? data.message : '';
+        const code = /api.?key|secret.?key|signature|firma|credentials/i.test(message) ? 'FLOW_AUTH_REJECTED'
+            : /urlreturn|urlconfirmation/i.test(message) ? 'FLOW_RETURN_URL_REJECTED' : 'FLOW_PROVIDER_REJECTED';
+        throw failure(code, { providerHttpStatus: response.status,
+            ...(Number.isSafeInteger(data?.code) ? { providerCode: data.code } : {}) });
+    }
     return data;
 }
 const { createBookingService } = require('./booking-service');
@@ -223,7 +248,7 @@ app.post('/api/flow/create', requireBookingOpen, async (req, res) => {
         }
         if (!FLOW_API_KEY || !FLOW_SECRET_KEY) return res.status(503).json({ error: 'PAYMENTS_DISABLED' });
         res.json(await bookings().createPayment(req.body.booking, req.body.requestId));
-    } catch (error) { bookingError(error, res); }
+    } catch (error) { reportFlowError('create', error); bookingError(error, res); }
 });
 app.get('/api/flow/status/:token', async (req, res) => {
     res.set('Cache-Control', 'no-store');
