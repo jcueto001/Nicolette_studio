@@ -36,6 +36,163 @@
     --transition-normal: 0.3s ease;
 }
 
+/* Bienvenida decorativa: fases 0–400, 400–800, 800–1200, 1200–3100 y salida 3100–3300 ms. */
+.studio-welcome {
+    --welcome-logo-size: min(300px, 58vw, 46vh);
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 50% 44%, var(--clr-ivory) 20%, var(--clr-nude-light) 65%, var(--clr-nude) 100%);
+    color: var(--clr-rose-gold-dark);
+    pointer-events: none;
+    animation: studio-welcome-curtain 3.3s linear both;
+    will-change: opacity;
+}
+
+.studio-welcome__stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 24px;
+    text-align: center;
+}
+
+.studio-welcome__intro { animation: studio-welcome-phase 0.4s ease both; }
+.studio-welcome__beauty { animation: studio-welcome-phase 0.4s ease 0.4s both; }
+
+.studio-welcome__lotus {
+    width: clamp(64px, 14vw, 84px);
+    height: auto;
+    color: var(--clr-rose-gold);
+}
+
+.studio-welcome__caption {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: clamp(0.86rem, 2.8vw, 1rem);
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+    color: var(--clr-neutral-gray);
+}
+
+.studio-welcome__icons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(16px, 5vw, 30px);
+    color: var(--clr-rose-gold);
+}
+
+.studio-welcome__beauty-icon { width: clamp(32px, 9vw, 42px); height: auto; }
+
+.studio-welcome__wave {
+    position: absolute;
+    top: 37%;
+    left: -30%;
+    width: 160%;
+    height: 26%;
+    border-radius: 50%;
+    background: linear-gradient(110deg, transparent 25%, rgba(212, 182, 146, 0.08) 42%, rgba(182, 141, 93, 0.22) 50%, rgba(212, 182, 146, 0.08) 58%, transparent 75%);
+    box-shadow: 0 0 35px rgba(182, 141, 93, 0.05);
+    animation: studio-welcome-wave 0.4s ease-in-out 0.4s both;
+}
+
+.studio-welcome__logo {
+    position: relative;
+    width: min(300px, 58vw);
+    width: var(--welcome-logo-size);
+    aspect-ratio: 1;
+    isolation: isolate;
+    animation: studio-welcome-logo 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.8s both;
+    will-change: transform, opacity;
+}
+
+.studio-welcome__logo::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -20%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212, 182, 146, 0.28) 20%, rgba(182, 141, 93, 0.1) 48%, transparent 72%);
+    box-shadow: 0 0 45px rgba(182, 141, 93, 0.08);
+    animation: studio-welcome-glow 0.4s ease 0.8s both;
+}
+
+.studio-welcome__emblem { position: relative; overflow: hidden; border-radius: 50%; }
+.studio-welcome__emblem img { display: block; width: 100%; height: auto; }
+
+.studio-welcome__shine {
+    position: absolute;
+    inset: -10%;
+    background: linear-gradient(110deg, transparent 37%, rgba(255, 255, 255, 0.3) 49%, rgba(212, 182, 146, 0.14) 53%, transparent 65%);
+    animation: studio-welcome-shine 0.4s ease-in-out 1.2s both;
+}
+
+.studio-welcome__tagline {
+    position: absolute;
+    top: calc(50% + var(--welcome-logo-size) / 2 + 24px);
+    left: 20px;
+    right: 20px;
+    margin: 0;
+    text-align: center;
+    font-family: var(--font-heading);
+    font-size: clamp(0.9rem, 3.5vw, 1.18rem);
+    line-height: 1.5;
+    color: var(--clr-rose-gold-dark);
+    animation: studio-welcome-tagline 0.4s ease 1.2s both;
+}
+
+@keyframes studio-welcome-curtain {
+    0%, 93.939394% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes studio-welcome-phase {
+    0% { opacity: 0; transform: translate3d(0, 5px, 0) scale(0.98); }
+    20%, 78% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    100% { opacity: 0; transform: translate3d(0, -3px, 0) scale(1); }
+}
+
+@keyframes studio-welcome-wave {
+    0% { opacity: 0; transform: translate3d(-55%, 0, 0) rotate(-12deg); }
+    45% { opacity: 0.65; }
+    100% { opacity: 0; transform: translate3d(55%, 0, 0) rotate(-12deg); }
+}
+
+@keyframes studio-welcome-logo {
+    from { opacity: 0; transform: translate3d(0, 6px, 0) scale(0.9); }
+    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes studio-welcome-glow {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 0.7; transform: scale(1); }
+}
+
+@keyframes studio-welcome-tagline {
+    0% { opacity: 0; transform: translate3d(0, 4px, 0); }
+    50%, 100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes studio-welcome-shine {
+    0% { opacity: 0; transform: translate3d(-55%, 0, 0); }
+    45% { opacity: 0.6; }
+    100% { opacity: 0; transform: translate3d(55%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .studio-welcome { display: none; }
+    .studio-welcome, .studio-welcome *, .studio-welcome *::before, .studio-welcome *::after { animation: none; }
+}
+
 /* Base Reset & Styles */
 *, *::before, *::after {
     margin: 0;
