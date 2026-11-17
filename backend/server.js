@@ -261,13 +261,16 @@ app.get('/api/flow/status/:token', async (req, res) => {
 async function handleFlowReturn(req, res) {
     res.set('Cache-Control', 'no-store');
     const token = req.query.token || req.body?.token;
+    let target;
+    try { target = new URL('/index.html', originUrl()); }
+    catch (_) { return res.status(503).send('No se pudo volver al estudio. Conserva tu comprobante.'); }
+    target.searchParams.set('action', 'flow-failed');
+    if (typeof token === 'string' && /^[\w-]{8,256}$/.test(token)) target.searchParams.set('token', token);
     try {
         const result = await confirmPayment(token);
-        const target = new URL('/index.html', originUrl());
         target.searchParams.set('action', result.conflict ? 'flow-conflict' : result.paid && result.booked ? 'flow-success' : 'flow-failed');
-        target.searchParams.set('token', token);
-        res.redirect(303, target.href);
-    } catch (error) { res.status(400).send('No se pudo verificar el pago. Conserva tu comprobante.'); }
+    } catch (error) { reportFlowError('return', error); }
+    res.redirect(303, target.href);
 }
 app.get('/api/flow/return', handleFlowReturn);
 app.post('/api/flow/return', handleFlowReturn);

@@ -47,7 +47,12 @@ test('Backend inicia; no publica backend ni acepta parámetros de pago del clien
         assert.equal((await f.request('/package.json')).status, 404);
         const response = await f.request('/api/flow/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 1 }) });
         assert.equal(response.status, 400);
-        assert.equal((await f.request('/api/flow/return?token=unknown_token&auth=ignored&sb=1')).status, 400);
+        const returned = await f.request('/api/flow/return?token=unknown_token&auth=ignored&sb=1', { redirect: 'manual' });
+        assert.equal(returned.status, 303);
+        const target = new URL(returned.headers.get('location'));
+        assert.equal(target.origin, 'http://localhost:3000');
+        assert.equal(target.searchParams.get('action'), 'flow-failed');
+        assert.equal(target.searchParams.has('auth'), false);
         assert.equal([...f.docs.keys()].filter(key => key.startsWith('Citas/')).length, 0);
     } finally { await f.close(); }
 });
@@ -221,5 +226,37 @@ test('Diagnóstico Flow seguro: rechazo, timeout y respuesta inválida sin secre
             assert.equal(JSON.stringify(payload).includes(sensitive), false);
             assert.equal([...f.docs.keys()].filter(key => key.startsWith('Citas/')).length, 0);
         } finally { await f.close(); }
+    }
+});
+
+test('Retorno Flow vuelve al estudio por GET/POST incluso ante error, sin confirmar ni redirigir a URLs ajenas', async () => {
+    const f = await fixture({}, { console: { ...console, warn() {} } });
+    try {
+        for (const options of [undefined, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'token=unknown_token&returnUrl=https://example.invalid' }]) {
+            const response = await f.request('/api/flow/return' + (options ? '' : '?token=unknown_token&returnUrl=https://example.invalid'), { ...options, redirect: 'manual' });
+            assert.equal(response.status, 303);
+            assert.equal(response.headers.get('cache-control'), 'no-store');
+            const location = new URL(response.headers.get('location'));
+            assert.equal(location.origin, 'http://localhost:3000');
+            assert.equal(location.searchParams.get('action'), 'flow-failed');
+            assert.equal(location.searchParams.get('token'), 'unknown_token');
+            assert.equal(location.searchParams.has('returnUrl'), false);
+        }
+        const missing = await f.request('/api/flow/return', { redirect: 'manual' });
+        const location = new URL(missing.headers.get('location'));
+        assert.equal(location.searchParams.get('action'), 'flow-failed');
+        assert.equal(location.searchParams.has('token'), false);
+        assert.equal([...f.docs.keys()].filter(key => key.startsWith('Citas/')).length, 0);
+    } finally { await f.close(); }
+});
+
+test('Splash se omite en retornos de Flow y no cambia almacenamiento de pagos', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../js/welcome.js'), 'utf8');
+    for (const action of ['flow-success', 'flow-failed', 'flow-conflict']) {
+        vm.runInNewContext(source, {
+            window: { location: { hash: '', search: '?action=' + action + '&token=synthetic_token' },
+                matchMedia: () => ({ matches: false }) },
+            sessionStorage: { getItem() { assert.fail('El retorno no debe leer almacenamiento del splash'); } }
+        });
     }
 });
