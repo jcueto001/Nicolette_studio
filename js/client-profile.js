@@ -89,7 +89,10 @@
                 const data = await api('code', { email });
                 if (!current()) return;
                 challenge = activeChallenge = data.challenge; verify.hidden = false;
-                status.textContent = 'Ingresa el código de seis dígitos. Vence en 10 minutos.'; input.focus();
+                status.textContent = data.delivery === 'unconfirmed'
+                    ? 'El proveedor no confirmó el envío. Si recibiste el correo, ingresa su código aquí; no necesitas solicitar otro.'
+                    : 'Ingresa el código de seis dígitos. Vence en 10 minutos.';
+                input.focus();
             } catch (error) { if (current()) status.textContent = error.message; }
             finally { if (current()) request.disabled = false; }
         }, listenerOptions);

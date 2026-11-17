@@ -3,7 +3,7 @@ const { createHmac, randomBytes, randomInt, timingSafeEqual } = require('node:cr
 const CODE_MS = 10 * 60000;
 const SESSION_MS = 30 * 60000;
 function fail(code, status = 400) { throw Object.assign(new Error(code), { code, status }); }
-function createClientProfileService(db, { env = process.env, now = Date.now, sendCode } = {}) {
+function createClientProfileService(db, { env = process.env, now = Date.now, sendCode, fetchImpl = fetch } = {}) {
     const secret = env.CLIENT_PROFILE_SECRET;
     if (typeof secret !== 'string' || secret.length < 32) fail('CLIENT_ACCESS_NOT_CONFIGURED', 503);
     const digest = text => createHmac('sha256', secret).update(text).digest('hex');
@@ -18,13 +18,16 @@ function createClientProfileService(db, { env = process.env, now = Date.now, sen
         .every(key => typeof env[key] === 'string' && env[key].trim());
     const deliver = sendCode || (async (email, code) => {
         if (!configuredMail || env.LOCAL_FIREBASE_EMULATORS === '1') fail('CLIENT_ACCESS_NOT_CONFIGURED', 503);
-        const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        const response = await fetchImpl('https://api.emailjs.com/api/v1.0/email/send', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(8000),
             body: JSON.stringify({ service_id: env.EMAILJS_SERVICE_ID.trim(), template_id: env.EMAILJS_CLIENT_ACCESS_TEMPLATE_ID.trim(),
                 user_id: env.EMAILJS_PUBLIC_KEY.trim(), accessToken: env.EMAILJS_PRIVATE_KEY.trim(),
                 template_params: { to_email: email, code, expires_minutes: 10 } })
         });
-        if (!response.ok) fail('CLIENT_CODE_DELIVERY_FAILED', 503);
+        if (!response.ok) {
+            console.warn('[ClientAccess]', { code: response.status >= 500 ? 'EMAIL_PROVIDER_UNAVAILABLE' : 'EMAIL_PROVIDER_REJECTED', providerHttpStatus: response.status });
+            throw Object.assign(new Error('CLIENT_CODE_DELIVERY_FAILED'), { code: 'CLIENT_CODE_DELIVERY_FAILED', status: 503, deliveryRejected: response.status < 500 });
+        }
     });
     async function requestCode(rawEmail, address) {
         if (!sendCode && (!configuredMail || env.LOCAL_FIREBASE_EMULATORS === '1')) fail('CLIENT_ACCESS_NOT_CONFIGURED', 503);
@@ -35,22 +38,37 @@ function createClientProfileService(db, { env = process.env, now = Date.now, sen
         const code = String(randomInt(1000000)).padStart(6, '0');
         const time = now(), hour = Math.floor(time / 3600000);
         const globalRef = ref('global'), ipRef = ref('ip_' + digest(String(address || 'unknown'))), profileRef = ref(key);
-        await db.runTransaction(async tx => {
+        const recovered = await db.runTransaction(async tx => {
             const [profile, global, ip] = await Promise.all([tx.get(profileRef), tx.get(globalRef), tx.get(ipRef)]);
             const old = profile.exists ? profile.data() : {};
+            // Recuperar el mismo código si se perdió la respuesta; nunca reenviar en paralelo.
+            if (old.codeHash && old.codeExpiresMs > time && old.attempts < 5 && time - old.lastSentMs < 60000
+                && ['sending', 'unconfirmed'].includes(old.deliveryState)) return { nonce: old.nonce, expiresIn: Math.floor((old.codeExpiresMs - time) / 1000) };
             const globalCount = global.exists && global.data().hour === hour ? global.data().count : 0;
             const ipCount = ip.exists && ip.data().hour === hour ? ip.data().count : 0;
             const count = old.hour === hour ? old.count : 0;
             if ((old.lastSentMs !== undefined && time - old.lastSentMs < 60000) || count >= 3 || ipCount >= 10 || globalCount >= 100) fail('CLIENT_CODE_RATE_LIMIT', 429);
             tx.set(profileRef, { ...old, email, queryEmails: [...new Set([email, rawEmail.trim(), ...(old.queryEmails || [])])].slice(0, 8),
                 nonce, codeHash: digest(nonce + ':' + code), attempts: 0,
-                codeExpiresMs: time + CODE_MS, lastSentMs: time, hour, count: count + 1 });
+                codeExpiresMs: time + CODE_MS, lastSentMs: time, deliveryState: 'sending', hour, count: count + 1 });
             tx.set(globalRef, { hour, count: globalCount + 1 });
             tx.set(ipRef, { hour, count: ipCount + 1 });
         });
+        if (recovered) return { challenge: key + '.' + recovered.nonce, expiresIn: recovered.expiresIn, delivery: 'unconfirmed' };
+        let delivery = 'sent';
         try { await deliver(email, code); }
-        catch (_) { fail('CLIENT_CODE_DELIVERY_FAILED', 503); }
-        return { challenge: key + '.' + nonce, expiresIn: CODE_MS / 1000 };
+        catch (error) {
+            delivery = error.deliveryRejected === true ? 'rejected' : 'unconfirmed';
+            if (delivery === 'unconfirmed') console.warn('[ClientAccess]', { code: 'EMAIL_DELIVERY_UNCONFIRMED' });
+        }
+        try {
+            await db.runTransaction(async tx => {
+                const saved = await tx.get(profileRef);
+                if (saved.exists && saved.data().nonce === nonce) tx.update(profileRef, { deliveryState: delivery });
+            });
+        } catch (_) { console.warn('[ClientAccess]', { code: 'EMAIL_DELIVERY_STATE_NOT_SAVED' }); }
+        if (delivery === 'rejected') fail('CLIENT_CODE_DELIVERY_FAILED', 503);
+        return { challenge: key + '.' + nonce, expiresIn: CODE_MS / 1000, delivery };
     }
     async function verifyCode(challenge, code) {
         const [key, nonce] = parse(challenge);

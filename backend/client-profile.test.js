@@ -82,13 +82,57 @@ test('Logout durante verificación invalida el código y también una sesión re
 test('Envíos limitados en transacciones, correos inexistentes sin enumeración y fallo de envío seguro', async () => {
     const f = fixture();
     const results = await Promise.allSettled([f.service.requestCode('new@example.invalid', 'ip'), f.service.requestCode('new@example.invalid', 'ip')]);
-    assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+    assert.equal(results.filter(r => r.status === 'fulfilled').length, 2);
+    assert.equal(results[0].value.challenge, results[1].value.challenge);
     assert.equal(f.sent.length, 1);
     for (let i = 0; i < 2; i++) { f.advance(60001); await f.service.requestCode('new@example.invalid', 'ip'); }
     f.advance(60001);
     await assert.rejects(f.service.requestCode('new@example.invalid', 'ip'), { code: 'CLIENT_CODE_RATE_LIMIT' });
-    const broken = createClientProfileService(f.db, { env: f.env, sendCode: async () => { throw new Error('synthetic-secret'); } });
+    const broken = createClientProfileService(f.db, { env: f.env, sendCode: async () => { throw Object.assign(new Error('synthetic-secret'), { deliveryRejected: true }); } });
     await assert.rejects(broken.requestCode('different@example.invalid', 'ip'), error => error.code === 'CLIENT_CODE_DELIVERY_FAILED' && !error.message.includes('synthetic-secret'));
+});
+
+test('Correo entregado con respuesta perdida permite verificar y recuperar el mismo código sin reenviar', async () => {
+    const f = fixture(); let sentCode, sends = 0;
+    const service = createClientProfileService(f.db, { env: f.env, sendCode: async (_, code) => {
+        sends++; sentCode = code;
+        throw Object.assign(new Error('synthetic-sensitive-provider-body'), { name: 'TimeoutError' });
+    } });
+    const requested = await service.requestCode('client@example.invalid', 'ip');
+    assert.equal(requested.delivery, 'unconfirmed');
+    assert.equal(requested.expiresIn, 600);
+    const recovered = await service.requestCode('client@example.invalid', 'ip');
+    assert.equal(recovered.challenge, requested.challenge); assert.equal(sends, 1);
+    const access = await service.verifyCode(recovered.challenge, sentCode);
+    assert.equal((await service.appointments(access.token)).appointments.length, 3);
+});
+
+test('Estado hidden del perfil prevalece sobre display inline-flex de botones', () => {
+    const css = fs.readFileSync(path.join(__dirname, '../css/styles.css'), 'utf8');
+    assert.match(css, /#client-private-appointments \[hidden\]\s*\{\s*display:\s*none\s*!important/);
+});
+
+test('EmailJS simulado: 200 confirma envío, 5xx permite código recibido y 4xx conserva rechazo', async () => {
+    for (const status of [200, 502, 403]) {
+        const f = fixture(); let params;
+        const service = createClientProfileService(f.db, { env: { ...f.env, EMAILJS_SERVICE_ID: 'synthetic-service',
+            EMAILJS_CLIENT_ACCESS_TEMPLATE_ID: 'synthetic-template', EMAILJS_PUBLIC_KEY: 'synthetic-public', EMAILJS_PRIVATE_KEY: 'synthetic-private' },
+        fetchImpl: async (url, options) => {
+            assert.equal(url, 'https://api.emailjs.com/api/v1.0/email/send');
+            const body = JSON.parse(options.body); params = body.template_params;
+            assert.equal(body.template_id, 'synthetic-template');
+            return { status, ok: status === 200 };
+        } });
+        if (status === 403) {
+            await assert.rejects(service.requestCode('client@example.invalid', 'ip'), { code: 'CLIENT_CODE_DELIVERY_FAILED' });
+        } else {
+            const result = await service.requestCode('client@example.invalid', 'ip');
+            assert.equal(result.delivery, status === 200 ? 'sent' : 'unconfirmed');
+            const session = await service.verifyCode(result.challenge, params.code);
+            assert.equal((await service.appointments(session.token)).appointments.length, 3);
+        }
+        assert.equal(params.to_email, 'client@example.invalid');
+    }
 });
 
 test('Configuración incompleta y modo local impiden enviar correos externos', async () => {

@@ -363,6 +363,10 @@ button {
 }
 
 /* --- Buttons --- */
+#client-private-appointments [hidden] {
+    display: none !important;
+}
+
 .btn {
     display: inline-flex;
     align-items: center;
