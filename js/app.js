@@ -306,6 +306,8 @@ function renderHomeView() {
 
 function renderServiciosView() {
     const services = mockData.services;
+    const normalizeServiceName = name => String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const permanenteImage = services.find(service => normalizeServiceName(service.name) === 'permanente')?.image;
 
     return `
         <!-- Services Section Header -->
@@ -347,6 +349,8 @@ function renderServiciosView() {
                 <!-- Grilla de Servicios -->
                 <div id="services-catalog-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 25px; margin-bottom: 50px;">
                     ${services.map(s => {
+        const image = permanenteImage && /^extensi[oó]n(?:es)?\s+poly\s*gel\b/.test(normalizeServiceName(s.name))
+            ? permanenteImage : s.image;
         const catLabel = s.categoryId === 'capilar' ? 'Cabello & Capilar'
             : (s.categoryId === 'manicura' ? 'Manicura'
                 : (s.categoryId === 'pedicure' ? 'Pedicure'
@@ -359,7 +363,7 @@ function renderServiciosView() {
         return `
                         <div class="card service-catalog-card" data-category="${s.categoryId}" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; border: 1px solid #f0eae4; border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.04); transition: transform 0.25s, box-shadow 0.25s;">
                             <div style="position: relative; height: 200px; overflow: hidden; background: #fdfbf7;">
-                                <img src="${s.image}" alt="${s.name}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80';">
+                                <img src="${escapeReservationHtml(image)}" alt="${s.name}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80';">
                                 <div style="position: absolute; top: 12px; left: 12px; background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(4px); padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; color: var(--clr-rose-gold-dark); text-transform: uppercase;">
                                     ${catLabel}
                                 </div>
@@ -1203,7 +1207,7 @@ function renderAdminView() {
         // Filtramos la agenda según el rol
         let myAppointments = appointments;
         if (!isAdmin) {
-            myAppointments = appointments.filter(a => (a.profesional === auth.user?.name) || (a.profId === auth.user?.id));
+            myAppointments = appointments.filter(a => a.profId === auth.user?.id);
         }
 
         // Tabla de Agenda
@@ -1215,6 +1219,8 @@ function renderAdminView() {
                 const serviceName = app.servicio || mockData.services.find(s => s.id === app.serviceId)?.name || 'Servicio';
                 const profName = app.profesional || professionals.find(p => p.id === app.profId)?.name || 'Prof.';
                 const isFichaDone = fichas.some(f => f.appointmentId === app.id);
+                const appointmentStatus = String(app.status || '').trim().toLowerCase();
+                const knownStatus = ['confirmada', 'pendiente de pago', 'pago reportado', 'completada', 'cancelada', 'no asiste', 'bloqueada'].includes(appointmentStatus);
 
                 let needsHtml = '';
                 if (app.needs) {
@@ -1240,19 +1246,21 @@ function renderAdminView() {
                     <td style="padding: 15px;"><strong>${escapeReservationHtml(app.clientName || 'Cliente')}</strong><br><small>${escapeReservationHtml(app.clientPhone)}</small></td>
                     <td style="padding: 15px;">
                         ${escapeReservationHtml(serviceName)} ${isAdmin ? `<br><small>${escapeReservationHtml(profName)}</small>` : ''}
+                        ${Number.isInteger(app.duration) && app.duration > 0 ? `<br><small>${app.duration} min</small>` : ''}
                         ${needsHtml}
                         ${notesHtml}
                         ${app.transactionId ? `<div style="margin-top: 5px; font-size: 0.8rem; color: #00B19B;"><strong>Comprobante:</strong> ${escapeReservationHtml(app.transactionId)}</div>` : ''}
                     </td>
                     <td style="padding: 15px;">
                         <select class="status-selector" data-appid="${escapeReservationHtml(app.id)}" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.85rem; outline: none; background: #e8f5e9; color: #2e7d32; font-weight: bold; cursor:pointer;">
-                            <option value="confirmada" ${(app.status || 'confirmada') === 'confirmada' ? 'selected' : ''}>CONFIRMADA</option>
-                            <option value="pendiente de pago" ${app.status === 'Pendiente de Pago' ? 'selected' : ''}>PENDIENTE DE PAGO</option>
-                            <option value="pago reportado" ${app.status === 'Pago Reportado' ? 'selected' : ''}>PAGO REPORTADO</option>
-                            <option value="completada" ${app.status === 'completada' ? 'selected' : ''}>COMPLETADA</option>
-                            <option value="cancelada" ${app.status === 'cancelada' ? 'selected' : ''}>CANCELADA</option>
-                            <option value="no asiste" ${app.status === 'no asiste' ? 'selected' : ''}>NO ASISTE</option>
-                            <option value="bloqueada" ${app.status === 'bloqueada' ? 'selected' : ''}>BLOQUEADA</option>
+                            ${!knownStatus ? `<option value="" selected disabled>${escapeReservationHtml(app.status || 'SIN CONFIRMACIÓN')}</option>` : ''}
+                            <option value="confirmada" ${appointmentStatus === 'confirmada' ? 'selected' : ''}>CONFIRMADA</option>
+                            <option value="pendiente de pago" ${appointmentStatus === 'pendiente de pago' ? 'selected' : ''}>PENDIENTE DE PAGO</option>
+                            <option value="pago reportado" ${appointmentStatus === 'pago reportado' ? 'selected' : ''}>PAGO REPORTADO</option>
+                            <option value="completada" ${appointmentStatus === 'completada' ? 'selected' : ''}>COMPLETADA</option>
+                            <option value="cancelada" ${appointmentStatus === 'cancelada' ? 'selected' : ''}>CANCELADA</option>
+                            <option value="no asiste" ${appointmentStatus === 'no asiste' ? 'selected' : ''}>NO ASISTE</option>
+                            <option value="bloqueada" ${appointmentStatus === 'bloqueada' ? 'selected' : ''}>BLOQUEADA</option>
                         </select>
                     </td>
                     <td style="padding: 15px;">
@@ -1278,7 +1286,7 @@ function renderAdminView() {
         if (!isAdmin) {
             myFichas = fichas.filter(f => {
                 const appointment = appointments.find(a => a.id === f.appointmentId);
-                return appointment && (appointment.profesional === auth.user?.name || appointment.profId === auth.user?.id);
+                return appointment && appointment.profId === auth.user?.id;
             });
         }
 

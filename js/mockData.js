@@ -150,6 +150,8 @@ const StorageHelper = {
     _galleryCache: [],
     _publicGalleryCache: [],
     _roleUnsubscribe: null,
+    _appointmentsUnsubscribe: null,
+    _appointmentsWatch: null,
     _flowReturnReceipt: function () {
         try {
             const params = new URLSearchParams(window.location.search);
@@ -160,6 +162,9 @@ const StorageHelper = {
         } catch (_) { return null; }
     },
     _clearPrivateData: function (options = {}) {
+        this._appointmentsWatch = null;
+        if (this._appointmentsUnsubscribe) this._appointmentsUnsubscribe();
+        this._appointmentsUnsubscribe = null;
         const receipt = options.preservePaymentReturn ? this._flowReturnReceipt() : null;
         this._sessionEpoch++;
         this._appointmentsCache = [];
@@ -362,6 +367,30 @@ const StorageHelper = {
         return matches;
     },
 
+    _watchAppointments: function (session) {
+        if (!this._isSessionCurrent(session) || !session.owner) return;
+        const auth = this.getAuth();
+        let query = db.collection('Citas');
+        if (auth.user.role !== 'admin') query = query.where('profId', '==', auth.user.id);
+        if (typeof query.onSnapshot !== 'function') return;
+        if (this._appointmentsUnsubscribe) this._appointmentsUnsubscribe();
+        const watch = {};
+        this._appointmentsWatch = watch;
+        const current = () => this._isSessionCurrent(session) && this._appointmentsWatch === watch;
+        const unsubscribe = query.onSnapshot(snapshot => {
+            if (!current() || snapshot.metadata?.fromCache) return;
+            this._appointmentsCache = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }))
+                .filter(appointment => auth.user.role === 'admin' || appointment.profId === auth.user.id);
+            this._refreshAdminIfSafe();
+        }, () => {
+            if (!current()) return;
+            this._clearPrivateData();
+            this._refreshAdminIfSafe();
+        });
+        if (this._appointmentsWatch === watch) this._appointmentsUnsubscribe = unsubscribe;
+        else unsubscribe();
+    },
+
     loadAppointmentsCache: async function () {
         if (typeof db === 'undefined') return;
 
@@ -386,6 +415,7 @@ const StorageHelper = {
                 }
                 this._appointmentsCache = appointments;
                 this._fichasCache = fichas;
+                this._watchAppointments(session);
             } catch (error) {
                 if (!this._isSessionCurrent(session)) return;
                 this._clearPrivateData();

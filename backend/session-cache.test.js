@@ -17,10 +17,15 @@ function snapshot(records) {
 function fixture() {
     const local = new Map(); const session = new Map();
     const store = map => ({ getItem: key => map.get(key) || null, setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) });
-    const state = { user: { uid: 'admin' }, role: 'admin', read: null, write: null, roleListener: null, calls: [] };
+    const state = { user: { uid: 'admin' }, role: 'admin', read: null, write: null, roleListener: null, calls: [], appointmentListeners: [] };
     const db = { collection: collection => {
         const query = filters => ({
             where: (field, op, value) => query([...filters, [field, value]]),
+            onSnapshot: (next, error) => {
+                const listener = { collection, filters, next, error, stopped: false };
+                state.appointmentListeners.push(listener);
+                return () => { listener.stopped = true; };
+            },
             get: async options => {
                 state.calls.push({ collection, filters, options });
                 if (state.read) {
@@ -281,4 +286,54 @@ test('Recarga limpia cachés históricas y conserva personalización y catálogo
     ];
     const gallery = f.helper.getPublicGallery();
     assert.equal(gallery.length, 1); assert.equal(gallery[0].clientEmail, undefined);
+});
+
+test('Agenda en vivo: UID, cambios, reasignación y documento único', async () => {
+    const f = fixture(); await f.login('worker', 'profesional');
+    await f.helper.loadAppointmentsCache();
+    const listener = f.state.appointmentListeners.at(-1);
+    assert.equal(listener.collection, 'Citas');
+    assert.deepEqual(listener.filters, [['profId', 'worker']]);
+    listener.next(snapshot([{ id: 'one', profId: 'worker', status: 'confirmada', duration: 90 },
+        { id: 'foreign', profId: 'another', profesional: 'Synthetic' }]));
+    assert.equal(f.helper.getAppointments().length, 1);
+    assert.equal(f.helper.getAppointments()[0].id, 'one');
+    listener.next(snapshot([{ id: 'one', profId: 'worker', status: 'cancelada', time: '12:00' }]));
+    assert.equal(f.helper.getAppointments()[0].status, 'cancelada');
+    assert.equal(f.helper.getAppointments()[0].time, '12:00');
+    listener.next(snapshot([{ id: 'one', profId: 'worker', status: 'pendiente' }]));
+    listener.next(snapshot([{ id: 'one', profId: 'worker', status: 'pendiente' }]));
+    assert.equal(f.helper.getAppointments().length, 1);
+    assert.equal(f.helper.getAppointments()[0].status, 'pendiente');
+    listener.next(snapshot([]));
+    assert.equal(f.helper.getAppointments().length, 0);
+    assert.equal(f.local.has('nicolett_appointments'), false);
+});
+
+test('Agenda en vivo: logout, permisos y respuestas tardías no exponen datos', async () => {
+    const f = fixture(); await f.login(); await f.helper.loadAppointmentsCache();
+    const old = f.state.appointmentListeners.at(-1);
+    f.helper.setAuth({ loggedIn: false });
+    assert.equal(old.stopped, true);
+    await f.login('worker', 'profesional'); await f.helper.loadAppointmentsCache();
+    old.next(snapshot([{ id: 'private', profId: 'admin' }]));
+    assert.equal(f.helper.getAppointments().some(a => a.id === 'private'), false);
+    const current = f.state.appointmentListeners.at(-1);
+    current.error({ code: 'permission-denied' });
+    assert.equal(current.stopped, true);
+    assert.equal(f.helper.getAppointments().length, 0);
+    current.next(snapshot([{ id: 'late', profId: 'worker' }]));
+    assert.equal(f.helper.getAppointments().length, 0);
+});
+
+test('Agenda en vivo: admin conserva acceso y snapshots locales no repueblan datos', async () => {
+    const f = fixture(); await f.login(); await f.helper.loadAppointmentsCache();
+    const listener = f.state.appointmentListeners.at(-1);
+    assert.equal(listener.filters.length, 0);
+    listener.next(snapshot([{ id: 'a', profId: 'worker' }, { id: 'b', profId: 'other' }]));
+    assert.equal(f.helper.getAppointments().length, 2);
+    listener.next({ ...snapshot([{ id: 'stale', profId: 'worker' }]), metadata: { fromCache: true } });
+    assert.equal(f.helper.getAppointments().length, 2);
+    await f.helper.loadAppointmentsCache();
+    assert.equal(listener.stopped, true);
 });

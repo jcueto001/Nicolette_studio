@@ -116,3 +116,18 @@ test('Cambio de estado conserva ID y valor para StorageHelper', async () => {
     await vm.runInContext('(async e => {' + mainSource.slice(bodyStart, end) + '})(event)', context);
     assert.deepEqual(received, [id, 'cancelada']);
 });
+
+test('Mis citas filtra por UID, muestra duración y nunca confirma estados pendientes implícitamente', () => {
+    const { context } = fixture();
+    context.StorageHelper.getAuth = () => ({ loggedIn: true, user: { role: 'profesional', id: 'worker', name: 'Synthetic' } });
+    for (const status of ['pendiente', 'pendiente de pago', 'Pendiente de Pago', 'Pago Reportado', '', 'confirmada']) {
+        context.StorageHelper.getAppointments = () => [
+            { id: 'own', profId: 'worker', clientName: 'OWN', servicio: 'Servicio', duration: 90, status },
+            { id: 'foreign', profId: 'other', profesional: 'Synthetic', clientName: 'FOREIGN' }
+        ];
+        const html = context.renderAdminView();
+        assert.ok(html.includes('OWN')); assert.equal(html.includes('FOREIGN'), false);
+        assert.ok(html.includes('90 min'));
+        assert.equal(/value="confirmada" selected/.test(html), status === 'confirmada');
+    }
+});
