@@ -199,6 +199,55 @@ async function requireStaff(req, res, next) {
         next();
     } catch (error) { res.status(403).json({ error: 'FORBIDDEN' }); }
 }
+// Sesión de clienta independiente de Firebase Auth y de los roles del personal.
+const clientCookieName = 'nicolett_client_session';
+const clientCookie = req => (req.headers.cookie || '').split(';').map(value => value.trim())
+    .find(value => value.startsWith(clientCookieName + '='))?.slice(clientCookieName.length + 1);
+function clientCookieOptions() {
+    return { httpOnly: true, secure: !localFirebase.enabled && originUrl().startsWith('https:'),
+        sameSite: 'strict', path: '/api/client-profile' };
+}
+function clientProfileService() { return require('./client-profile').createClientProfileService(database()); }
+function clientAccessError(error, res) {
+    const allowed = new Set(['CLIENT_ACCESS_NOT_CONFIGURED', 'INVALID_CLIENT_EMAIL', 'CLIENT_CODE_RATE_LIMIT',
+        'CLIENT_CODE_DELIVERY_FAILED', 'INVALID_CLIENT_CODE', 'CLIENT_ACCESS_REQUIRED']);
+    const known = allowed.has(error.code);
+    res.status(known ? error.status : 503).json({ error: known ? error.code : 'CLIENT_ACCESS_UNAVAILABLE' });
+}
+app.use('/api/client-profile', (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    if (req.method === 'POST') {
+        const allowed = localFirebase.enabled ? ['http://localhost:' + port, 'http://127.0.0.1:' + port] : [];
+        try { allowed.push(originUrl()); } catch (_) {}
+        if (!allowed.includes(req.get('Origin'))) return res.status(403).json({ error: 'CLIENT_ORIGIN_DENIED' });
+    }
+    next();
+});
+app.post('/api/client-profile/code', async (req, res) => {
+    try { res.json(await clientProfileService().requestCode(req.body.email, req.ip)); }
+    catch (error) { clientAccessError(error, res); }
+});
+app.post('/api/client-profile/verify', async (req, res) => {
+    try {
+        const result = await clientProfileService().verifyCode(req.body.challenge, req.body.code);
+        res.cookie(clientCookieName, result.token, { ...clientCookieOptions(), maxAge: result.expiresIn * 1000 });
+        res.json({ verified: true, expiresIn: result.expiresIn });
+    } catch (error) { clientAccessError(error, res); }
+});
+app.get('/api/client-profile/appointments', async (req, res) => {
+    try { res.json(await clientProfileService().appointments(clientCookie(req))); }
+    catch (error) { clientAccessError(error, res); }
+});
+app.post('/api/client-profile/logout', async (req, res) => {
+    try {
+        await clientProfileService().logout(clientCookie(req), req.body?.challenge);
+        res.clearCookie(clientCookieName, clientCookieOptions());
+        res.json({ success: true });
+    } catch (error) {
+        try { res.clearCookie(clientCookieName, clientCookieOptions()); } catch (_) {}
+        clientAccessError(error, res);
+    }
+});
 app.post('/api/bookings/:id/email', requireStaff, async (req, res) => {
     res.set('Cache-Control', 'no-store');
     try {

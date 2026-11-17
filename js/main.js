@@ -646,6 +646,7 @@ window.logoutClientProfile = async function () {
     if (ok) {
         StorageHelper.setAuth({ loggedIn: false, user: null });
         localStorage.removeItem('nicolett_personalization');
+        await window.ClientProfile?.logout();
         window.updateNavAuthVisibility();
         if (typeof AppRouter !== 'undefined') {
             AppRouter.navigate('home');
@@ -3790,6 +3791,8 @@ window.logoutClientProfile = async function () {
                 const persStr = localStorage.getItem('nicolett_personalization');
                 if (persStr) pers = JSON.parse(persStr);
             } catch (e) { }
+
+            window.ClientProfile?.mount(pers?.email);
 
             // Manejo del formulario de inicio de sesión / consulta directa en Mi Perfil
             const directLoginForm = document.getElementById('perfil-direct-login-form');

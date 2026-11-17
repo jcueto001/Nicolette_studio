@@ -2390,7 +2390,7 @@ function renderAdminView() {
             <div style="max-width: 680px; margin: 0 auto 28px; text-align: center;">
                 <h2 class="section-title" style="margin-bottom: 8px;">Hola, ${escapeReservationHtml(pers.name)}</h2>
                 <p class="section-subtitle" style="color: var(--clr-neutral-gray); font-size: 1.05rem;">
-                    Tus preferencias se guardan en este dispositivo. El historial y las fotografías privadas no están disponibles desde este perfil público.
+                    Tus preferencias se guardan en este dispositivo. Verifica tu correo con un código para consultar tus citas privadas. Las fotografías privadas no están disponibles desde este perfil.
                 </p>
                 <div style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap;">
                     <div style="display:inline-flex; align-items:center; gap:8px; background:var(--clr-nude-light); padding:6px 16px; border-radius:30px; font-size:0.85rem; color:var(--clr-neutral-gray);">
@@ -2404,6 +2404,17 @@ function renderAdminView() {
                 </div>
             </div>
 
+            ${pers.email ? `<section id="client-private-appointments" class="card">
+                <h3>Mis citas</h3>
+                <p data-client-status role="status">Verifica tu correo para consultar tus citas privadas.</p>
+                <button type="button" class="btn btn-primary" data-client-request>Recibir código por correo</button>
+                <form data-client-verify hidden>
+                    <label>Código de verificación <input type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
+                    <button type="submit" class="btn btn-primary">Verificar correo</button>
+                </form>
+                <button type="button" class="btn btn-secondary" data-client-close hidden>Cerrar acceso a mis citas</button>
+                <div data-client-appointments></div>
+            </section>` : ''}
             <div style="margin-top: 40px;">
                 <button class="btn btn-primary" onclick="AppRouter.navigate('agendar')">Agendar Cita</button>
                 <button class="btn btn-secondary" onclick="AppRouter.navigate('galeria')">Ver Galería Pública</button>
