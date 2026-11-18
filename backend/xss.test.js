@@ -69,6 +69,18 @@ test('Agenda y fichas escapan texto/atributos sin alterar IDs ni datos de botone
     assert.equal(context.xss, undefined);
 });
 
+test('Galerías toleran profesionales sin name y no cuentan todas las fotos por nombre vacío', () => {
+    const { context } = fixture();
+    context.StorageHelper.getProfessionals = () => [{ id: 'missing' }, { id: 'legacy', nombre: 'Ana' }];
+    const images = [{ id: 'photo', profesional: 'Ana', profId: 'legacy', src: 'photo.jpg' }];
+    context.StorageHelper.getGallery = () => images;
+    context.StorageHelper.getPublicGallery = () => images;
+    const admin = context.renderAdminView();
+    assert.ok(admin.includes('Profesional sin nombre (0)'));
+    assert.ok(admin.includes('Ana (1)'));
+    assert.doesNotThrow(() => context.renderGaleriaView());
+});
+
 test('Perfil conserva personalización como texto', () => {
     const { context } = fixture();
     noInjectedMarkup(parse(context.renderPerfilView()));

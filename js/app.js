@@ -763,13 +763,14 @@ function renderGaleriaView() {
                 </button>
                 ${professionals.map(p => {
         const count = images.filter(img => {
-            const pName = (img.profesional || '').toLowerCase();
-            const pId = (img.profId || '').toLowerCase();
-            return pName.includes(p.name.toLowerCase()) || pId === p.id.toLowerCase();
+            const pName = String(img.profesional || '').toLowerCase();
+            const pId = String(img.profId || '').toLowerCase();
+            const name = String(p.name || p.nombre || '').trim().toLowerCase();
+            return (name && pName.includes(name)) || (p.id && pId === String(p.id).toLowerCase());
         }).length;
         return `
-                        <button type="button" class="btn btn-outline btn-sm public-gal-filter" data-filter="${p.name.toLowerCase()}" style="border-radius:20px; padding:8px 20px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-                            <i data-lucide="sparkles" style="width:13px; height:13px;"></i> ${p.name} (${count})
+                            <button type="button" class="btn btn-outline btn-sm public-gal-filter" data-filter="${String(p.name || p.nombre || p.id).toLowerCase()}" style="border-radius:20px; padding:8px 20px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                            <i data-lucide="sparkles" style="width:13px; height:13px;"></i> ${p.name || p.nombre || 'Profesional sin nombre'} (${count})
                         </button>
                     `;
     }).join('')}
@@ -1708,10 +1709,12 @@ function renderAdminView() {
                                     Estudio (${studioList.length})
                                 </button>
                                 ${professionals.map(p => {
-                    const pCount = allGal.filter(g => (g.profesional && g.profesional.toLowerCase().includes(p.name.toLowerCase())) || (g.profId && g.profId === p.id)).length;
+                    const name = String(p.name || p.nombre || '').trim();
+                    const filterName = (name || String(p.id || '')).toLowerCase();
+                    const pCount = allGal.filter(g => (name && String(g.profesional || '').toLowerCase().includes(name.toLowerCase())) || (g.profId && g.profId === p.id)).length;
                     return `
-                                        <button type="button" class="gallery-filter-chip" data-filter="prof-${p.name.toLowerCase()}">
-                                            <i data-lucide="user" style="width:13px; height:13px;"></i> ${p.name} (${pCount})
+                                        <button type="button" class="gallery-filter-chip" data-filter="prof-${filterName}">
+                                            <i data-lucide="user" style="width:13px; height:13px;"></i> ${name || 'Profesional sin nombre'} (${pCount})
                                         </button>
                                     `;
                 }).join('')}
