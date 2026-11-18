@@ -1916,6 +1916,33 @@ window.logoutClientProfile = async function () {
                 });
             });
 
+            document.querySelectorAll('.btn-link-worker-account').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const ok = await window.showCustomConfirm({
+                        title: 'Vincular agenda',
+                        message: `¿Vincular las citas de ${btn.dataset.profname} a la cuenta ${btn.dataset.profemail}? Confirma que ese correo corresponde a la trabajadora.`,
+                        confirmText: 'Vincular', cancelText: 'Cancelar'
+                    });
+                    if (!ok || btn.disabled) return;
+                    btn.disabled = true;
+                    try {
+                        const result = await StorageHelper.linkProfessionalAccount(btn.dataset.profid);
+                        window.alert(`Agenda vinculada. Registros actualizados: ${result.updated}. La trabajadora puede recargar su portal.`);
+                        AppRouter.refresh();
+                    } catch (error) {
+                        const messages = {
+                            STAFF_ACCOUNT_NOT_FOUND: 'No existe una cuenta de Firebase con ese correo.',
+                            STAFF_PROFILE_REQUIRED: 'La cuenta necesita un perfil activo en Usuarios con el mismo correo y rol de personal.',
+                            STAFF_ACCOUNT_UNAVAILABLE: 'La cuenta está deshabilitada.',
+                            PROFESSIONAL_EMAIL_REQUIRED: 'La trabajadora necesita un correo registrado.',
+                            IDENTITY_CONFLICT: 'Hay identificadores asociados a más de una profesional. Revisa los registros antes de vincular.',
+                            IDENTITY_REPAIR_TOO_LARGE: 'Hay demasiados registros para reparar desde el panel. Se necesita una revisión de los datos.'
+                        };
+                        window.alert(messages[error.message] || 'No se pudo vincular la agenda. ' + error.message);
+                    } finally { btn.disabled = false; }
+                });
+            });
+
             // Eliminar Profesional (Solo Admin)
             document.querySelectorAll('.btn-del-prof').forEach(btn => {
                 btn.addEventListener('click', async () => {
@@ -2638,9 +2665,20 @@ window.logoutClientProfile = async function () {
                         }
                     }
 
+                    if (!fbUid) {
+                        if (errorBox) {
+                            errorBox.textContent = 'No se pudo crear la cuenta. Si el correo ya existe, vincula su agenda desde el listado de trabajadoras.';
+                            errorBox.style.display = 'block';
+                        }
+                        btnSave.disabled = false;
+                        if (status) status.style.display = 'none';
+                        return;
+                    }
+
                     // 3. Guardar en colección Profesionales
                     await StorageHelper.addProfessional({
-                        id: fbUid || ('p_' + Date.now()),
+                        id: fbUid,
+                        uid: fbUid,
                         name: name,
                         email: email,
                         role: role,

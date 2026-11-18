@@ -798,6 +798,13 @@ const StorageHelper = {
     },
 
     // Professionals
+    linkProfessionalAccount: async function (id) {
+        const session = this._sessionStamp();
+        const result = await this._bookingApi('/api/professionals/' + encodeURIComponent(id) + '/link-account', 'POST', {}, session);
+        await this.loadAppointmentsCache();
+        this._assertSessionCurrent(session);
+        return result;
+    },
     getProfessionals: function () {
         return this._hasPrivateSession() ? this._professionalsCache : this._professionalsCache.map(this._publicProfessional);
     },

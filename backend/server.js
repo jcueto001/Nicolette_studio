@@ -199,6 +199,20 @@ async function requireStaff(req, res, next) {
         next();
     } catch (error) { res.status(403).json({ error: 'FORBIDDEN' }); }
 }
+app.post('/api/professionals/:id/link-account', requireStaff, async (req, res) => {
+    if (req.staff.role !== 'admin') return res.status(403).json({ error: 'FORBIDDEN' });
+    try {
+        const db = database();
+        const app = getApps().find(item => item.name === (localFirebase.enabled ? localFirebase.appName : '[DEFAULT]'));
+        const result = await require('./professional-identity').linkProfessional(db,
+            require('firebase-admin/auth').getAuth(app), req.params.id, req.staff);
+        res.json(result);
+    } catch (error) {
+        const codes = new Set(['PROFESSIONAL_EMAIL_REQUIRED', 'STAFF_ACCOUNT_NOT_FOUND', 'STAFF_ACCOUNT_UNAVAILABLE',
+            'PROFESSIONAL_CHANGED', 'STAFF_PROFILE_REQUIRED', 'IDENTITY_CONFLICT', 'INVALID_PROFESSIONAL', 'IDENTITY_REPAIR_TOO_LARGE']);
+        res.status(error.status || 500).json({ error: codes.has(error.code) ? error.code : 'IDENTITY_REPAIR_FAILED' });
+    }
+});
 // Sesión de clienta independiente de Firebase Auth y de los roles del personal.
 const clientCookieName = 'nicolett_client_session';
 const clientCookie = req => (req.headers.cookie || '').split(';').map(value => value.trim())

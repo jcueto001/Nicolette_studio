@@ -72,9 +72,9 @@ function createBookingService(db, { now = Date.now, flowCreate, flowStatus, sand
         const duration = Number(data.duration ?? data.duracion), price = Number(data.price ?? data.precio);
         if (!Number.isInteger(duration) || duration < 1 || duration > 1440) fail('INVALID_CATALOG_DURATION', 400);
         if (!Number.isSafeInteger(price) || price < (kind === 'flow' ? 5000 : 0)) fail('INVALID_CATALOG_PRICE', 400);
-        const professionalKey = identifier(person.uid || person.authUid || person.id || professional.id);
+        const professionalKey = identifier(person.professionalKey || person.uid || person.authUid || person.id || professional.id);
         const startMs = startTime(input.date, input.time);
-        return { ...input, profId: professionalKey, professionalKey, professionalDocId: professional.id,
+        return { ...input, profId: identifier(person.uid || person.authUid || professionalKey), professionalKey, professionalDocId: professional.id,
             servicio: String(data.name || data.nombre || input.serviceId), profesional: String(person.name || person.nombre || professional.id),
             duration, totalPrice: price, balanceDue: Math.max(0, price - (kind === 'flow' ? 5000 : 0)), startMs, endMs: startMs + duration * 60000, timeZone: ZONE };
     }

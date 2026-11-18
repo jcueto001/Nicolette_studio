@@ -1373,6 +1373,9 @@ function renderAdminView() {
                 <td style="padding: 15px;">
                     <div style="display:flex; align-items:center; gap:6px;">
                         ${isAdmin ? `
+                        <button type="button" class="btn btn-outline btn-sm btn-link-worker-account" data-profid="${escapeReservationHtml(p.id)}" data-profname="${escapeReservationHtml(p.name || '')}" data-profemail="${escapeReservationHtml(p.email || '')}">
+                            Vincular agenda
+                        </button>
                         <button type="button" class="btn btn-outline btn-sm btn-worker-change-pass" data-profid="${p.id}" data-profname="${p.name || ''}" data-profemail="${p.email || ''}" title="Enviar correo para restablecer la contraseña" style="padding:6px 10px; font-size:0.8rem; border-color:#d4b692; color:var(--clr-neutral-dark); display:inline-flex; align-items:center; gap:4px; border-radius:14px;">
                             <i data-lucide="key" style="width:13px; height:13px;"></i> Contraseña
                         </button>

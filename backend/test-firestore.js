@@ -12,7 +12,7 @@ function memoryFirestore(initial = []) {
         where: (field, op, value) => { if (op !== '==') throw new Error('unsupported query'); return query(name, [...filters, [field, value]], max); },
         limit: value => query(name, filters, value),
         get: async function () {
-            const records = [...docs.keys()].filter(key => key.startsWith(name + '/') && filters.every(([field, value]) => docs.get(key)[field] === value)).slice(0, max).map(snapshot);
+            const records = [...docs.keys()].filter(key => key.startsWith(name + '/') && filters.every(([field, value]) => field.split('.').reduce((data, part) => data?.[part], docs.get(key)) === value)).slice(0, max).map(snapshot);
             return { docs: records, empty: !records.length, forEach: callback => records.forEach(callback) };
         }
     });
