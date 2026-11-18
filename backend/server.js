@@ -184,23 +184,12 @@ function bookingError(error, res) {
         'PAYMENT_CREATION_PENDING_REVIEW', 'FORBIDDEN', 'STALE_APPOINTMENT', 'MIGRATION_REQUIRED_FOR_APPOINTMENT']);
     res.status(error.status || 400).json({ error: safeCodes.has(error.code) ? error.code : 'BOOKING_REQUEST_FAILED' });
 }
-async function requireStaff(req, res, next) {
-    try {
-        const match = /^Bearer (.+)$/.exec(req.get('Authorization') || '');
-        if (!match) return res.status(401).json({ error: 'AUTH_REQUIRED' });
-        const db = database();
-        const app = getApps().find(item => item.name === (localFirebase.enabled ? localFirebase.appName : '[DEFAULT]'));
-        const { getAuth } = require('firebase-admin/auth');
-        const user = await getAuth(app).verifyIdToken(match[1], true);
-        const record = await db.collection('Usuarios').doc(user.uid).get();
-        const data = record.exists ? record.data() : null;
-        if (!data || data.activo === false || !['Admin', 'admin', 'profesional'].includes(data.rol)) return res.status(403).json({ error: 'FORBIDDEN' });
-        req.staff = { uid: user.uid, role: data.rol.toLowerCase() };
-        next();
-    } catch (error) { res.status(403).json({ error: 'FORBIDDEN' }); }
-}
+const requireStaff = require('./staff-auth').staffAuth({ database, auth: () => {
+    const app = getApps().find(item => item.name === (localFirebase.enabled ? localFirebase.appName : '[DEFAULT]'));
+    return require('firebase-admin/auth').getAuth(app);
+} });
 app.post('/api/professionals/:id/link-account', requireStaff, async (req, res) => {
-    if (req.staff.role !== 'admin') return res.status(403).json({ error: 'FORBIDDEN' });
+    if (req.staff.role !== 'admin') return res.status(403).json({ error: 'ADMIN_REQUIRED' });
     try {
         const db = database();
         const app = getApps().find(item => item.name === (localFirebase.enabled ? localFirebase.appName : '[DEFAULT]'));

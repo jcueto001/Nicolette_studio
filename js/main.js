@@ -1931,6 +1931,15 @@ window.logoutClientProfile = async function () {
                         AppRouter.refresh();
                     } catch (error) {
                         const messages = {
+                            FIREBASE_ADMIN_NOT_CONFIGURED: 'Faltan las credenciales del servidor en Vercel: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL y FIREBASE_PRIVATE_KEY. Configúralas para este entorno y vuelve a desplegar.',
+                            STAFF_AUTH_UNAVAILABLE: 'El servidor no pudo verificar la sesión. Revisa las credenciales, el proyecto Firebase y los registros del servidor en Vercel.',
+                            STAFF_DATABASE_UNAVAILABLE: 'El servidor no pudo consultar Usuarios. Revisa los permisos de la cuenta de servicio de Firebase en Vercel.',
+                            AUTH_REQUIRED: 'Inicia sesión como administradora para vincular agendas.',
+                            AUTH_EXPIRED: 'La sesión venció. Vuelve a iniciar sesión.',
+                            AUTH_REVOKED: 'La sesión fue revocada o la cuenta está deshabilitada. Vuelve a iniciar sesión.',
+                            AUTH_INVALID: 'El servidor rechazó la sesión. Revisa que Vercel use el mismo proyecto Firebase que la página.',
+                            STAFF_ROLE_REQUIRED: 'Tu UID no tiene un perfil activo de personal en Usuarios en el proyecto usado por el servidor.',
+                            ADMIN_REQUIRED: 'Esta acción requiere el rol admin o Admin en Usuarios para la cuenta conectada.',
                             STAFF_ACCOUNT_NOT_FOUND: 'No existe una cuenta de Firebase con ese correo.',
                             STAFF_PROFILE_REQUIRED: 'La cuenta necesita un perfil activo en Usuarios con el mismo correo y rol de personal.',
                             STAFF_ACCOUNT_UNAVAILABLE: 'La cuenta está deshabilitada.',
