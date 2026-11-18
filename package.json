@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node backend/server.js",
-    "vercel-build": "node -e \"require('firebase-admin/app'); require('firebase-admin/firestore'); require('./api/index.js')\""
+    "vercel-build": "node --no-experimental-require-module -e \"require('firebase-admin/app'); require('firebase-admin/firestore'); require('firebase-admin/auth'); require('./api/index.js')\""
   },
   "dependencies": {
     "cors": "^2.8.6",
@@ -16,5 +16,10 @@
     "express": "^5.2.1",
     "firebase-admin": "14.5.1",
     "transbank-sdk": "^6.1.1"
+  },
+  "overrides": {
+    "jwks-rsa": {
+      "jose": "5.10.0"
+    }
   }
 }
