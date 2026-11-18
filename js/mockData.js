@@ -130,6 +130,7 @@ const StorageHelper = {
     _appointmentsCache: [],
     _fichasCache: [],
     _professionalsCache: [],
+    _professionalsRevision: 0,
     _inventoryCache: [],
     _servicesCache: [],
     _categoriesCache: [],
@@ -430,15 +431,18 @@ const StorageHelper = {
         }
 
         try {
-            const profsSnapshot = await db.collection("Profesionales").get();
+            const revision = this._professionalsRevision;
+            const profsSnapshot = await db.collection("Profesionales").get({ source: 'server' });
             if (!this._isSessionCurrent(session)) return;
             const profs = [];
             profsSnapshot.forEach((doc) => {
                 profs.push({ ...doc.data(), id: doc.id });
             });
-            this._professionalsCache = profs.map(person => this.getAuth().loggedIn ? person : this._publicProfessional(person));
-            mockData.professionals = this._professionalsCache.map(this._publicProfessional);
-            try { localStorage.setItem('nicolett_professionals_cache', JSON.stringify(this._professionalsCache.map(this._publicProfessional))); } catch (e) {}
+            if (revision === this._professionalsRevision) {
+                this._professionalsCache = profs.map(person => this.getAuth().loggedIn ? person : this._publicProfessional(person));
+                mockData.professionals = this._professionalsCache.map(this._publicProfessional);
+                try { localStorage.setItem('nicolett_professionals_cache', JSON.stringify(mockData.professionals)); } catch (e) {}
+            }
         } catch (e) {
             console.error("Error cargando profesionales:", e);
             if (this._professionalsCache.length === 0) this._professionalsCache = mockData.professionals.map(this._publicProfessional);
@@ -829,7 +833,7 @@ const StorageHelper = {
         }
         if (typeof db !== 'undefined') {
             try {
-                await db.collection("Profesionales").doc(id).set(data, { merge: true });
+                await db.collection("Profesionales").doc(id).update(data);
                 this._assertSessionCurrent(session);
             } catch (e) { this._handlePrivateError(e, session);
                 console.error("Error updating professional in Firestore", e);
@@ -853,6 +857,7 @@ const StorageHelper = {
             this._handlePrivateError(e, session);
             throw e;
         }
+        this._professionalsRevision++;
         this._professionalsCache = this._professionalsCache.filter(p => p.id !== id);
         mockData.professionals = this._professionalsCache.map(this._publicProfessional);
         try {

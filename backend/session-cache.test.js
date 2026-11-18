@@ -188,6 +188,26 @@ test('Eliminar profesional usa ID del documento y actualiza ambas cachés tras c
     assert.equal(f.local.get('nicolett_local_professionals'), '[]');
 });
 
+test('Una lectura anterior al borrado no restaura la profesional eliminada', async () => {
+    const f = fixture(); await f.login();
+    f.helper._professionalsCache = [{ id: 'worker', name: 'Ana' }];
+    const started = deferred();
+    const pending = deferred();
+    f.state.read = async collection => {
+        if (collection !== 'Profesionales') return null;
+        started.resolve();
+        return pending.promise;
+    };
+    const loading = f.helper.loadAppointmentsCache();
+    await started.promise;
+    await f.helper.deleteProfessional('worker');
+    pending.resolve(snapshot([{ id: 'worker', name: 'Ana' }]));
+    await loading;
+    assert.equal(f.helper.getProfessionals().length, 0);
+    assert.equal(f.local.get('nicolett_professionals_cache'), '[]');
+    assert.equal(f.state.calls.find(call => call.collection === 'Profesionales').options.source, 'server');
+});
+
 test('Borrado fallido no oculta la profesional ni devuelve éxito', async () => {
     const f = fixture(); await f.login();
     f.helper._professionalsCache = [{ id: 'worker', name: 'Ana' }];
