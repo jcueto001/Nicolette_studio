@@ -2872,57 +2872,34 @@ window.logoutClientProfile = async function () {
                 });
             }
 
-            // Toggle ojito en modal de asignar contraseña
-            const btnToggleTargetPass = document.getElementById('btn-toggle-target-worker-pass');
-            const inputTargetPass = document.getElementById('target-worker-password');
-            if (btnToggleTargetPass && inputTargetPass) {
-                btnToggleTargetPass.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const isPass = inputTargetPass.type === 'password';
-                    inputTargetPass.type = isPass ? 'text' : 'password';
-                    btnToggleTargetPass.innerHTML = isPass ? '<i data-lucide="eye-off" style="width:16px; height:16px;"></i>' : '<i data-lucide="eye" style="width:16px; height:16px;"></i>';
-                    if (window.lucide) lucide.createIcons();
-                });
-            }
-
             if (formSetWorkerPass) {
                 formSetWorkerPass.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const targetEmail = document.getElementById('target-worker-email').value.trim();
-                    const newPassword = document.getElementById('target-worker-password').value.trim();
                     const errBox = document.getElementById('set-worker-password-error');
                     const succBox = document.getElementById('set-worker-password-success');
                     const btnSubmit = document.getElementById('btn-submit-set-worker-pass');
-
+                    if (btnSubmit.disabled) return;
                     if (errBox) errBox.style.display = 'none';
                     if (succBox) succBox.style.display = 'none';
-
-                    if (!newPassword || newPassword.length < 6) {
-                        if (errBox) {
-                            errBox.innerHTML = '<i data-lucide="alert-circle" style="width:16px; height:16px; flex-shrink:0;"></i><span>La contraseña debe tener al menos 6 caracteres.</span>';
-                            errBox.style.display = 'flex';
-                            if (window.lucide) lucide.createIcons();
-                        }
-                        return;
-                    }
-
                     btnSubmit.disabled = true;
-                    btnSubmit.innerText = 'Asignando...';
-
-                    throw new Error('Usa el restablecimiento de contraseña de Firebase para esta cuenta.');
-
-                    if (succBox) {
-                        succBox.style.display = 'flex';
-                        if (window.lucide) lucide.createIcons();
-                    }
-
-                    setTimeout(() => {
-                        if (modalSetWorkerPass) modalSetWorkerPass.style.display = 'none';
-                        formSetWorkerPass.reset();
+                    btnSubmit.innerText = 'Enviando...';
+                    try {
+                        if (!targetEmail) throw new Error('Esta trabajadora no tiene correo registrado.');
+                        if (typeof firebase === 'undefined' || !firebase.auth) {
+                            throw new Error('No se pudo conectar con Firebase. Intenta nuevamente.');
+                        }
+                        await firebase.auth().sendPasswordResetEmail(targetEmail);
+                        if (succBox) succBox.style.display = 'flex';
+                    } catch (error) {
+                        if (errBox) {
+                            errBox.textContent = error.message || 'No se pudo enviar el correo. Intenta nuevamente.';
+                            errBox.style.display = 'flex';
+                        }
+                    } finally {
                         btnSubmit.disabled = false;
-                        btnSubmit.innerHTML = '<i data-lucide="save" style="width:18px; height:18px;"></i> Guardar Contraseña';
-                        if (window.lucide) lucide.createIcons();
-                    }, 1400);
+                        btnSubmit.innerText = 'Enviar correo de restablecimiento';
+                    }
                 });
             }
 

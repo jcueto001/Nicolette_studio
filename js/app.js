@@ -1373,7 +1373,7 @@ function renderAdminView() {
                 <td style="padding: 15px;">
                     <div style="display:flex; align-items:center; gap:6px;">
                         ${isAdmin ? `
-                        <button type="button" class="btn btn-outline btn-sm btn-worker-change-pass" data-profid="${p.id}" data-profname="${p.name || ''}" data-profemail="${p.email || ''}" title="Crear / Asignar contraseña a esta trabajadora" style="padding:6px 10px; font-size:0.8rem; border-color:#d4b692; color:var(--clr-neutral-dark); display:inline-flex; align-items:center; gap:4px; border-radius:14px;">
+                        <button type="button" class="btn btn-outline btn-sm btn-worker-change-pass" data-profid="${p.id}" data-profname="${p.name || ''}" data-profemail="${p.email || ''}" title="Enviar correo para restablecer la contraseña" style="padding:6px 10px; font-size:0.8rem; border-color:#d4b692; color:var(--clr-neutral-dark); display:inline-flex; align-items:center; gap:4px; border-radius:14px;">
                             <i data-lucide="key" style="width:13px; height:13px;"></i> Contraseña
                         </button>
                         <button type="button" class="btn btn-outline btn-sm btn-worker-edit-photo" data-profid="${p.id}" data-profname="${p.name || ''}" title="Cambiar y cuadrar foto de perfil" style="padding:6px 10px; font-size:0.8rem; border-color:var(--clr-rose-gold); color:var(--clr-rose-gold-dark); display:inline-flex; align-items:center; gap:4px; border-radius:14px;">
@@ -2146,7 +2146,7 @@ function renderAdminView() {
                             <i data-lucide="key" style="width:20px; height:20px;"></i>
                         </div>
                         <div>
-                            <h3 style="margin:0; font-size:1.25rem;">Asignar Contraseña</h3>
+                            <h3 style="margin:0; font-size:1.25rem;">Restablecer Contraseña</h3>
                             <p style="margin:0; font-size:0.82rem; color:var(--clr-neutral-gray);" id="label-set-worker-target">Trabajadora</p>
                         </div>
                     </div>
@@ -2155,27 +2155,16 @@ function renderAdminView() {
                         <input type="hidden" id="target-worker-id" value="">
                         <input type="hidden" id="target-worker-email" value="">
 
-                        <div style="margin-bottom: 14px;">
-                            <label style="display:block; margin-bottom:5px; font-weight:600; font-size:0.88rem;">Nueva Contraseña para la Trabajadora:</label>
-                            <div class="input-password-wrapper">
-                                <input type="password" id="target-worker-password" required minlength="6" placeholder="Mínimo 6 caracteres" autocomplete="new-password" style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:var(--radius-sm); font-size:0.95rem;">
-                                <button type="button" class="btn-toggle-pass" id="btn-toggle-target-worker-pass" title="Mostrar/Ocultar" tabindex="-1">
-                                    <i data-lucide="eye" style="width:16px; height:16px;"></i>
-                                </button>
-                            </div>
-                            <small style="color:var(--clr-neutral-gray); display:block; margin-top:4px; font-size:0.78rem;">
-                                Con esta clave la trabajadora podrá iniciar sesión directamente.
-                            </small>
-                        </div>
+                        <p style="margin-bottom:14px;">Enviaremos un enlace al correo de la trabajadora para que elija su nueva contraseña.</p>
 
                         <div id="set-worker-password-error" class="auth-error-box" style="display:none; margin-bottom:12px;"></div>
                         <div id="set-worker-password-success" style="display:none; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:10px 14px; border-radius:var(--radius-sm); font-size:0.88rem; margin-bottom:12px; align-items:center; gap:8px;">
                             <i data-lucide="check-circle" style="width:18px; height:18px; flex-shrink:0;"></i>
-                            <span>¡Contraseña asignada exitosamente!</span>
+                            <span>Si el correo tiene una cuenta, recibirá un enlace para restablecer su contraseña.</span>
                         </div>
 
                         <button type="submit" class="btn btn-primary btn-block" id="btn-submit-set-worker-pass" style="padding:12px; font-weight:600; font-size:0.95rem; display:flex; align-items:center; justify-content:center; gap:8px;">
-                            <i data-lucide="save" style="width:18px; height:18px;"></i> Guardar Contraseña
+                            <i data-lucide="save" style="width:18px; height:18px;"></i> Enviar correo de restablecimiento
                         </button>
                     </form>
                 </div>
