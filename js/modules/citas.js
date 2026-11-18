@@ -1,14 +1,6 @@
 /**
- * Nicolett Studio Fantasy - Arquitectura Modular Capstone
- * MÓDULO 1: GESTIÓN DE CITAS Y AGENDAMIENTO (Sprint 1)
- * 
- * Requerimientos asociados (Anexo 5 Matriz de Requerimientos):
- * - RF-03: Agendamiento con horario base (09:00 a 17:00) y sobrecupos flexibles (18:00 a 21:00).
- * - RF-04: Agenda individual por trabajadora (acceso filtrado por profesional sin traslapes).
- * - RF-05: Política de abono obligatorio ($5.000) y condición de cancelación con 24 horas.
- * - RF-06: Generación de alertas y recordatorios de citas para clientas.
- * 
- * Integrantes: José Cueto & Benjamín Moya (Capstone Duoc UC 2026)
+ * Horarios, disponibilidad, registro de citas y texto de recordatorios.
+ * Integrantes: José Cueto & Benjamín Moya.
  */
 
 (function (window) {
@@ -53,7 +45,7 @@
         },
 
         /**
-         * RF-04: Filtra y retorna las citas correspondientes exclusivamente a una trabajadora
+         * Filtra y retorna las citas correspondientes exclusivamente a una trabajadora
          * @param {string} profId - Identificador de la profesional
          * @returns {Array}
          */
@@ -64,7 +56,7 @@
         },
 
         /**
-         * RF-03: Calcula los bloques disponibles para una fecha y profesional evitando traslapes
+         * Calcula los bloques disponibles para una fecha y profesional evitando traslapes
          * @param {string} date - Formato YYYY-MM-DD
          * @param {string} profId - ID de la trabajadora
          * @param {boolean} includeSobrecupos - Si se habilitan los sobrecupos vespertinos
@@ -80,7 +72,7 @@
         },
 
         /**
-         * RF-05: Registra una nueva cita garantizando el abono de $5.000 y fecha de registro
+         * Prepara los datos de la cita y solicita su registro a StorageHelper
          * @param {Object} citaData
          * @returns {Promise<Object>}
          */
@@ -119,7 +111,7 @@
         },
 
         /**
-         * RF-06: Genera el texto formal del recordatorio con políticas del salón
+         * Arma el recordatorio con la fecha, el servicio y la política de cancelación
          * @param {Object} cita
          * @returns {string}
          */
@@ -131,7 +123,7 @@
         }
     };
 
-    // Exponer globalmente en el namespace de la arquitectura
+    // Publicar el módulo para los scripts de la página
     window.NicolettCitas = CitasModule;
     window.NicolettModules = window.NicolettModules || {};
     window.NicolettModules.Citas = CitasModule;

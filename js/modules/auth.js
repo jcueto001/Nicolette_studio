@@ -1,27 +1,19 @@
 /**
- * Nicolett Studio Fantasy - Arquitectura Modular Capstone
- * MÓDULO 4: AUTENTICACIÓN, ROLES Y SEGURIDAD (Sprint 4)
- * 
- * Requerimientos asociados (Anexo 5 Matriz de Requerimientos):
- * - RF-01: Autenticación y control de acceso diferenciado (Administradora vs Trabajadoras).
- * - RF-02: Gestión de personal (creación, asignación de especialidad y desactivación).
- * - RNF-04: Seguridad basada en roles (restricción estricta de eliminación de fichas y acceso anónimo).
- * - RNF-05: Cifrado en tránsito y protocolos HTTPS/TLS.
- * 
- * Integrantes: José Cueto & Benjamín Moya (Capstone Duoc UC 2026)
+ * Consulta de sesión y permisos de la interfaz según el rol.
+ * Integrantes: José Cueto & Benjamín Moya.
  */
 
 (function (window) {
     'use strict';
 
-    // Definición formal de roles de la plataforma
+    // Roles de usuario
     const ROLES = {
         ADMIN: 'admin',
         PROFESIONAL: 'profesional',
         CLIENTA: 'clienta'
     };
 
-    // Matriz de permisos por rol según RF-01 y RNF-04
+    // Permisos disponibles en la interfaz para cada rol
     const PERMISOS = {
         [ROLES.ADMIN]: {
             verDashboardFinanciero: true,
@@ -35,9 +27,9 @@
         [ROLES.PROFESIONAL]: {
             verDashboardFinanciero: false,
             gestionarPersonal: false,
-            eliminarFichasClientas: false, // RNF-04: Denegado estrictamente
+            eliminarFichasClientas: false, // Sin permiso para eliminar fichas
             editarInventarioCompleto: false, // Solo descuento por servicio
-            verTodasLasCitas: false, // RF-04: Solo sus citas asignadas
+            verTodasLasCitas: false, // Solo las citas asignadas
             configurarPagosFlow: false,
             gestionarGaleriaEstudio: false
         }
@@ -86,7 +78,7 @@
         },
 
         /**
-         * RF-01 & RNF-04: Valida si el usuario en sesión tiene autorización para ejecutar una acción
+         * Valida si el usuario en sesión tiene autorización para ejecutar una acción
          * @param {string} permiso - Clave del permiso a evaluar
          * @returns {boolean}
          */
@@ -149,7 +141,7 @@
         }
     };
 
-    // Exponer globalmente en el namespace de la arquitectura
+    // Publicar el módulo para los scripts de la página
     window.NicolettAuth = AuthModule;
     window.NicolettModules = window.NicolettModules || {};
     window.NicolettModules.Auth = AuthModule;

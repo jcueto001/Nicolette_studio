@@ -1,13 +1,6 @@
 /**
- * Nicolett Studio Fantasy - Arquitectura Modular Capstone
- * MÓDULO 5: EXPERIENCIA DE USUARIO, COMPONENTES Y DIÁLOGOS (Sprint 5)
- * 
- * Requerimientos asociados (Anexo 5 Matriz de Requerimientos):
- * - RNF-01: Paleta de colores institucional (tonos dorado, nude, blanco y rose-gold).
- * - RNF-02: Diseño adaptable Mobile-First (optimizado para smartphones entre 360px y 480px).
- * - RNF-03: Estándares de calidad y rendimiento (Google Lighthouse >= 85).
- * 
- * Integrantes: José Cueto & Benjamín Moya (Capstone Duoc UC 2026)
+ * Notificaciones y diálogos de la interfaz.
+ * Integrantes: José Cueto & Benjamín Moya.
  */
 
 (function (window) {
@@ -72,7 +65,7 @@
         }
     };
 
-    // Exponer globalmente en el namespace de la arquitectura
+    // Publicar el módulo para los scripts de la página
     window.NicolettUI = UIModule;
     window.NicolettModules = window.NicolettModules || {};
     window.NicolettModules.UI = UIModule;

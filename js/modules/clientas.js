@@ -1,12 +1,6 @@
 /**
- * Nicolett Studio Fantasy - Arquitectura Modular Capstone
- * MÓDULO 2: CLIENTAS, FICHAS TÉCNICAS Y BITÁCORA (Sprint 2)
- * 
- * Requerimientos asociados (Anexo 5 Matriz de Requerimientos):
- * - RF-07: Ficha técnica y bitácora de atención personalizada (historial cronológico, insumos, profesional).
- * - RF-08: Campos técnicos específicos por servicio (Mapeo de pestañas mapping 9 al 13 mm, curvatura y grosor).
- * 
- * Integrantes: José Cueto & Benjamín Moya (Capstone Duoc UC 2026)
+ * Historial de clientas, fichas de atención y parámetros de pestañas.
+ * Integrantes: José Cueto & Benjamín Moya.
  */
 
 (function (window) {
@@ -53,7 +47,7 @@
         },
 
         /**
-         * RF-07: Obtiene el historial cronológico de atenciones y fichas de una clienta
+         * Obtiene el historial cronológico de atenciones y fichas de una clienta
          * @param {string} clientEmail
          * @returns {Array}
          */
@@ -63,7 +57,7 @@
         },
 
         /**
-         * RF-07 & RF-08: Guarda la ficha técnica de atención con soporte de mapping y descuento de insumos
+         * Guarda la ficha técnica de atención con soporte de mapping y descuento de insumos
          * @param {Object} fichaData
          * @returns {Promise<Object>}
          */
@@ -102,7 +96,7 @@
         }
     };
 
-    // Exponer globalmente en el namespace de la arquitectura
+    // Publicar el módulo para los scripts de la página
     window.NicolettClientas = ClientasModule;
     window.NicolettModules = window.NicolettModules || {};
     window.NicolettModules.Clientas = ClientasModule;

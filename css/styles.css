@@ -1504,7 +1504,7 @@ button {
     }
 }
 
-/* Botones de cierre elegantes para todos los modales (sin borde negro por defecto) */
+/* Estilo compartido de los botones de cierre de los modales. */
 button[id^="close-"],
 button.modal-close-btn,
 button#close-auth,

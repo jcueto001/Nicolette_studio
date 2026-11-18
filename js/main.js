@@ -132,7 +132,7 @@ window.showCustomAlert = function (options = {}) {
     });
 };
 
-// Reemplazo inteligente de window.alert para que todas las llamadas usen el modal elegante de Nicolett Studio
+// Mostrar las alertas con el modal del sitio.
 window.alert = function (msg) {
     const text = String(msg || '');
     const lower = text.toLowerCase();
@@ -502,8 +502,8 @@ function setupForgotPasswordModal() {
                         await firebase.auth().sendPasswordResetEmail(email, actionCodeSettings);
                     } catch (urlErr) {
                         console.warn('[Firebase Reset] Intento con URL personalizada falló (' + (urlErr.code || urlErr.message) + '). Reintentando con envío directo oficial...');
-                        // Fallback infalible: Si el dominio no está en la lista blanca de continue-uri de Firebase (auth/unauthorized-continue-uri),
-                        // enviar el correo oficial de restablecimiento sin actionCodeSettings para que llegue con éxito.
+                        // Reintentar sin URL de retorno si falla el envío personalizado.
+                        // Firebase usará la página de restablecimiento configurada en el proyecto.
                         await firebase.auth().sendPasswordResetEmail(email);
                     }
                 }
@@ -664,7 +664,7 @@ window.logoutClientProfile = async function () {
         const isPersonalized = localStorage.getItem('nicolett_personalization');
         const authData = typeof StorageHelper !== 'undefined' ? StorageHelper.getAuth() : null;
 
-        // Si ya tiene sesión activa como administradora o trabajadora, NUNCA mostrar este popup
+        // Omitir el aviso si ya hay una sesión de personal activa.
         if (authData && authData.loggedIn) {
             if (modal) modal.style.display = 'none';
             return;

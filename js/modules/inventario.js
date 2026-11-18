@@ -1,12 +1,6 @@
 /**
- * Nicolett Studio Fantasy - Arquitectura Modular Capstone
- * MÓDULO 3: INVENTARIO, CONTROL DE STOCK Y CATÁLOGO (Sprint 3)
- * 
- * Requerimientos asociados (Anexo 5 Matriz de Requerimientos):
- * - RF-09: Catálogo informativo de productos del salón (marcas profesionales y descripciones para clientas).
- * - RF-10: Control de stock de insumos y productos (registro, alertas de stock crítico y rebajas automáticas por atención).
- * 
- * Integrantes: José Cueto & Benjamín Moya (Capstone Duoc UC 2026)
+ * Consulta de inventario, alertas de stock y catálogo de insumos.
+ * Integrantes: José Cueto & Benjamín Moya.
  */
 
 (function (window) {
@@ -14,7 +8,7 @@
 
     const UMBRAL_STOCK_CRITICO_DEFAULT = 5;
 
-    // Catálogo informativo de marcas e insumos profesionales certificados (RF-09)
+    // Productos que se muestran en el catálogo para clientas
     const CATALOGO_INFORMATIVO_CLIENTAS = [
         {
             id: 'cat_semi',
@@ -71,7 +65,7 @@
         },
 
         /**
-         * RF-10: Retorna los productos que se encuentran en nivel de alerta crítica (stock <= umbral)
+         * Retorna los productos que se encuentran en nivel de alerta crítica (stock <= umbral)
          * @param {number} umbral
          * @returns {Array}
          */
@@ -84,7 +78,7 @@
         },
 
         /**
-         * RF-10: Descuenta unidades de un insumo tras ser consumido en una atención
+         * Descuenta unidades de un insumo tras ser consumido en una atención
          * @param {string} productId
          * @param {number} cantidad
          * @returns {Promise<void>}
@@ -124,7 +118,7 @@
         },
 
         /**
-         * RF-09: Retorna el catálogo informativo de productos profesionales para las clientas
+         * Retorna el catálogo informativo de productos profesionales para las clientas
          * @returns {Array}
          */
         getCatalogoInformativoClientas: function () {
@@ -132,7 +126,7 @@
         }
     };
 
-    // Exponer globalmente en el namespace de la arquitectura
+    // Publicar el módulo para los scripts de la página
     window.NicolettInventario = InventarioModule;
     window.NicolettModules = window.NicolettModules || {};
     window.NicolettModules.Inventario = InventarioModule;

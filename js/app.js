@@ -133,7 +133,7 @@ const AppRouter = {
                     console.error("Error al inicializar eventos de " + route + ":", eventErr);
                 }
 
-                // Animación de entrada SIEMPRE se ejecuta para evitar pantalla en blanco
+                // Ejecutar la animación de entrada después de cambiar de vista.
                 contentArea.style.transition = 'opacity 0.25s ease';
                 contentArea.style.opacity = '1';
 
