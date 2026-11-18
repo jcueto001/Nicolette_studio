@@ -434,7 +434,7 @@ const StorageHelper = {
             if (!this._isSessionCurrent(session)) return;
             const profs = [];
             profsSnapshot.forEach((doc) => {
-                profs.push({ id: doc.id, ...doc.data() });
+                profs.push({ ...doc.data(), id: doc.id });
             });
             this._professionalsCache = profs.map(person => this.getAuth().loggedIn ? person : this._publicProfessional(person));
             mockData.professionals = this._professionalsCache.map(this._publicProfessional);
@@ -842,18 +842,24 @@ const StorageHelper = {
     },
     deleteProfessional: async function (id) {
         const session = this._sessionStamp();
-        if (!session.owner) return null;
-
-        if (typeof db !== 'undefined') {
-            try {
-                await db.collection("Profesionales").doc(id).delete();
-                this._assertSessionCurrent(session);
-            } catch (e) { this._handlePrivateError(e, session); console.error("Error deleting professional", e); }
+        if (!session.owner || this.getAuth().user?.role !== 'admin') {
+            throw new Error('Debes iniciar sesión como administradora para eliminar profesionales.');
+        }
+        if (typeof db === 'undefined') throw new Error('No se pudo conectar con Firebase. Intenta nuevamente.');
+        try {
+            await db.collection("Profesionales").doc(id).delete();
+            this._assertSessionCurrent(session);
+        } catch (e) {
+            this._handlePrivateError(e, session);
+            throw e;
         }
         this._professionalsCache = this._professionalsCache.filter(p => p.id !== id);
+        mockData.professionals = this._professionalsCache.map(this._publicProfessional);
         try {
-            localStorage.setItem('nicolett_local_professionals', JSON.stringify(this._professionalsCache.map(this._publicProfessional)));
-        } catch (e) { this._handlePrivateError(e, session); }
+            const publicProfiles = JSON.stringify(mockData.professionals);
+            localStorage.setItem('nicolett_professionals_cache', publicProfiles);
+            localStorage.setItem('nicolett_local_professionals', publicProfiles);
+        } catch (e) { console.warn('No se pudo actualizar la caché local de profesionales.'); }
     },
 
     // Las contraseñas se gestionan exclusivamente con Firebase Auth.

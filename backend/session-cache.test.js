@@ -170,6 +170,32 @@ test('Nueva profesional recibe exclusivamente datos de su UID y nunca CRM anteri
     assert.ok(f.state.calls.filter(call => call.collection === 'Citas').at(-1).filters.some(([key, value]) => key === 'profId' && value === 'worker'));
 });
 
+test('Eliminar profesional usa ID del documento y actualiza ambas cachés tras confirmación', async () => {
+    const f = fixture(); await f.login();
+    f.state.read = async collection => collection === 'Profesionales' ? {
+        forEach: callback => callback({ id: 'document-id', data: () => ({ id: 'old-id', name: 'Ana' }) })
+    } : null;
+    await f.helper.loadAppointmentsCache();
+    assert.equal(f.helper.getProfessionals()[0].id, 'document-id');
+    let deleted;
+    const collection = f.context.db.collection;
+    f.context.db.collection = name => name === 'Profesionales'
+        ? { doc: id => ({ delete: async () => { deleted = id; } }) } : collection(name);
+    await f.helper.deleteProfessional('document-id');
+    assert.equal(deleted, 'document-id');
+    assert.equal(f.helper.getProfessionals().length, 0);
+    assert.equal(f.local.get('nicolett_professionals_cache'), '[]');
+    assert.equal(f.local.get('nicolett_local_professionals'), '[]');
+});
+
+test('Borrado fallido no oculta la profesional ni devuelve éxito', async () => {
+    const f = fixture(); await f.login();
+    f.helper._professionalsCache = [{ id: 'worker', name: 'Ana' }];
+    f.state.write = async () => { throw new Error('network unavailable'); };
+    await assert.rejects(f.helper.deleteProfessional('worker'), /network unavailable/);
+    assert.equal(f.helper.getProfessionals().length, 1);
+});
+
 test('UID cambiado antes del callback de Auth invalida getters', async () => {
     const f = fixture(); await f.login(); await f.helper.loadAppointmentsCache();
     f.state.user = { uid: 'worker' };

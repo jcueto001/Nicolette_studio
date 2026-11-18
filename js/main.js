@@ -1921,14 +1921,21 @@ window.logoutClientProfile = async function () {
                 btn.addEventListener('click', async () => {
                     const ok = await window.showCustomConfirm({
                         title: '¿Eliminar Especialista?',
-                        message: '¿Estás segura de eliminar a esta profesional del sistema?\nYa no tendrá acceso al portal ni aparecerá en la agenda de citas.',
+                        message: '¿Estás segura de eliminar a esta profesional del listado y de la agenda de citas?',
                         confirmText: 'Sí, Eliminar',
                         cancelText: 'Cancelar',
                         danger: true
                     });
                     if (ok) {
-                        await StorageHelper.deleteProfessional(btn.getAttribute('data-profid'));
-                        AppRouter.refresh();
+                        btn.disabled = true;
+                        try {
+                            await StorageHelper.deleteProfessional(btn.getAttribute('data-profid'));
+                            AppRouter.refresh();
+                        } catch (error) {
+                            window.alert('No se pudo eliminar la trabajadora. ' + (error.message || 'Intenta nuevamente.'));
+                        } finally {
+                            btn.disabled = false;
+                        }
                     }
                 });
             });
