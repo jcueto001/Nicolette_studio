@@ -95,12 +95,8 @@ const mockData = {
         }
     ],
 
-    // Profesionales
-    professionals: _cachedProfessionals?.map(({ id, name, specialty, avatar }) => ({ id, name, specialty, avatar })) || [
-        { id: 'p1', name: 'Nicolett', email: 'nicolette@gmail.com', role: 'admin', specialty: 'Especialista Integral & Fundadora', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80' },
-        { id: 'p2', name: 'Camila', email: 'camila@gmail.com', role: 'profesional', specialty: 'Manicura & Mirada', avatar: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=150&q=80' },
-        { id: 'p3', name: 'Priscila Villarreal', email: 'priscila@gmail.com', role: 'profesional', specialty: 'Podología Clínica (ROL MINSAL 164959)', avatar: 'https://images.unsplash.com/photo-1594824813583-0599a80b064c?auto=format&fit=crop&w=150&q=80' }
-    ],
+    // Profesionales guardadas previamente; sin personal precargado por defecto.
+    professionals: _cachedProfessionals || [],
 
     gallery: [
         { id: 'g1', src: 'img/galeria1.jpg', title: 'Manicure Acrílica', serviceName: 'Manicure Acrílica', profesional: 'Camila', profId: 'p2' },
@@ -440,14 +436,9 @@ const StorageHelper = {
             profsSnapshot.forEach((doc) => {
                 profs.push({ id: doc.id, ...doc.data() });
             });
-            this._professionalsCache = (profs.length > 0 ? profs : [...mockData.professionals]).map(person => this.getAuth().loggedIn ? person : this._publicProfessional(person));
+            this._professionalsCache = profs.map(person => this.getAuth().loggedIn ? person : this._publicProfessional(person));
+            mockData.professionals = this._professionalsCache.map(this._publicProfessional);
             try { localStorage.setItem('nicolett_professionals_cache', JSON.stringify(this._professionalsCache.map(this._publicProfessional))); } catch (e) {}
-            // Asegurar que profesionales base (incluyendo podóloga clínica Priscila Villarreal) estén disponibles
-            mockData.professionals.forEach(dp => {
-                if (!this._professionalsCache.some(p => p.email === dp.email || p.id === dp.id)) {
-                    this._professionalsCache.push(this.getAuth().loggedIn ? dp : this._publicProfessional(dp));
-                }
-            });
         } catch (e) {
             console.error("Error cargando profesionales:", e);
             if (this._professionalsCache.length === 0) this._professionalsCache = mockData.professionals.map(this._publicProfessional);
