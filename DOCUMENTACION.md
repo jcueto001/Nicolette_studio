@@ -1,439 +1,71 @@
-# Manual Técnico y Documentación del Sistema: Nicolett Studio Fantasy
-
-**Versión:** 1.2.0  
-**Fecha de actualización:** Octubre 2026  
-**Estado:** Producción / En Mantenimiento Activo  
-
----
-
-## Índice
-
-1. [Visión General del Sistema](#1-visión-general-del-sistema)
-2. [Arquitectura Tecnológica](#2-arquitectura-tecnológica)
-3. [Estructura del Proyecto y Archivos](#3-estructura-del-proyecto-y-archivos)
-4. [Módulos del Frontend (SPA)](#4-módulos-del-frontend-spa)
-   - [4.1 Router y Ciclo de Vistas](#41-router-y-ciclo-de-vistas)
-   - [4.2 Flujo de Agendamiento de Citas](#42-flujo-de-agendamiento-de-citas)
-   - [4.3 Portal y Perfil de Clienta](#43-portal-y-perfil-de-clienta)
-   - [4.4 Panel de Administración y BI](#44-panel-de-administración-y-bi)
-   - [4.5 Fichas Clientas y CRM](#45-fichas-clientas-y-crm)
-5. [Estructura de Base de Datos (Firebase Firestore)](#5-estructura-de-base-de-datos-firebase-firestore)
-6. [Autenticación y Control de Accesos](#6-autenticación-y-control-de-accesos)
-7. [Integraciones Externas](#7-integraciones-externas)
-   - [7.1 Pasarela de Pagos (Transbank Webpay Plus)](#71-pasarela-de-pagos-transbank-webpay-plus)
-   - [7.2 Notificaciones por Correo (EmailJS)](#72-notificaciones-por-correo-emailjs)
-8. [Capa de Persistencia y Caché (StorageHelper)](#8-capa-de-persistencia-y-caché-storagehelper)
-9. [Guía de Instalación y Despliegue](#9-guía-de-instalación-y-despliegue)
-   - [9.1 Despliegue del Frontend](#91-despliegue-del-frontend)
-   - [9.2 Despliegue del Backend en Render](#92-despliegue-del-backend-en-render)
-10. [Mantenimiento y Preguntas Frecuentes](#10-mantenimiento-y-preguntas-frecuentes)
-
----
-
-## 1. Visión General del Sistema
-
-**Nicolett Studio Fantasy** es una plataforma web desarrollada para la gestión integral de un centro de estética y belleza ubicado en Buin, Chile. El sistema cubre dos áreas operativas:
-
-1. **Plataforma Pública (Clientas):** Catálogo de servicios, visualización de trabajos en galería con filtros, personalización de perfil de usuaria y motor de reservas de horas en tiempo real con validación de disponibilidad y opción de pago en línea vía Webpay Plus.
-2. **Plataforma Privada (Administración):** Panel con métricas de negocio (KPIs e ingresos), administración del estado de citas, fichas técnicas de clientas, historial de tratamientos, control de stock de insumos, gestión del equipo de trabajadoras y carga de imágenes a la galería.
-
----
-
-## 2. Arquitectura Tecnológica
-
-El sistema utiliza una arquitectura desacoplada: un **Frontend SPA** estático conectado directamente a **Firebase** (Firestore y Auth) y a un **microservicio Backend en Node.js/Express** dedicado exclusivamente a la integración bancaria con Transbank.
-
-```
-+-------------------------------------------------------------------+
-|                        NAVEGADOR CLIENTE                          |
-|  index.html + styles.css + app.js (Vistas) + main.js (Eventos)    |
-+-------------------+--------------------+--------------------+-----+
-                    |                    |                    |
-                    v                    v                    v
-          +-------------------+ +------------------+ +---------------+
-          | Firebase Firestore| |  Firebase Auth   | |    EmailJS    |
-          |  (Base de datos)  | |  (Sesión Admin)  | |(Notificaciones|
-          +-------------------+ +------------------+ +---------------+
-                    ^
-                    |
-+-------------------+-----------------------------------------------+
-|             MICROSERVICIO BACKEND (backend/server.js)             |
-|              Node.js + Express + Transbank Webpay SDK             |
-+-------------------------------------------------------------------+
-```
-
-### Tecnologías Clave
-
-| Capa | Componente | Descripción |
-|---|---|---|
-| **Frontend Base** | HTML5, CSS3 Nativo, Vanilla JavaScript | Arquitectura sin frameworks pesados (cero dependencias de compilación en cliente). |
-| **Diseño / Estilos** | CSS Variables, Flexbox, CSS Grid | Sistema de diseño basado en tonos nude, rose gold y tipografía moderna; optimizado para móviles. |
-| **Iconografía** | Lucide Icons (CDN) | Iconos SVG renderizados dinámicamente en el DOM. |
-| **Gráficos BI** | Chart.js (CDN) | Visualización de ingresos mensuales y distribución de servicios en el dashboard. |
-| **Notificaciones** | EmailJS SDK | Disparo de correos transaccionales directos desde el cliente sin servidor SMTP propio. |
-| **Backend Pagos** | Node.js + Express | Servidor REST para la creación y confirmación de transacciones con Webpay Plus. |
-| **Base de Datos** | Firebase Firestore (v10.7.1 Compat) | Base de datos NoSQL documental en tiempo real. |
-| **Autenticación** | Firebase Authentication | Inicio de sesión con correo y contraseña para administradoras y profesionales. |
-
----
-
-## 3. Estructura del Proyecto y Archivos
-
-El sistema está estructurado bajo una **arquitectura modular orientada a requerimientos de software (Sprints del Capstone)**:
-
-```text
-Nicolette_studio/
-├── css/
-│   └── styles.css            # Hoja de estilos global, variables CSS, responsive design (RNF-01, RNF-02)
-├── img/                      # Recursos gráficos estáticos y fotografías del local
-├── js/
-│   ├── firebase-config.js    # Inicialización y credenciales del cliente Firebase (Firestore & Auth)
-│   ├── mockData.js           # Capa StorageHelper, estado local y datos semilla
-│   ├── modules/              # MÓDULOS DE NEGOCIO SEGÚN PLAN DE TRABAJO (CAPSTONE)
-│   │   ├── citas.js          # [Sprint 1] Módulo Citas, Horarios (09:00-17:00), Sobrecupos y Abonos ($5.000) (RF-03 a RF-06)
-│   │   ├── clientas.js       # [Sprint 2] Módulo Clientas, Fichas Técnicas y Mapeo de Pestañas (Mapping 9-13) (RF-07, RF-08)
-│   │   ├── inventario.js     # [Sprint 3] Módulo Inventario, Alertas de Stock Crítico y Catálogo Informativo (RF-09, RF-10)
-│   │   ├── auth.js           # [Sprint 4] Módulo Autenticación, Roles (Admin vs Trabajadora) y Seguridad (RF-01, RF-02, RNF-04)
-│   │   └── ui.js             # [Sprint 5] Módulo UI, Diálogos de Confirmación y Notificaciones Toast (RNF-01, RNF-03)
-│   ├── app.js                # Router SPA y funciones que renderizan el HTML de cada vista
-│   └── main.js               # Controladores de eventos, lógica de formularios y CRM
-├── backend/
-│   ├── package.json          # Dependencias del backend (express, cors, transbank-sdk)
-│   ├── package-lock.json     # Bloqueo de versiones de paquetes de node
-│   ├── server.js             # API REST de integración con Webpay Plus y Flow.cl
-│   └── README.md             # Guía de ejecución y despliegue del backend en Render
-├── index.html                # Contenedor raíz, barra de navegación, modales y scripts CDN
-├── reset-password.html       # Portal seguro y personalizado para restablecimiento de contraseñas
-├── DOCUMENTACION.md          # Este documento
-└── README.md                 # Resumen ejecutivo del repositorio para evaluación
-```
-
----
-
-## 4. Módulos del Frontend (SPA)
-
-### 4.1 Router y Ciclo de Vistas
-El archivo `js/app.js` expone el objeto `AppRouter`. Este gestiona la navegación interna sin recargar la página mediante el atributo HTML `data-route`:
-
-* **`AppRouter.navigate(route)`**: Oculta el contenedor `#app-content` mediante una transición de opacidad, inserta el nuevo HTML generado por la función correspondiente (`renderHomeView`, `renderAgendarView`, etc.) y vuelve a vincular iconos y controladores.
-* **`AppRouter.refresh()`**: Vuelve a evaluar y dibujar la vista activa. Se utiliza tras guardar o eliminar registros en el panel administrativo.
-
-### 4.2 Flujo de Agendamiento de Citas
-Ubicado en la ruta `'agendar'` (`renderAgendarView`), implementa un asistente secuencial de 5 pasos:
-
-1. **Paso 1: Selección de Servicio:** Muestra los servicios filtrados por categorías (Manicure, Mirada, Capilar, Bienestar).
-2. **Paso 2: Selección de Profesional:** Permite elegir a la especialista deseada o marcar "Cualquiera disponible".
-3. **Paso 3: Fecha y Horario:** El calendario consulta a Firestore (`StorageHelper.getAvailableTimeSlots`) las citas ocupadas en la fecha para esa profesional y deshabilita los bloques ya tomados.
-4. **Paso 4: Datos del Cliente:** Formulario de nombre, teléfono y correo electrónico. Si la clienta ya personalizó su navegador, estos datos se autorrellenan automáticamente.
-5. **Paso 5: Abono y Confirmación (Flow.cl):**
-   - **Desglose Financiero Transparente:** Muestra el valor total del servicio, el **abono obligatorio de $5.000** mediante Flow, y el saldo restante que se pagará de forma presencial en el estudio el día de la atención.
-   - **Pasarela Segura Flow:** Acepta Webpay (Crédito y Débito), CuentaRUT BancoEstado, tarjetas Visa/Mastercard, Mach y Servipag.
-   - **Modal de Pago Flow (`#flow-checkout-modal`):** Al presionar "Pagar Abono $5.000 con Flow", abre el checkout oficial de Flow y permite confirmar inmediatamente la cita con el comprobante/token correspondiente.
-   - **Confirmación Automática:** Guarda la cita en la colección `Citas` con estado `'confirmada'`, `depositAmount: 5000`, `paymentMethod: 'Flow'`, y envía el correo electrónico de respaldo con EmailJS.
-
-### 4.3 Portal y Perfil de Clienta
-Accesible mediante la ruta `'perfil'` (`renderPerfilView`):
-* Muestra el resumen de la clienta (nombre y correo registrados en el navegador en la clave `nicolett_personalization`).
-* Consulta las citas históricas y futuras de esa clienta comparando `clientEmail` contra la colección `Citas`.
-* Ordena cronológicamente las visitas y muestra el estado actual de cada reserva.
-* **Captura de Fotos del Servicio (Exclusivo con Citas Agendadas):**
-  - **Restricción de Acceso:** La clienta **solo** puede acceder a la subida y captura de fotos si tiene al menos una cita agendada o completada previamente. Si no cuenta con citas, el sistema muestra una tarjeta informativa con candado invitándola a agendar su primera cita.
-  - Al contar con citas previas, se habilita el banner de invitación y el botón en cada cita ("Sacar foto de este servicio").
-  - Abre el modal `#client-photo-modal` que permite:
-    - **Cámara Móvil Nativa:** Abre la cámara trasera en smartphones/tablets (`accept="image/*" capture="environment"`).
-    - **Archivos / Galería:** Selección de fotografías desde la biblioteca local.
-    - **Webcam en Vivo:** Transmisión y captura de instantánea en computadores mediante `navigator.mediaDevices.getUserMedia`.
-    - **Selector Estricto de Servicio:** El menú desplegable muestra exclusivamente los servicios de las citas que la clienta agendó o se realizó.
-  - Optimización en cliente: Redimensionamiento automático a máximo 800px y compresión JPEG al 70% mediante Canvas HTML5 para no saturar memoria.
-  - Guarda la imagen con metadatos (`source: 'client'`, nombre y correo de la clienta, servicio y fecha) en `StorageHelper` y la sincroniza con Firebase Firestore.
-* **Galería de Resultados de la Clienta:** Muestra el listado de fotos aportadas por la usuaria, con fecha, servicio e indicador de publicación en la galería del salón, permitiéndole además eliminar sus fotos si lo desea.
-* **Cierre de Sesión de Clienta:** Incluye un botón para cerrar sesión directamente en la cabecera de la vista y sincroniza el botón de salida en la barra de navegación general (`logoutClientProfile()`). Al cerrar sesión, se eliminan los datos locales de personalización y se redirige a la vista principal.
-
-### 4.4 Panel de Administración y BI
-Accesible en la ruta `'admin'` (`renderAdminView`). Protegido por autenticación: si no hay un usuario autenticado en `StorageHelper.getAuth()`, el router redirige automáticamente al home.
-
-El panel se organiza en pestañas operativas:
-1. **Dashboard BI:**
-   - Tarjetas de KPIs: Ingresos por Abonos ($5.000 por cita confirmada/completada ya que el saldo restante se paga presencial en el estudio), Citas con Abono Confirmado y análisis de demanda.
-   - Gráfico de Dona: Distribución de la demanda por categoría de servicio.
-   - Gráfico de Barras: Abonos recibidos por cada profesional ($5.000 c/u).
-2. **Gestión de Citas:** Tabla con todas las reservas. Permite cambiar el estado en vivo a:
-   - `confirmada` (dispara correo de confirmación a la clienta).
-   - `completada` (suma automáticamente a las métricas de ingresos de abonos).
-   - `cancelada` o `no asiste` (libera el bloque horario).
-3. **Fichas Clientas:** Registro del expediente técnico por sesión de cada clienta.
-4. **Inventario:** Vista de insumos con niveles de alerta para productos con stock bajo.
-5. **Equipo / Profesionales:** Alta y baja de especialistas.
-6. **Galería:**
-   - **Subida desde Administración:** Carga directa de fotografías oficiales del estudio con título/servicio, compresión automática y reseteo del formulario.
-   - **Descarga de Fotos:** Cada tarjeta en la galería incluye un botón de descarga directa (`.btn-download-gallery`) que permite a la administradora guardar en su dispositivo cualquier foto (tanto subida por clientas como oficiales).
-   - **Integración con Fotos de Clientas:** Despliega todas las fotos subidas desde el portal de clientas identificadas con insignias rose gold (`Clienta: [Nombre]`, servicio y fecha).
-   - **Filtros Dinámicos:** Pestañas de filtrado ("Todas", "Subidas por Clientas 💕", "Estudio").
-   - Eliminación de imágenes con confirmación tanto para fotos oficiales como aportadas.
-7. **Directorio de Clientas (CRM):** Resumen de clientes con total de visitas y monto acumulado gastado en el salón. Al abrir la ficha CRM de una clienta, se exhibe adicionalmente la galería de fotos de servicios subidas por ella.
-
-### 4.5 Fichas Clientas y CRM
-Al guardar una ficha de clienta:
-* Se registra la fecha, la clienta, el servicio y las notas de procedimiento (ej. alergias, fórmula de tinte, curvatura de pestañas).
-* Se descuenta el stock de los insumos seleccionados en la colección `Inventario`.
-* Si la clienta no existía en el directorio local, se añade automáticamente.
-* Al presionar el botón "Ver CRM", un modal reúne todas las citas y fichas pasadas de la clienta junto con notas privadas de seguimiento.
-
----
-
-## 5. Estructura de Base de Datos (Firebase Firestore)
-
-La base de datos utiliza nombres de colecciones en español y en formato singular/plural según la entidad:
-
-### 1. Colección `perfil_cliente`
-Almacena las preferencias y datos capturados cuando una visitante utiliza el modal de personalización del sitio.
-```json
-{
-  "name": "Valentina Pérez",
-  "email": "valentina@ejemplo.cl",
-  "createdAt": "Timestamp"
-}
-```
-
-### 2. Colección `Citas`
-Registra cada reserva generada desde la web o manualmente por el equipo.
-```json
-{
-  "clientName": "Valentina Pérez",
-  "clientPhone": "+56912345678",
-  "clientEmail": "valentina@ejemplo.cl",
-  "serviceId": "s1",
-  "servicio": "Esmaltado Permanente",
-  "price": 15000,
-  "profId": "p1",
-  "profesional": "Nicolett",
-  "date": "2026-11-05",
-  "time": "15:00",
-  "status": "confirmada",
-  "createdAt": "Timestamp"
-}
-```
-*Estados válidos de una cita:* `'confirmada'`, `'completada'`, `'cancelada'`, `'no asiste'`, `'bloqueada'`, `'Pago Reportado'`.
-
-### 3. Colección `FichasClientas`
-Expedientes de tratamientos y procedimientos técnicos aplicados a las clientas.
-```json
-{
-  "clientName": "Valentina Pérez",
-  "serviceName": "Uñas Acrílicas",
-  "date": "2026-10-18",
-  "notes": "Largo #3, punta almendrada, cutículas sensibles.",
-  "productsUsed": ["inv1"],
-  "createdAt": "Timestamp"
-}
-```
-
-### 4. Colección `Inventario`
-Control de insumos consumibles y productos.
-```json
-{
-  "name": "Esmalte Permanente Rojo",
-  "stock": 14,
-  "category": "manos-pies"
-}
-```
-
-### 5. Colección `Profesionales`
-Especialistas que atienden en el salón.
-```json
-{
-  "name": "Camila",
-  "email": "camila@gmail.com",
-  "role": "profesional",
-  "avatar": "https://..."
-}
-```
-
-### 6. Colección `Usuarios`
-Colección indexada por el UID de Firebase Authentication (`user.uid`). Define los permisos internos:
-```json
-{
-  "email": "nicolette@gmail.com",
-  "rol": "Admin",
-  "nombre": "Nicolett"
-}
-```
-
-### 7. Colección `Servicios`
-Catálogo oficial de servicios ofrecidos por Nicolett Studio Fantasy (61 servicios migrados a Firestore). Permite actualizar precios, duraciones y nombres directamente en la base de datos:
-```json
-{
-  "name": "Esmaltado Permanente 1 Tono",
-  "category": "manicura",
-  "price": 16000,
-  "duration": "1h 15m",
-  "description": "Limpieza de cutículas completa y aplicación de esmalte permanente a elección en 1 tono.",
-  "recommendedFor": ["turnos", "ejecutiva"],
-  "combo": false
-}
-```
-
-### 8. Colección `Categorias`
-Categorías principales de atención que organizan el catálogo y los filtros:
-```json
-{
-  "id": "manicura",
-  "label": "Manicura",
-  "icon": "sparkles",
-  "desc": "Uñas, esmaltados y extensiones"
-}
-```
-
-### 9. Colección `Perfiles`
-Arquetipos de usuarias/clientas utilizados por el motor de recomendaciones personalizadas:
-```json
-{
-  "id": "mama",
-  "label": "Mamá",
-  "icon": "baby",
-  "desc": "Espacios Kids Friendly"
-}
-```
-
----
-
-## 6. Autenticación y Control de Accesos
-
-1. **Acceso Independiente y Dedicado (Sin Pop-ups ni Mezcla con Clientas):**  
-   El ingreso de administración y colaboradoras está completamente desvinculado del formulario o ventana emergente de clientas ("Personaliza tu experiencia").
-   - Cuenta con una **página/vista integrada dedicada** (`renderAdminView`), donde se ingresa directamente correo y contraseña en pantalla completa, sin depender de ventanas emergentes (pop-ups).
-2. **Disparadores Privados y Discretos para el Equipo:**  
-   - **Barra de Navegación (Navbar):** Un candado discreto (`#nav-staff-door`) al final del menú, visible para el equipo con baja opacidad. Al autenticarse, se transforma automáticamente en `Portal Administradora` o `Portal Trabajadora (Nombre)`.
-   - **Pie de Página (Footer):** Enlace discreto al lado del copyright (`Acceso Equipo` con ícono de candado).
-   - **Monograma del Logo ("NS"):** Clic directo sobre el monograma `NS` en la barra superior.
-   - **Atajo Secreto de Teclado:** Presionar `Ctrl + Shift + A` o `Alt + A` en cualquier pantalla.
-   - **Enlace Directo por URL:** Escribir `/#admin` o `/#portal` en la barra de direcciones.
-3. **Verificación de Rol y Vistas Diferenciadas:**  
-   Al autenticar en Firebase Auth (o credenciales de contingencia):
-   - **Administradora (`admin`):** Acceso total a Agenda, Fichas Clientas, Galería, Dashboard & Finanzas, Directorio de Clientas, Inventario y Gestión de Trabajadoras.
-   - **Trabajadora (`profesional`):** Acceso a su Agenda de atenciones asignadas, Fichas Clientas de sus clientas y visualización/subida de fotos en Galería.
-4. **Cierre de Sesión:**  
-   - **Portal de Equipo:** El botón de salida (`#btn-logout`) limpia la sesión en `StorageHelper`, ejecuta `firebase.auth().signOut()`, oculta el portal en el menú y redirige a la vista de inicio.
-   - **Perfil de Clienta:** La función `logoutClientProfile()` limpia la clave `nicolett_personalization`, oculta el enlace de "Mi Perfil" y regresa a la vista de inicio.
-
----
-
-## 7. Integraciones Externas
-
-### 7.1 Pasarela de Pagos de Abonos (Flow.cl)
-El sistema opera con **Flow.cl** (pasarela chilena líder en Webpay, CuentaRUT, tarjetas y transferencias) para exigir el abono de $5.000 previo a la confirmación de la cita:
-
-1. **Gestión desde el Panel Administrador:**
-   - En la pestaña **"Configuración Flow"** del portal administrador, la dueña del salón puede configurar directamente:
-     - **Link o Botón de Pago Flow:** URL directa de cobro de $5.000 creada en Flow (ej. `https://www.flow.cl/btn.php?token=...` o `https://flow.cl/p/...`).
-     - **API Key y Secret Key:** Credenciales de Flow para integración directa mediante API REST.
-     - **Modo Sandbox:** Interruptor para alternar entre entorno de pruebas y producción.
-   - Las configuraciones se sincronizan en Firestore en la colección `Configuracion` (documento `flow`).
-
-2. **Endpoints en Backend Node.js (`backend/server.js`):**
-   - `POST /api/flow/create`: Crea la orden de pago firmada con HMAC-SHA256 (`s`) hacia `https://www.flow.cl/api/payment/create`.
-   - `GET|POST /api/flow/return`: Endpoint de retorno donde Flow redirige a la usuaria con el `token`. Verifica el estado con `getStatus` (`status == 2`) y redirige al frontend con `?action=flow-success`.
-   - `POST /api/flow/notify`: Webhook asíncrono oficial de Flow.
-   - `POST /api/webpay/create` y `GET /api/webpay/commit`: Integración alternativa de respaldo con Transbank Webpay Plus.
-
-### 7.2 Notificaciones por Correo (EmailJS)
-Se ejecuta en el lado del cliente utilizando el script `@emailjs/browser`:
-* **Llave Pública:** `tUxZAGW52juzs6H5Q`
-* **ID de Servicio:** `service_rmc9mu9`
-* **Plantilla de Reserva Creada:** `template_2h2ya38`
-* **Plantilla de Cita Confirmada por Admin:** `template_pcxbtx3`
-
-Parámetros enviados a las plantillas:
-- `to_name`: Nombre de la clienta.
-- `to_email`: Correo de la clienta.
-- `service_name`: Nombre del servicio reservado.
-- `date`: Fecha de la cita.
-- `time`: Hora agendada.
-- `professional`: Nombre de la especialista asignada.
-
----
-
-## 8. Capa de Persistencia y Caché (StorageHelper)
-
-El objeto `StorageHelper` (en `js/mockData.js`) implementa un patrón de repositorio híbrido:
-
-1. **Caché en Memoria:** Mantiene arreglos en memoria (`_appointmentsCache`, `_fichasCache`, `_professionalsCache`, `_inventoryCache`) para que los cambios de vista en el router sean instantáneos.
-2. **Sincronización con Firestore:** Toda operación de lectura inicial puebla la caché desde Firestore. Toda operación de escritura (`saveAppointment`, `saveFicha`, `updateProductStock`) persiste en Firestore y actualiza la caché local.
-3. **Resiliencia (Modo Fallback Offline):** Si la conexión con Firebase falla o la base de datos no está disponible temporalmente, `StorageHelper` almacena las operaciones en `localStorage` (claves `nicolett_appointments`, `nicolett_clients`, `nicolett_gallery_v2`), evitando bloqueos o pérdidas de información para el usuario final.
-
----
-
-## 9. Guía de Instalación y Despliegue
-
-### 9.1 Despliegue del Frontend
-El frontend es 100% estático. Puede ser alojado en cualquier proveedor de hosting estático (Firebase Hosting, Vercel, Netlify, GitHub Pages o un servidor Apache/Nginx).
-
-#### Pasos para desplegar en GitHub Pages:
-1. Asegurarse de que todos los cambios estén en la rama `main`.
-2. Ir en GitHub a **Settings > Pages**.
-3. En **Source**, seleccionar la rama `main` y la carpeta `/ (root)`.
-4. Guardar. El sitio quedará disponible en `https://<tu-usuario>.github.io/Nicolette_studio/`.
-
-### 9.2 Despliegue del Backend en Render
-
-1. Crear una cuenta en [Render.com](https://render.com).
-2. Hacer clic en **New + > Web Service** y conectar el repositorio de GitHub.
-3. Configuración del servicio:
-   - **Name:** `nicolett-backend`
-   - **Environment:** `Node`
-   - **Root Directory:** `backend` *(fundamental: este subdirectorio contiene el package.json del servidor)*
-   - **Build Command:** `npm install`
-   - **Start Command:** `npm start`
-   - **Plan:** Free
-4. Variables de entorno (pestaña **Environment** en Render):
-   - `FRONTEND_URL`: URL pública real de tu frontend (ejemplo: `https://jcueto001.github.io/Nicolette_studio/index.html`).
-   - `PORT`: `3000` (o el asignado por Render por defecto).
-5. En el frontend ([js/main.js](file:///c:/Users/Usuario/Nicolette_studio/js/main.js)), actualizar la variable `backendUrl` con la dirección HTTPS entregada por Render:
-   ```javascript
-   const backendUrl = 'https://nicolett-backend.onrender.com';
-   ```
-
----
-
-## 10. Mantenimiento y Preguntas Frecuentes
-
-### ¿Cómo agregar un nuevo servicio?
-Los servicios iniciales están definidos en el arreglo `mockData.services` en `js/mockData.js`. Para dar de alta un servicio, se añade un objeto con la siguiente estructura:
-```javascript
-{
-    id: 's5',
-    categoryId: 'manos-pies',
-    name: 'Kapping Gel',
-    price: 18000,
-    duration: 60,
-    recommendedFor: ['ejecutiva', 'turnos'],
-    image: 'img/nuevo-servicio.jpg'
-}
-```
-
-### ¿Cómo dar de alta a una nueva profesional en Firebase?
-Desde el panel administrador (`#admin`), en la pestaña **Profesionales**, ingresar nombre, correo y seleccionar la foto. El sistema creará el registro automáticamente en la colección `Profesionales` de Firestore.
-
-### ¿Dónde se administran las reglas de seguridad de Firestore?
-En la consola de Firebase del proyecto `nicolett-studio` > **Firestore Database** > pestaña **Reglas**. Se recomienda permitir lectura general de citas y servicios, y restringir la modificación de usuarios e inventario a usuarios autenticados:
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /Citas/{document=**} {
-      allow read, create: if true;
-      allow update, delete: if request.auth != null;
-    }
-    match /perfil_cliente/{document=**} {
-      allow read, create: if true;
-    }
-    match /Galeria/{document=**} {
-      allow read, create: if true;
-      allow update, delete: if request.auth != null;
-    }
-    match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}
-```
+# Manual técnico de Nicolett Studio Fantasy
+
+Este documento describe cómo se relacionan la interfaz, el servidor y Firebase. La configuración operativa del backend está en `backend/README.md` y el detalle de las colecciones en `DATABASE_SCHEMA.md`.
+
+## Componentes
+
+La interfaz se carga desde `index.html`. `AppRouter`, definido en `js/app.js`, cambia el contenido de la vista sin recargar toda la página. `js/main.js` conecta los formularios, los botones y los eventos de inicio.
+
+Los archivos de `js/modules/` agrupan funciones de citas, clientas, inventario, autenticación y elementos de interfaz. `StorageHelper`, en `js/mockData.js`, mantiene el estado utilizado por las vistas y coordina el acceso a Firebase y a la API.
+
+El servidor Express se encuentra en `backend/server.js`. En Vercel se carga desde `api/index.js`; las solicitudes bajo `/api/` se dirigen a esa entrada según `vercel.json`.
+
+## Reservas y abonos
+
+La clienta elige el servicio, la profesional, la fecha y la hora, e ingresa sus datos de contacto. La disponibilidad se consulta al backend. El servidor valida el catálogo y la ocupación del horario antes de crear la solicitud de pago.
+
+El abono del flujo de reservas con Flow es de $5.000 CLP. Las credenciales se leen desde variables de entorno del servidor. El navegador no determina el importe ni confirma el pago.
+
+Flow devuelve a la clienta a `/api/flow/return` y puede notificar al servidor mediante `/api/flow/notify`. El backend consulta el estado al proveedor y registra el resultado. Los identificadores de las operaciones permiten procesar solicitudes repetidas sin crear otra reserva por el mismo pago.
+
+Si un pago llega cuando el horario ya no puede asignarse, el caso queda para revisión. Un error de correo no elimina la cita ni cambia el estado del pago.
+
+Las rutas alternativas de Webpay se encuentran en `backend/server.js`.
+
+## Acceso del personal
+
+Firebase Authentication verifica las cuentas. Los roles se consultan en `Usuarios/{uid}`; una sesión guardada en el navegador no acredita permisos.
+
+Administración puede gestionar la agenda y los registros del salón. Las profesionales acceden a la información que les corresponde por asignación. Las reglas de Firestore y las validaciones del servidor aplican estas restricciones en las operaciones correspondientes.
+
+El cierre de sesión y los cambios de usuario invalidan los datos privados de la sesión anterior. Los errores de autenticación no habilitan acceso con contraseñas locales.
+
+`reset-password.html` permite completar el restablecimiento de contraseña mediante Firebase Authentication.
+
+## Acceso de clientas
+
+La personalización del navegador conserva nombre y datos de contacto para facilitar el uso de los formularios. Esos datos no autorizan la consulta de citas ni de fichas.
+
+La consulta de citas utiliza un código enviado al correo de la clienta. Tras verificarlo, el servidor establece una cookie HttpOnly con vencimiento. Este acceso es independiente de la cuenta del personal.
+
+## Fichas e inventario
+
+Las fichas registran la atención, el servicio, la profesional y los datos técnicos del procedimiento. Su guardado pasa por la API, que comprueba la identidad y los permisos antes de aplicar la operación.
+
+El servicio de fichas coordina el registro de los insumos utilizados y su descuento de inventario. Los identificadores de operación permiten reconocer reintentos y evitar descuentos duplicados.
+
+## Galería
+
+La galería pública muestra trabajos aprobados. Las profesionales pueden aportar fotografías propias pendientes de aprobación. Administración revisa las publicaciones y gestiona el contenido según los permisos definidos en `firestore.rules`.
+
+## Datos y caché
+
+Firestore almacena los registros compartidos. StorageHelper mantiene datos en memoria para las vistas y utiliza almacenamiento local para el catálogo público y la personalización.
+
+El almacenamiento local no sustituye la autenticación ni permite confirmar reservas sin conexión. La aplicación necesita conexión para las operaciones del servidor y la consulta de información privada.
+
+## Configuración y despliegue
+
+El proyecto declara Node.js 24 en sus archivos `package.json`. Vercel instala las dependencias de la raíz y del backend mediante `npm ci`, según `vercel.json`.
+
+La configuración pública de Firebase está en `js/firebase-config.js`. Las claves privadas de Firebase Admin, Flow y EmailJS se configuran únicamente en el entorno del servidor.
+
+El archivo `firestore.rules` contiene las reglas del repositorio. Un cambio local solo afecta al entorno remoto después de desplegar esas reglas en el proyecto correspondiente.
+
+HTTPS/TLS protege el tráfico en tránsito. Las mediciones de rendimiento y las validaciones visuales deben registrarse con su fecha y entorno; no se deducen de la tecnología utilizada.
+
+## Verificación
+
+La suite del backend cubre reservas, pagos simulados, sesiones, permisos, fichas, inventario y escape de contenido, entre otros casos. La prueba de integración real está en `backend/booking.integration.test.js` y requiere los emuladores.
+
+Para preparar una entrega se deben revisar también las vistas en móvil y escritorio, la configuración del entorno y los resultados del despliegue. Una comprobación de sintaxis o una prueba con dobles no reemplaza estas verificaciones.
